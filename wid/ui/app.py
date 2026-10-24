@@ -1,3 +1,4 @@
+from pathlib import Path
 from random import Random
 from typing import ClassVar
 
@@ -20,6 +21,7 @@ from wid.formatting import attribute_label, dice_lines, resources_line, summariz
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import BonusKind, PowerMode, RollRequest, RollResult, RollSession
+from wid.settings import load_settings, save_settings
 from wid.ui.dialogs import ConfirmReset
 from wid.ui.sessions import SessionActions
 from wid.ui.widgets import (
@@ -49,9 +51,11 @@ class RollerApp(SessionActions, App):
         ("ctrl+l", "toggle_history", "Log"),
     ]
 
-    def __init__(self, *, rng: Random | None = None):
+    def __init__(self, *, rng: Random | None = None, settings_path: Path | None = None):
         super().__init__()
         self.rng = rng if rng is not None else Random()
+        self.settings_path = settings_path
+        self.settings = load_settings(settings_path)
         self.session = RollSession()
         self.history: list[HistoryEntry] = []
         self.pending_genre: Genre | None = None
@@ -87,10 +91,23 @@ class RollerApp(SessionActions, App):
         toggle.label = "Hide log" if panel.display else "Show log"
 
     def on_mount(self) -> None:
+        self.restore_theme()
         self.update_attribute_controls()
         self.update_kit_controls()
         self.update_preview()
         self.update_strain_controls()
+
+    def restore_theme(self) -> None:
+        if self.settings.theme in self.available_themes:
+            self.theme = self.settings.theme
+        self.watch(self, "theme", self.remember_theme, init=False)
+
+    def remember_theme(self, theme: str) -> None:
+        self.settings = self.settings.model_copy(update={"theme": theme})
+        try:
+            save_settings(self.settings, self.settings_path)
+        except OSError as error:
+            self.feedback(f"Could not save settings: {error}")
 
     def update_strain_controls(self) -> None:
         tracker = self.session.strain

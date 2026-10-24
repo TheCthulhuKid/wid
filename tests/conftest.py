@@ -8,6 +8,12 @@ from wid.rolls import PowerMode, RollRequest, RollSession
 from wid.sessions import SavedSession
 
 
+@pytest.fixture(autouse=True)
+def isolated_config_home(tmp_path_factory, monkeypatch):
+    """Keep tests from reading or writing the real user configuration."""
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path_factory.mktemp("config")))
+
+
 @pytest.fixture
 def session_factory():
     def create(genre=Genre.CORE, ranks=(1, 2, 3)):

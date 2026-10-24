@@ -53,6 +53,7 @@ wid/
 ├── history.py          # Structured action history entries and their text rendering
 ├── sessions.py         # Versioned JSON snapshots and atomic local storage
 ├── storage.py          # Atomic file writes shared by saves
+├── settings.py         # Remembered preferences in a small JSON file
 └── ui/
     ├── __init__.py
     ├── app.py          # Textual application coordination and event handling
@@ -136,7 +137,8 @@ Press **Roll** beside the attribute to test; no attribute selection is needed.
 **Ctrl+R** repeats the last-used attribute (the first attribute before any roll).
 Tab/Shift+Tab navigate controls; Enter activates a focused Roll button; Space toggles checkboxes;
 arrow keys and Enter operate selectors. Configuration and results scroll independently.
-Press D to pick a theme when not typing into an input.
+Press D to pick a theme when not typing into an input. The choice is remembered in
+`~/.config/wid/settings.json` (or under `$XDG_CONFIG_HOME`).
 
 Every kit has name fields for **Expertise**, **Appropriate Item**, and **Inappropriate Item**.
 After rolling, select a **Post-roll die** and press **+1 value** beside either named item.
