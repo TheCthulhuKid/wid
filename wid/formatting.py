@@ -1,38 +1,59 @@
 """Plain-text renderings of a roll, shared by the result panel and the history log."""
 
 from wid.profiles import PROFILES
-from wid.rolls import RollResult
+from wid.rolls import Outcome, RollResult
+
+# A piece of text and the outcome it should be coloured as, if any.
+Part = tuple[str, Outcome | None]
 
 
-def _per_die(result: RollResult, template: str) -> str:
-    return "\n".join(
-        template.format(
-            n=index + 1,
-            raw=die.raw,
-            bonus=die.bonus,
-            effective=die.effective,
-            outcome=die.classify(result.request).value,
-        )
-        for index, die in enumerate(result.dice)
-    )
+def _plain(parts: list[Part]) -> str:
+    return "".join(text for text, _ in parts)
 
 
 def describe_dice(result: RollResult) -> str:
     """Verbose per-die lines, as written to the history log."""
-    return _per_die(result, "Die {n}: raw {raw} +{bonus} = {effective} — {outcome}")
+    return "\n".join(
+        f"Die {index + 1}: raw {die.raw} +{die.bonus} = {die.effective} — "
+        f"{die.classify(result.request).value}"
+        for index, die in enumerate(result.dice)
+    )
+
+
+def dice_parts(result: RollResult) -> list[list[Part]]:
+    """Compact per-die lines for the result panel, one list of parts per die."""
+    lines: list[list[Part]] = []
+    for index, die in enumerate(result.dice):
+        outcome = die.classify(result.request)
+        lines.append(
+            [
+                (f"{index + 1}: {die.raw}+{die.bonus}={die.effective} ", None),
+                (outcome.value, outcome),
+            ]
+        )
+    return lines
 
 
 def dice_lines(result: RollResult) -> str:
-    """Compact per-die lines, as shown in the result panel."""
-    return _per_die(result, "{n}: {raw}+{bonus}={effective} {outcome}")
+    return "\n".join(_plain(line) for line in dice_parts(result))
+
+
+def summary_parts(result: RollResult) -> list[Part]:
+    totals = result.totals()
+    return [
+        (
+            f"Hits: {totals.hits} (dice {totals.dice_hits}, expertise {totals.expertise_hits})",
+            Outcome.HIT,
+        ),
+        (" | ", None),
+        (f"Misses: {totals.misses}", Outcome.MISS),
+        (" | ", None),
+        (f"Fumbles: {totals.fumbles}", Outcome.FUMBLE),
+    ]
 
 
 def summarize(result: RollResult) -> str:
-    totals = result.totals()
-    return (
-        f"Hits: {totals.hits} (dice {totals.dice_hits}, expertise {totals.expertise_hits}) | "
-        f"Misses: {totals.misses} | Fumbles: {totals.fumbles}"
-    )
+    return _plain(summary_parts(result))
 
 
 def attribute_label(result: RollResult) -> str:

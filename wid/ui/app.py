@@ -17,12 +17,13 @@ from textual.widgets import (
     Static,
 )
 
-from wid.formatting import attribute_label, dice_lines, resources_line, summarize
+from wid.formatting import attribute_label, resources_line
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import BonusKind, PowerMode, RollRequest, RollResult, RollSession
 from wid.settings import load_settings, save_settings
 from wid.ui.dialogs import ConfirmReset
+from wid.ui.outcomes import dice_content, summary_content
 from wid.ui.sessions import SessionActions
 from wid.ui.widgets import (
     BONUS_LABELS,
@@ -101,6 +102,15 @@ class RollerApp(SessionActions, App):
         if self.settings.theme in self.available_themes:
             self.theme = self.settings.theme
         self.watch(self, "theme", self.remember_theme, init=False)
+        self.watch(self, "theme", self.redraw_outcomes, init=False)
+
+    def redraw_outcomes(self) -> None:
+        result = self.session.current_result
+        if result is None:
+            return
+        variables = self.get_css_variables()
+        self.query_one("#dice", Static).update(dice_content(result, variables))
+        self.query_one("#summary", Static).update(summary_content(result, variables))
 
     def remember_theme(self, theme: str) -> None:
         self.settings = self.settings.model_copy(update={"theme": theme})
@@ -398,8 +408,8 @@ class RollerApp(SessionActions, App):
 
     def show_result(self, result: RollResult) -> None:
         tech = self.session.tech
-        self.query_one("#dice", Static).update(dice_lines(result))
-        self.query_one("#summary", Static).update(summarize(result))
+        self.query_one("#dice", Static).update(dice_content(result, self.get_css_variables()))
+        self.query_one("#summary", Static).update(summary_content(result, self.get_css_variables()))
         self.query_one("#tested-attribute", Static).update(attribute_label(result))
         self.query_one("#resources", Static).update(
             resources_line(

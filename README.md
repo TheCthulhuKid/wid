@@ -60,6 +60,7 @@ wid/
     ├── sessions.py     # Save/load handling mixed into the application
     ├── widgets.py      # Character, options, session, and result widgets
     ├── dialogs.py      # Confirmation screens
+    ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
     └── roller.tcss     # Bundled interface styles
 packages/huckdeck/      # Separate distribution (own pyproject.toml and tests)
 └── huckdeck/           # cli.py, deck.py, ui/{app,dialogs}.py, ui/dealer.tcss
@@ -139,6 +140,8 @@ Tab/Shift+Tab navigate controls; Enter activates a focused Roll button; Space to
 arrow keys and Enter operate selectors. Configuration and results scroll independently.
 Press D to pick a theme when not typing into an input. The choice is remembered in
 `~/.config/wid/settings.json` (or under `$XDG_CONFIG_HOME`).
+Hits, misses, and fumbles are coloured; the words are always shown too, so colour is
+never the only signal.
 
 Every kit has name fields for **Expertise**, **Appropriate Item**, and **Inappropriate Item**.
 After rolling, select a **Post-roll die** and press **+1 value** beside either named item.
@@ -245,8 +248,9 @@ unsupported save files and file-access failures are reported without replacing
 the current game. Files use versioned, readable JSON; writes go to a
 temporary file that is renamed into place, so a failed write does not leave a
 partially overwritten save. (On filesystems without hard links, a new save is
-still renamed into place but reserves its filename first.) Theme, window layout,
-and the random generator's internal state are not saved.
+still renamed into place but reserves its filename first.) Window layout and the random
+generator's internal state are not saved, and the theme lives in the settings file
+instead of the session.
 
 ## Genre kits
 
