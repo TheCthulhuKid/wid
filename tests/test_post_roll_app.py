@@ -72,8 +72,9 @@ def test_aligned_options_and_red_wound_highlights(size):
                 app.query_one(selector) for selector in ("#fear", "#assisted", "#expertise")
             ]
             assert len({control.region.y for control in controls}) == 1
-            for index in (0, 3, 7, 11):
-                await click_visible(app, pilot, f"#strain-box-{index}")
+            app.session.strain = app.session.strain.take(12)
+            app.update_strain_controls()
+            await pilot.pause()
             strain = app.query_one("#strain-box-0", Checkbox)
             for index in (3, 7, 11):
                 wound = app.query_one(f"#strain-box-{index}", Checkbox)
@@ -82,8 +83,9 @@ def test_aligned_options_and_red_wound_highlights(size):
                 assert wound.get_component_styles("toggle--button").background.r > (
                     wound.get_component_styles("toggle--button").background.g
                 )
-            await click_visible(app, pilot, "#strain-box-3")
-            assert not app.session.strain.boxes[3]
+            for index in (11, 7, 3):
+                await click_visible(app, pilot, f"#strain-box-{index}")
+                assert not app.session.strain.boxes[index]
 
     asyncio.run(scenario())
 

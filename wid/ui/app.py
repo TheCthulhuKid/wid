@@ -123,17 +123,24 @@ class RollerApp(SessionActions, App):
         tracker = self.session.strain
         with self.prevent(Checkbox.Changed, Input.Changed):
             for box in self.query(StrainBox):
-                box.value = tracker.boxes[box.index]
+                box.sync(tracker)
             for field in self.query(StrainName):
                 field.value = tracker.names[field.row]
         self.update_strain_status()
+
+    def change_strain_box(self, index: int, marked: bool) -> None:
+        try:
+            self.session.strain = self.session.strain.set_box(index, marked)
+        except ValueError as error:
+            self.feedback(str(error))
+        self.update_strain_controls()
 
     def update_strain_status(self) -> None:
         tracker = self.session.strain
         self.query_one("#strain-total", Label).update(
             f"Character strain: {sum(tracker.boxes)} / 12 marked"
         )
-        status = "Check/uncheck any box to record harm, recovery, or corrections."
+        status = "Mark strain as it is taken. A wound needs the strain before it marked first."
         if tracker.defeated:
             status = "Defeat — character ended."
             if tracker.names[2]:
@@ -333,8 +340,7 @@ class RollerApp(SessionActions, App):
         if event.value != event.checkbox.value:
             return
         if isinstance(event.checkbox, StrainBox):
-            self.session.strain = self.session.strain.set_box(event.checkbox.index, event.value)
-            self.update_strain_status()
+            self.change_strain_box(event.checkbox.index, event.value)
         elif event.checkbox.id == "assisted":
             self.update_preview()
         elif isinstance(event.checkbox, RerollDie):

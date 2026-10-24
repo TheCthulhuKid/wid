@@ -168,18 +168,43 @@ class AttributeSetup(FrozenModel):
         return self.ranks[attributes.index(attribute)]
 
 
+# The last box of each row: two wounds, then Defeat. Each is preceded by three strain boxes.
+STRAIN_ENDINGS = (3, 7, 11)
+
+
 class StrainTracker(FrozenModel):
     boxes: tuple[StrictBool, ...] = Field(default=(False,) * 12, min_length=12, max_length=12)
     names: tuple[str, str, str] = ("", "", "")
+
+    @model_validator(mode="after")
+    def validate_endings(self) -> Self:
+        for ending in STRAIN_ENDINGS:
+            if self.boxes[ending] and not all(self.boxes[:ending]):
+                raise ValueError("A marked wound needs every earlier box marked")
+        return self
 
     @property
     def defeated(self) -> bool:
         return self.boxes[11]
 
+    @property
+    def locked_boxes(self) -> frozenset[int]:
+        """Boxes that must stay marked: everything before the last marked wound."""
+        marked = [ending for ending in STRAIN_ENDINGS if self.boxes[ending]]
+        return frozenset(range(max(marked))) if marked else frozenset()
+
+    def markable(self, index: int) -> bool:
+        """A wound can be marked once every box before it is marked; other boxes always."""
+        return index not in STRAIN_ENDINGS or all(self.boxes[:index])
+
     def set_box(self, index: int, checked: bool) -> Self:
         index = TypeAdapter(Index).validate_python(index)
         if index >= len(self.boxes):
             raise ValueError("Strain box is outside the tracker")
+        if checked and not self.markable(index):
+            raise ValueError("Mark all strain before a wound first")
+        if not checked and index in self.locked_boxes:
+            raise ValueError("Boxes before a marked wound stay marked until that wound is cleared")
         boxes = list(self.boxes)
         boxes[index] = checked
         return type(self)(boxes=boxes, names=self.names)
@@ -195,7 +220,7 @@ class StrainTracker(FrozenModel):
     def take(self, points: int) -> Self:
         points = TypeAdapter(Index).validate_python(points)
         boxes = list(self.boxes)
-        start = max((index + 1 for index in (3, 7, 11) if boxes[index]), default=0)
+        start = max((index + 1 for index in STRAIN_ENDINGS if boxes[index]), default=0)
         for index in range(start, len(boxes)):
             if points == 0:
                 break

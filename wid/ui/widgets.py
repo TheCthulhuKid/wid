@@ -13,7 +13,7 @@ from textual.widgets import (
 )
 
 from wid.profiles import PROFILES, Genre
-from wid.rolls import BonusKind, PowerMode
+from wid.rolls import BonusKind, PowerMode, StrainTracker
 
 BONUS_LABELS = {
     BonusKind.EXPERTISE: "Expertise",
@@ -47,12 +47,28 @@ class BonusName(Input):
         self.kind = kind
 
 
+LOCKED_NOTE = "Locked: boxes before a marked wound stay marked until that wound is cleared."
+NOT_READY_NOTE = "Mark all the strain before this wound first."
+
+
 class StrainBox(Checkbox):
     """One of the twelve strain boxes."""
 
-    def __init__(self, index: int, label: str = "", **kwargs):
-        super().__init__(label, id=f"strain-box-{index}", **kwargs)
+    def __init__(self, index: int, label: str = "", *, tooltip: str, **kwargs):
+        super().__init__(label, id=f"strain-box-{index}", tooltip=tooltip, **kwargs)
         self.index = index
+        self.description = tooltip
+
+    def sync(self, tracker: StrainTracker) -> None:
+        """Show the tracker's state; boxes that cannot change are disabled and say why."""
+        self.value = tracker.boxes[self.index]
+        note = None
+        if self.index in tracker.locked_boxes:
+            note = LOCKED_NOTE
+        elif not self.value and not tracker.markable(self.index):
+            note = NOT_READY_NOTE
+        self.disabled = note is not None
+        self.tooltip = note or self.description
 
 
 class StrainName(Input):

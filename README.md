@@ -188,14 +188,17 @@ Use **Take 1 strain** to fill boxes sequentially: without recovery, points 4 and
 mark wounds, and point 12 marks Defeat. Heckboy powers automatically add their
 strain costs to this same tracker after a successful roll.
 
-Check or uncheck any box to record recovery or correct the sheet; names are kept
-when boxes are cleared. Automatic strain fills unchecked boxes after the last
-marked Wound/Defeat, not recovered boxes in an earlier completed row. After Defeat
-automatic strain stops filling boxes; further power costs still appear in cumulative roll totals.
+Strain boxes can be marked and cleared in any order, with two rules. A **Wound** or
+**Defeat** box can only be marked once every box before it is marked. While a wound is
+marked, every box before it stays marked, including earlier wounds, so wounds are cleared
+latest first and the strain before each is cleared afterwards. Boxes that cannot change are
+disabled, and their tooltip says why. Names are kept when boxes are cleared. Automatic
+strain fills unchecked boxes after the last marked Wound/Defeat. After Defeat automatic
+strain stops filling boxes; further power costs still appear in cumulative roll totals.
 Defeat displays **character ended** but does not disable rolls, notes, or saving.
 
-All boxes and names are saved and loaded with the session. Old saves without a
-tracker start with their cumulative power strain filled in, capped at 12 boxes.
+All boxes and names are saved and loaded with the session; a file with a marked wound
+and an unmarked box before it is rejected.
 Changing kits clears the tracker and names after confirmation if either contains data.
 Recovery edits do not change the separate cumulative Heckboy power-cost total.
 
