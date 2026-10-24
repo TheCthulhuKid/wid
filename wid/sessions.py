@@ -1,5 +1,6 @@
 import os
 import stat
+from contextlib import suppress
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Annotated, Literal, Self
@@ -108,7 +109,9 @@ class SavedSession(FrozenModel):
                 temporary = Path(output.name)
                 output.write(candidate.model_dump_json(indent=2))
                 output.flush()
-                os.chmod(temporary, self._target_mode(path))
+                # Some filesystems (e.g. FAT) cannot set permissions; the save still works.
+                with suppress(OSError):
+                    os.chmod(temporary, self._target_mode(path))
                 os.fsync(output.fileno())
             if overwrite:
                 os.replace(temporary, path)

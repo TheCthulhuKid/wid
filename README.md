@@ -48,11 +48,13 @@ wid/
 ├── cli.py              # Installed wid command
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
+├── formatting.py       # Plain-text roll, dice, and resource renderings
 ├── history.py          # Structured action history entries and their text rendering
 ├── sessions.py         # Versioned JSON snapshots and atomic local storage
 └── ui/
     ├── __init__.py
     ├── app.py          # Textual application coordination and event handling
+    ├── sessions.py     # Save/load handling mixed into the application
     ├── widgets.py      # Character, options, session, and result widgets
     ├── dialogs.py      # Confirmation screens
     └── roller.tcss     # Bundled interface styles
@@ -237,8 +239,10 @@ use the named post-roll item controls instead. Names remain when switching genre
 Saving is explicit, not automatic; save again after playing to keep new changes.
 Use a nonblank session name (up to 100 characters). Invalid or
 unsupported save files and file-access failures are reported without replacing
-the current game. Files use versioned, readable JSON; writes are atomic so a
-failed write does not leave a partially overwritten save. Theme, window layout,
+the current game. Files use versioned, readable JSON; writes go to a
+temporary file that is renamed into place, so a failed write does not leave a
+partially overwritten save. (On filesystems without hard links, a new save is
+still renamed into place but reserves its filename first.) Theme, window layout,
 and the random generator's internal state are not saved.
 
 ## Genre kits

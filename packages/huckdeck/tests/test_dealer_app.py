@@ -149,7 +149,9 @@ def test_dealer_entry_points_and_stylesheet():
             str(Path(__file__).resolve().parents[1] / "huckdeck.py"), run_name="__main__"
         )
     launcher.assert_called_once_with()
-    entry = next(point for point in distribution("huckdeck").entry_points if point.name == "huckdeck")
+    entry = next(
+        point for point in distribution("huckdeck").entry_points if point.name == "huckdeck"
+    )
     assert entry.load() is main
     assert files("huckdeck.ui").joinpath("dealer.tcss").is_file()
 

@@ -43,5 +43,11 @@ testpaths = ["tests", "packages/huckdeck/tests"]
 [tool.uv.sources]
 huckdeck = { workspace = true }
 
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["wid", "huckdeck"]

@@ -4,26 +4,11 @@ from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
+from wid.formatting import describe_dice, summarize
 from wid.profiles import PROFILES
 from wid.rolls import FrozenModel, RollResult
 
 Count = Annotated[int, Field(strict=True, ge=0)]
-
-
-def describe_dice(result: RollResult) -> str:
-    return "\n".join(
-        f"Die {index + 1}: raw {die.raw} +{die.bonus} = {die.effective} — "
-        f"{die.classify(result.request).value}"
-        for index, die in enumerate(result.dice)
-    )
-
-
-def summarize(result: RollResult) -> str:
-    totals = result.totals()
-    return (
-        f"Hits: {totals.hits} (dice {totals.dice_hits}, expertise {totals.expertise_hits}) | "
-        f"Misses: {totals.misses} | Fumbles: {totals.fumbles}"
-    )
 
 
 class HistoryEntry(FrozenModel):
@@ -45,9 +30,16 @@ class HistoryEntry(FrozenModel):
     def validate_kind(self) -> Self:
         if bool(self.notice) == (self.result is not None):
             raise ValueError("History entry needs either a notice or a result")
-        if self.result is not None and not self.action:
+        if self.result is None:
+            self.reject_action_fields()
+        elif not self.action:
             raise ValueError("History entry for a result needs an action")
         return self
+
+    def reject_action_fields(self) -> None:
+        for name, field in type(self).model_fields.items():
+            if name != "notice" and getattr(self, name) != field.default:
+                raise ValueError(f"A notice cannot set {name}")
 
     def __str__(self) -> str:
         result = self.result

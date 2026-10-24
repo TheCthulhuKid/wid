@@ -1,4 +1,3 @@
-from pathlib import Path
 from random import Random
 from typing import ClassVar
 
@@ -15,26 +14,31 @@ from textual.widgets import (
     RichLog,
     Select,
     Static,
-    TextArea,
 )
 
-from wid.history import HistoryEntry, summarize
+from wid.formatting import attribute_label, dice_lines, resources_line, summarize
+from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import BonusKind, PowerMode, RollRequest, RollResult, RollSession
-from wid.sessions import CharacterDetails, SavedSession, session_file_path
-from wid.ui.dialogs import ConfirmReset, ConfirmSessionAction, LoadGame
+from wid.ui.dialogs import ConfirmReset
+from wid.ui.sessions import SessionActions
 from wid.ui.widgets import (
     BONUS_LABELS,
-    CHARACTER_LABELS,
+    AttributeRollButton,
+    BonusButton,
+    BonusName,
     OptionsGroup,
     ProfileGroup,
+    RerollDie,
     RollerGroup,
     SessionGroup,
+    StrainBox,
     StrainGroup,
+    StrainName,
 )
 
 
-class RollerApp(App):
+class RollerApp(SessionActions, App):
     """Configure tests in widgets; resolve them through the session model."""
 
     CSS_PATH = "roller.tcss"
@@ -240,10 +244,7 @@ class RollerApp(App):
         self.tested_attribute = PROFILES[genre].attributes[0]
         for index in range(3):
             self.query_one(f"#attribute-rank-{index}", Select).value = index + 1
-        self.query_one("#tested-attribute", Static).update("")
-        self.query_one("#dice", Static).update("Roll a test to see individual outcomes.")
-        self.query_one("#summary", Static).update("")
-        self.query_one("#resources", Static).update("")
+        self.clear_result_display()
         self.update_attribute_controls()
         self.update_kit_controls()
         self.update_preview()
@@ -252,151 +253,14 @@ class RollerApp(App):
         self.feedback(message)
         self.record(HistoryEntry(notice=message))
 
+    def clear_result_display(self) -> None:
+        self.query_one("#tested-attribute", Static).update("")
+        self.query_one("#dice", Static).update("Roll a test to see individual outcomes.")
+        self.query_one("#summary", Static).update("")
+        self.query_one("#resources", Static).update("")
+
     def feedback(self, message: str) -> None:
         self.query_one("#feedback", Static).update(message)
-
-    def session_path(self) -> Path:
-        return session_file_path(self.query_one("#session-path", Input).value)
-
-    def character_details(self) -> CharacterDetails:
-        return CharacterDetails.model_validate(
-            {
-                field: self.query_one(f"#character-{field}", Input).value
-                for field in CHARACTER_LABELS
-            }
-        )
-
-    def action_save_session(self) -> None:
-        if self.pending_genre is not None:
-            return
-        try:
-            path = self.session_path()
-            saved = SavedSession(
-                name=self.query_one("#session-name", Input).value,
-                session=self.session.model_copy(deep=True),
-                draft=self.draft_request(),
-                notes=self.query_one("#session-notes", TextArea).text,
-                character=self.character_details(),
-                history=tuple(self.history),
-                reroll_indices=tuple(sorted(self.selected_dice())),
-                item_target=(
-                    self.query_one("#item-target", Select).value
-                    if self.session.current_result is not None
-                    else None
-                ),
-            )
-            self.write_session(saved, path)
-        except (OSError, ValueError) as error:
-            self.feedback(f"Could not save session: {error}")
-
-    def write_session(self, saved: SavedSession, path: Path, *, overwrite: bool = False) -> None:
-        try:
-            saved.save(path, overwrite=overwrite)
-        except FileExistsError:
-            self.push_screen(
-                ConfirmSessionAction(f"Replace the existing save at {path}?"),
-                lambda confirmed: self.finish_save(saved, path, confirmed),
-            )
-            return
-        except (OSError, ValueError) as error:
-            self.feedback(f"Could not save session: {error}")
-            return
-        self.query_one("#session-name", Input).value = saved.name
-        self.sub_title = saved.name
-        self.feedback(f"Saved {saved.name} to {path}.")
-
-    def finish_save(self, saved: SavedSession, path: Path, confirmed: bool) -> None:
-        if confirmed:
-            self.write_session(saved, path, overwrite=True)
-        else:
-            self.feedback("Save canceled; existing file unchanged.")
-
-    def action_load_session(self) -> None:
-        if self.pending_genre is not None:
-            return
-        self.push_screen(
-            LoadGame(self.query_one("#session-path", Input).value), self.load_session_path
-        )
-
-    def load_session_path(self, value: str | None) -> None:
-        if value is None:
-            return
-        try:
-            path = session_file_path(value)
-            saved = SavedSession.load(path)
-        except (OSError, ValueError) as error:
-            self.feedback(f"Could not load session: {error}")
-            return
-        if (
-            self.session.attributes is not None
-            or self.history
-            or self.query_one("#session-notes", TextArea).text
-            or any(self.character_details().model_dump().values())
-            or any(self.session.bonuses.model_dump().values())
-            or self.has_resources()
-        ):
-            self.push_screen(
-                ConfirmSessionAction(
-                    f"Load {saved.name}? This replaces the current game and history. "
-                    "Unsaved changes will be lost."
-                ),
-                lambda confirmed: self.finish_load(saved, path, confirmed),
-            )
-        else:
-            self.finish_load(saved, path, True)
-
-    def finish_load(self, saved: SavedSession, path: Path, confirmed: bool) -> None:
-        if not confirmed:
-            self.feedback("Load canceled; current game unchanged.")
-            return
-        self.session = saved.session.model_copy(deep=True)
-        self.history = list(saved.history)
-        draft = saved.draft
-        with self.prevent(Select.Changed, Checkbox.Changed, Input.Changed):
-            for field in CHARACTER_LABELS:
-                self.query_one(f"#character-{field}", Input).value = getattr(saved.character, field)
-            self.query_one("#genre", Select).value = self.session.profile_id
-            self.tested_attribute = draft.attribute
-            self.query_one("#fear", Select).value = draft.fear_level
-            self.query_one("#power", Select).value = draft.power
-            self.query_one("#assisted", Checkbox).value = draft.assisted
-            self.query_one("#expertise", Checkbox).value = draft.expertise
-            self.update_attribute_controls()
-            self.update_preview()
-            for kind in BonusKind:
-                self.query_one(f"#name-{kind}", Input).value = getattr(self.session.bonuses, kind)
-            self.query_one("#tech-target", Select).value = (
-                draft.tech_target if draft.tech_target is not None else -1
-            )
-            self.update_kit_controls()
-            if self.session.current_result is not None:
-                self.show_result(self.session.current_result)
-            else:
-                self.query_one("#tested-attribute", Static).update("")
-                self.query_one("#dice", Static).update("Roll a test to see individual outcomes.")
-                self.query_one("#summary", Static).update("")
-                self.query_one("#resources", Static).update("")
-            for index in range(7):
-                self.query_one(f"#reroll-die-{index}", Checkbox).value = (
-                    index in saved.reroll_indices
-                )
-            self.update_reroll_controls()
-            self.update_strain_controls()
-            self.update_bonus_controls()
-            if saved.item_target is not None:
-                self.query_one("#item-target", Select).value = saved.item_target
-        log = self.query_one("#log", RichLog)
-        log.clear()
-        for entry in self.history:
-            log.write(str(entry))
-        self.query_one("#session-name", Input).value = saved.name
-        self.query_one("#session-path", Input).value = str(path)
-        self.query_one("#session-notes", TextArea).load_text(saved.notes)
-        self.sub_title = saved.name
-        message = f"Loaded {saved.name} from {path}."
-        if draft.item_allocations:
-            message += " Legacy pre-roll item assignments cleared; apply named items after rolling."
-        self.feedback(message)
 
     def draft_request(self, *, preview: bool = False) -> RollRequest:
         return RollRequest(
@@ -444,62 +308,56 @@ class RollerApp(App):
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         if event.value != event.checkbox.value:
             return
-        if event.checkbox.id and event.checkbox.id.startswith("strain-box-"):
-            index = int(event.checkbox.id.removeprefix("strain-box-"))
-            self.session.strain = self.session.strain.set_box(index, event.value)
+        if isinstance(event.checkbox, StrainBox):
+            self.session.strain = self.session.strain.set_box(event.checkbox.index, event.value)
             self.update_strain_status()
-            return
-        if event.checkbox.id == "assisted":
+        elif event.checkbox.id == "assisted":
             self.update_preview()
-        elif event.checkbox.id and event.checkbox.id.startswith("reroll-die-"):
+        elif isinstance(event.checkbox, RerollDie):
             self.update_reroll_controls()
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.value != event.input.value:
             return
-        if event.input.id and event.input.id.startswith("strain-name-"):
-            row = int(event.input.id.removeprefix("strain-name-"))
-            self.session.strain = self.session.strain.set_name(row, event.value)
+        if isinstance(event.input, StrainName):
+            self.session.strain = self.session.strain.set_name(event.input.row, event.value)
             self.update_strain_status()
-        elif event.input.id and event.input.id.startswith("name-"):
-            kind = BonusKind(event.input.id.removeprefix("name-"))
-            self.session.set_bonus_name(kind, event.value)
+        elif isinstance(event.input, BonusName):
+            self.session.set_bonus_name(event.input.kind, event.value)
             self.update_bonus_controls()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id and event.button.id.startswith("roll-attribute-"):
-            self.action_roll_attribute(int(event.button.id.removeprefix("roll-attribute-")))
+        if isinstance(event.button, AttributeRollButton):
+            self.action_roll_attribute(event.button.index)
             return
-        if event.button.id and event.button.id.startswith("apply-"):
-            self.apply_bonus(BonusKind(event.button.id.removeprefix("apply-")))
+        if isinstance(event.button, BonusButton):
+            self.apply_bonus(event.button.kind)
             return
-        session_action = {
+        action = {
             "save-session": self.action_save_session,
             "load-session": self.action_load_session,
             "take-strain": self.take_strain,
             "toggle-history": self.action_toggle_history,
+            "start-game": self.start_game,
+            "reroll_button": self.action_reroll,
+            "initialize-tech": self.initialize_tech,
         }.get(event.button.id)
-        if session_action is not None:
-            session_action()
+        if action is not None:
+            action()
+
+    def initialize_tech(self) -> None:
+        try:
+            tech = self.session.initialize_tech()
+        except ValueError as error:
+            self.feedback(str(error))
             return
-        if event.button.id == "start-game":
-            self.start_game()
-            return
-        if event.button.id == "reroll_button":
-            self.action_reroll()
-        elif event.button.id == "initialize-tech":
-            try:
-                tech = self.session.initialize_tech()
-            except ValueError as error:
-                self.feedback(str(error))
-                return
-            self.update_tech_controls()
-            message = (
-                f"Tech explicitly initialized/replaced: Science {tech.science} + "
-                f"Culture {tech.culture} = {tech.remaining_bonus}."
-            )
-            self.feedback(message)
-            self.record(HistoryEntry(notice=message))
+        self.update_tech_controls()
+        message = (
+            f"Tech explicitly initialized/replaced: Science {tech.science} + "
+            f"Culture {tech.culture} = {tech.remaining_bonus}."
+        )
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
 
     def take_strain(self) -> None:
         self.session.strain = self.session.strain.take(1)
@@ -525,29 +383,16 @@ class RollerApp(App):
         self.log_result(result, action, resource_cost=False)
 
     def show_result(self, result: RollResult) -> None:
-        self.query_one("#dice", Static).update(
-            "\n".join(
-                f"{index + 1}: {die.raw}+{die.bonus}={die.effective} "
-                f"{die.classify(result.request).value}"
-                for index, die in enumerate(result.dice)
-            )
-        )
+        tech = self.session.tech
+        self.query_one("#dice", Static).update(dice_lines(result))
         self.query_one("#summary", Static).update(summarize(result))
-        self.query_one("#tested-attribute", Static).update(
-            f"{result.request.attribute} (rank {result.request.attribute_rank})"
-        )
+        self.query_one("#tested-attribute", Static).update(attribute_label(result))
         self.query_one("#resources", Static).update(
-            f"Strain: +{result.strain_delta} (session {self.session.total_strain})"
-            + (
-                f" | Corruption: +{result.corruption_delta} "
-                f"(session {self.session.total_corruption})"
-                if PROFILES[result.request.profile_id].has_rerolls
-                else ""
-            )
-            + (
-                f" | Tech remaining: {self.session.tech.remaining_bonus}"
-                if self.session.tech
-                else ""
+            resources_line(
+                result,
+                total_strain=self.session.total_strain,
+                total_corruption=self.session.total_corruption,
+                tech_remaining=tech.remaining_bonus if tech else None,
             )
         )
         for index in range(7):

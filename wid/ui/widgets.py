@@ -23,6 +23,54 @@ BONUS_LABELS = {
 CHARACTER_LABELS = {"name": "Name", "looks": "Looks", "nature": "Nature"}
 
 
+class AttributeRollButton(Button):
+    """Rolls the attribute at ``index`` in the current kit."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__("Roll", id=f"roll-attribute-{index}", **kwargs)
+        self.index = index
+
+
+class BonusButton(Button):
+    """Applies the named bonus ``kind`` to the current test."""
+
+    def __init__(self, label: str, kind: BonusKind, **kwargs):
+        super().__init__(label, id=f"apply-{kind}", **kwargs)
+        self.kind = kind
+
+
+class BonusName(Input):
+    """Text box naming the bonus ``kind``."""
+
+    def __init__(self, kind: BonusKind, **kwargs):
+        super().__init__(id=f"name-{kind}", **kwargs)
+        self.kind = kind
+
+
+class StrainBox(Checkbox):
+    """One of the twelve strain boxes."""
+
+    def __init__(self, index: int, label: str = "", **kwargs):
+        super().__init__(label, id=f"strain-box-{index}", **kwargs)
+        self.index = index
+
+
+class StrainName(Input):
+    """Name of the wound or defeat on strain ``row``."""
+
+    def __init__(self, row: int, **kwargs):
+        super().__init__(id=f"strain-name-{row}", **kwargs)
+        self.row = row
+
+
+class RerollDie(Checkbox):
+    """Selects die ``index`` for an Oldheart reroll."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__(f"Reroll die {index + 1}", id=f"reroll-die-{index}", **kwargs)
+        self.index = index
+
+
 class ProfileGroup(Vertical):
     def compose(self) -> ComposeResult:
         with Horizontal(id="profile-fields"):
@@ -54,9 +102,7 @@ class ProfileGroup(Vertical):
                             allow_blank=False,
                             id=f"attribute-rank-{index}",
                         )
-                        yield Button(
-                            "Roll", id=f"roll-attribute-{index}", variant="primary", disabled=True
-                        )
+                        yield AttributeRollButton(index, variant="primary", disabled=True)
 
 
 class NotesGroup(Vertical):
@@ -137,8 +183,8 @@ class OptionsGroup(Vertical):
                 yield Label("Expertise")
                 with Horizontal(id="expertise-controls"):
                     yield Checkbox(id="expertise", tooltip="Include expertise: +1 hit")
-                    yield Input(placeholder="Describe expertise", id="name-expertise")
-                    yield Button("+1 hit", id="apply-expertise", disabled=True)
+                    yield BonusName(BonusKind.EXPERTISE, placeholder="Describe expertise")
+                    yield BonusButton("+1 hit", BonusKind.EXPERTISE, disabled=True)
         with Vertical(id="powers"):
             yield Label("Power (extra dice / strain)")
             yield Select(
@@ -167,12 +213,8 @@ class OptionsGroup(Vertical):
                 with Horizontal(classes="named-bonus"):
                     with Vertical(classes="field"):
                         yield Label(label)
-                        yield Input(placeholder=f"{label} name", id=f"name-{kind}")
-                    yield Button(
-                        "+1 value",
-                        id=f"apply-{kind}",
-                        disabled=True,
-                    )
+                        yield BonusName(kind, placeholder=f"{label} name")
+                    yield BonusButton("+1 value", kind, disabled=True)
 
 
 class StrainGroup(Vertical):
@@ -184,13 +226,13 @@ class StrainGroup(Vertical):
                     for column in range(4):
                         index = row * 4 + column
                         description = ending if column == 3 else f"strain {column + 1}"
-                        yield Checkbox(
+                        yield StrainBox(
+                            index,
                             ending if column == 3 else "",
-                            id=f"strain-box-{index}",
                             classes="strain-ending" if column == 3 else "strain-box",
                             tooltip=f"Row {row + 1}: {description}",
                         )
-                yield Input(placeholder=f"{ending} name", id=f"strain-name-{row}")
+                yield StrainName(row, placeholder=f"{ending} name")
         yield Button("Take 1 strain", id="take-strain")
         yield Static(id="strain-status", markup=False)
 
@@ -204,5 +246,5 @@ class RollerGroup(VerticalScroll):
         with Vertical(id="reroll-controls"):
             yield Label("Oldheart: select dice from the current test")
             for index in range(7):
-                yield Checkbox(f"Reroll die {index + 1}", id=f"reroll-die-{index}")
+                yield RerollDie(index)
             yield Button("Reroll selected", id="reroll_button", disabled=True)
