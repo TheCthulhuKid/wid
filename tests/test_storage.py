@@ -1,0 +1,81 @@
+import os
+
+import pytest
+
+from wid.storage import write_text
+
+
+def names(directory):
+    return sorted(path.name for path in directory.iterdir())
+
+
+def test_writes_a_new_file_without_leftovers(tmp_path):
+    path = tmp_path / "data.json"
+
+    write_text(path, "first")
+
+    assert path.read_text(encoding="utf-8") == "first"
+    assert names(tmp_path) == ["data.json"]
+
+
+def test_refuses_to_replace_unless_asked(tmp_path):
+    path = tmp_path / "data.json"
+    write_text(path, "first")
+
+    with pytest.raises(FileExistsError):
+        write_text(path, "second")
+    assert path.read_text(encoding="utf-8") == "first"
+    assert names(tmp_path) == ["data.json"]
+
+    write_text(path, "second", overwrite=True)
+    assert path.read_text(encoding="utf-8") == "second"
+
+
+def test_missing_directory_is_an_error(tmp_path):
+    with pytest.raises(OSError):
+        write_text(tmp_path / "missing" / "data.json", "x")
+
+
+def test_new_file_follows_umask_and_overwrite_keeps_mode(tmp_path):
+    path = tmp_path / "data.json"
+    old = os.umask(0o022)
+    try:
+        write_text(path, "first")
+    finally:
+        os.umask(old)
+    assert path.stat().st_mode & 0o777 == 0o644
+
+    path.chmod(0o664)
+    write_text(path, "second", overwrite=True)
+    assert path.stat().st_mode & 0o777 == 0o664
+
+
+def test_works_without_hard_links_or_chmod(tmp_path, monkeypatch):
+    def refuse(*args):
+        raise PermissionError("unsupported")
+
+    monkeypatch.setattr("wid.storage.os.link", refuse)
+    monkeypatch.setattr("wid.storage.os.chmod", refuse)
+    path = tmp_path / "data.json"
+
+    write_text(path, "first")
+    with pytest.raises(FileExistsError):
+        write_text(path, "second")
+
+    assert path.read_text(encoding="utf-8") == "first"
+    assert names(tmp_path) == ["data.json"]
+
+
+def test_failed_fallback_leaves_no_file(tmp_path, monkeypatch):
+    def refuse(*args):
+        raise PermissionError("unsupported")
+
+    def fail(*args):
+        raise OSError("disk failure")
+
+    monkeypatch.setattr("wid.storage.os.link", refuse)
+    monkeypatch.setattr("wid.storage.os.replace", fail)
+
+    with pytest.raises(OSError, match="disk failure"):
+        write_text(tmp_path / "data.json", "x")
+    assert names(tmp_path) == []

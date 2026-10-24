@@ -52,6 +52,7 @@ wid/
 ├── formatting.py       # Plain-text roll, dice, and resource renderings
 ├── history.py          # Structured action history entries and their text rendering
 ├── sessions.py         # Versioned JSON snapshots and atomic local storage
+├── storage.py          # Atomic file writes shared by saves
 └── ui/
     ├── __init__.py
     ├── app.py          # Textual application coordination and event handling

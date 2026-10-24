@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 from random import Random
 
@@ -42,67 +41,10 @@ def test_explicit_overwrite_and_failed_save_preserve_existing_file(
     def fail_replace(*args):
         raise OSError("disk failure")
 
-    monkeypatch.setattr("wid.sessions.os.replace", fail_replace)
+    monkeypatch.setattr("wid.storage.os.replace", fail_replace)
     with pytest.raises(OSError, match="disk failure"):
         renamed.save(path, overwrite=True)
     assert path.read_bytes() == before
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["campaign.json"]
-
-
-def _no_hard_links(*args):
-    raise PermissionError("hard links unsupported")
-
-
-def test_save_without_hard_link_support(tmp_path, monkeypatch, saved_session_factory):
-    saved = saved_session_factory()
-    path = tmp_path / "campaign.json"
-    monkeypatch.setattr("wid.sessions.os.link", _no_hard_links)
-    saved.save(path)
-    assert SavedSession.load(path).name == saved.name
-    before = path.read_bytes()
-    with pytest.raises(FileExistsError):
-        saved.model_copy(update={"name": "Renamed"}).save(path)
-    assert path.read_bytes() == before
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["campaign.json"]
-
-
-def test_failed_fallback_save_leaves_no_file(tmp_path, monkeypatch, saved_session_factory):
-    path = tmp_path / "campaign.json"
-    monkeypatch.setattr("wid.sessions.os.link", _no_hard_links)
-
-    def fail_replace(*args):
-        raise OSError("disk failure")
-
-    monkeypatch.setattr("wid.sessions.os.replace", fail_replace)
-    with pytest.raises(OSError, match="disk failure"):
-        saved_session_factory().save(path)
-    assert list(tmp_path.iterdir()) == []
-
-
-def test_save_permissions_follow_umask_and_overwrite_keeps_mode(tmp_path, saved_session_factory):
-    saved = saved_session_factory()
-    path = tmp_path / "campaign.json"
-    old = os.umask(0o022)
-    try:
-        saved.save(path)
-    finally:
-        os.umask(old)
-    assert path.stat().st_mode & 0o777 == 0o644
-    path.chmod(0o664)
-    saved.model_copy(update={"name": "Renamed"}).save(path, overwrite=True)
-    assert path.stat().st_mode & 0o777 == 0o664
-
-
-def test_save_works_where_permissions_cannot_be_set(tmp_path, monkeypatch, saved_session_factory):
-    def refuse(*args):
-        raise PermissionError("chmod unsupported")
-
-    monkeypatch.setattr("wid.sessions.os.chmod", refuse)
-    path = tmp_path / "campaign.json"
-
-    saved_session_factory().save(path)
-
-    assert SavedSession.load(path).name
     assert sorted(p.name for p in tmp_path.iterdir()) == ["campaign.json"]
 
 

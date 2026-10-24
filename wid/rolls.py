@@ -70,18 +70,28 @@ class RollRequest(FrozenModel):
 
     @model_validator(mode="after")
     def validate_options(self) -> Self:
+        self.validate_power()
+        self.validate_tech_target()
+        self.validate_item_allocations()
+        return self
+
+    def validate_power(self) -> None:
         if self.power != PowerMode.NONE and self.profile_id != Genre.HECKBOY:
             raise ValueError("Only Heckboy can use powers")
-        if self.tech_target is not None:
-            if self.profile_id != Genre.SECOND_CONTACT:
-                raise ValueError("Only Second Contact can use Tech")
-            if self.tech_target >= self.pool_size():
-                raise ValueError("Tech target is outside the dice pool")
+
+    def validate_tech_target(self) -> None:
+        if self.tech_target is None:
+            return
+        if self.profile_id != Genre.SECOND_CONTACT:
+            raise ValueError("Only Second Contact can use Tech")
+        if self.tech_target >= self.pool_size():
+            raise ValueError("Tech target is outside the dice pool")
+
+    def validate_item_allocations(self) -> None:
         if self.profile_id == Genre.SECOND_CONTACT and self.item_allocations:
             raise ValueError("Second Contact uses Tech instead of items")
         if any(index >= self.pool_size() for index in self.item_allocations):
             raise ValueError("Item target is outside the dice pool")
-        return self
 
 
 class DieResult(FrozenModel):
@@ -277,23 +287,8 @@ class RollSession(BaseModel):
         return candidate
 
     def roll(self, request: RollRequest, *, rng: Random) -> RollResult:
-        if request.profile_id != self.profile_id:
-            raise ValueError("Request must match the session profile")
-        if request.attribute_rank != self.attribute_rank(request.attribute):
-            raise ValueError("Tested rank must match the assigned attribute value")
-        bonuses = [0] * request.pool_size()
-        for index in request.item_allocations:
-            bonuses[index] += 1
-        next_tech = self.tech
-        if request.tech_target is not None:
-            if self.tech is None or self.tech.remaining_bonus == 0:
-                raise ValueError("Tech is unavailable or depleted; explicitly initialize it first")
-            bonuses[request.tech_target] += self.tech.remaining_bonus
-            next_tech = TechState(
-                science=self.tech.science,
-                culture=self.tech.culture,
-                remaining_bonus=self.tech.remaining_bonus - 1,
-            )
+        self.validate_roll_request(request)
+        bonuses, next_tech = self.dice_bonuses(request)
         candidate = RollResult(
             request=request,
             dice=tuple(DieResult(raw=rng.randint(1, 6), bonus=b) for b in bonuses),
@@ -305,6 +300,28 @@ class RollSession(BaseModel):
         self.total_strain += candidate.strain_delta
         self.current_result = candidate
         return candidate
+
+    def validate_roll_request(self, request: RollRequest) -> None:
+        if request.profile_id != self.profile_id:
+            raise ValueError("Request must match the session profile")
+        if request.attribute_rank != self.attribute_rank(request.attribute):
+            raise ValueError("Tested rank must match the assigned attribute value")
+
+    def dice_bonuses(self, request: RollRequest) -> tuple[list[int], TechState | None]:
+        """Per-die bonuses for a request and the Tech state after it; changes nothing."""
+        bonuses = [0] * request.pool_size()
+        for index in request.item_allocations:
+            bonuses[index] += 1
+        tech = self.tech
+        if request.tech_target is None:
+            return bonuses, tech
+        if tech is None or tech.remaining_bonus == 0:
+            raise ValueError("Tech is unavailable or depleted; explicitly initialize it first")
+        bonuses[request.tech_target] += tech.remaining_bonus
+        spent = TechState(
+            science=tech.science, culture=tech.culture, remaining_bonus=tech.remaining_bonus - 1
+        )
+        return bonuses, spent
 
     def reroll(self, indices: set[int], *, rng: Random) -> RollResult:
         indices = TypeAdapter(set[Index]).validate_python(indices)
