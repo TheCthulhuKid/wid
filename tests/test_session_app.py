@@ -278,11 +278,15 @@ def test_confirmations_errors_and_keyboard_controls(tmp_path, saved_session_fact
             (await reveal(app, pilot, "#session-name")).focus()
             await pilot.press("home", "shift+end", "N", "a", "m", "e", "tab")
             assert app.query_one("#session-name", Input).value == "Name"
-            assert app.focused.id == "session-notes"
+            assert app.focused.id == "session-path"
+            await pilot.press("tab")
+            assert app.focused.id == "save-session"
+
+            (await reveal(app, pilot, "#session-notes")).focus()
             await pilot.press("tab")
             assert app.focused.id == "toggle-notes-preview"
-            await pilot.press("tab", "tab", "tab", "tab")
-            assert app.focused.id == "session-path"
+            await pilot.press("tab", "tab", "tab")
+            assert app.focused.id == "notes-heading"
 
     asyncio.run(scenario())
 

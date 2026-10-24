@@ -126,7 +126,8 @@ and Reasoning**. Assignments stay fixed until changing kits.
 Each attribute has its own **Roll** button, available after pressing **Start game**.
 The assigned ranks remain visible and locked during play.
 
-Below the genre controls, enter **Name**, **Looks**, and **Nature** for your character.
+In the **Character** tab below the strain tracker, enter **Name**, **Looks**, and
+**Nature** for your character.
 These optional fields can be edited at any time and stay in place when switching kits.
 **Save session** saves them alongside the rest of the game; loading restores them.
 Loading asks before
@@ -204,14 +205,15 @@ Recovery edits do not change the separate cumulative Heckboy power-cost total.
 
 ## Named sessions
 
-After **Start game**, scroll down in the configuration panel to **Session name**.
-Enter a name and a **Save / load file path (JSON)**, then press **Save session**.
+After **Start game**, open the **Session** tab below the strain tracker.
+Enter a **Session name** and a **Save / load file path (JSON)**, then press **Save session**.
 Paths can be absolute, relative to the launch directory, or start with `~`.
 The parent directory must already exist. Choose a different path to create a
 separate copy; overwriting an existing file requires confirmation. Changing only
 the name renames the session within that file on the next confirmed save.
 
-Use **Session notes** for multiline character or campaign notes in Markdown: headings,
+Use **Session notes** (in the **Character** tab) for multiline character or campaign
+notes in Markdown: headings,
 **bold**, *italics*, lists, and links. Click **Preview** to see formatted notes in the
 same space, then **Edit** to return to the source. Links are displayed but do not open
 external pages. **Bold** and **Italic** wrap selected text (or insert example text at
@@ -221,7 +223,7 @@ to the notes buttons; these can also be reached with Tab/Shift+Tab and activated
 Notes stay with the named session when switching genre kits and are saved with
 **Save session**, not automatically, including while previewing. Saves preserve the
 original Markdown text without changing the file format. Loading replaces both the
-editor contents and any visible preview; older files without notes show empty notes.
+editor contents and any visible preview.
 Existing plain-text notes remain editable as before; Markdown syntax is interpreted
 only in the preview. The Edit/Preview view is not saved.
 

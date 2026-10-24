@@ -15,6 +15,8 @@ from textual.widgets import (
     RichLog,
     Select,
     Static,
+    TabbedContent,
+    TabPane,
 )
 
 from wid.formatting import attribute_label, resources_line
@@ -73,15 +75,18 @@ class RollerApp(SessionActions, App):
         with Horizontal(id="workspace"):
             with VerticalScroll(id="configuration"):
                 yield GameRow(id="profile-fields")
-                yield CharacterGroup(id="character-fields")
                 yield AttributeSetup(id="attribute-setup")
                 yield RollOptions(id="test-options")
                 yield KitControls()
                 yield ItemsGroup(id="items")
                 yield StrainGroup()
-                yield SessionName()
-                yield NotesGroup()
-                yield SessionFile()
+                with TabbedContent(id="details"):
+                    with TabPane("Character", id="tab-character"):
+                        yield CharacterGroup(id="character-fields")
+                        yield NotesGroup()
+                    with TabPane("Session", id="tab-session"):
+                        yield SessionName()
+                        yield SessionFile()
             with Vertical(id="output"):
                 with Horizontal(id="actions"):
                     yield Button("Show log", id="toggle-history")
