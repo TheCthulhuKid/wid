@@ -135,7 +135,7 @@ Press **Roll** beside the attribute to test; no attribute selection is needed.
 **Ctrl+R** repeats the last-used attribute (the first attribute before any roll).
 Tab/Shift+Tab navigate controls; Enter activates a focused Roll button; Space toggles checkboxes;
 arrow keys and Enter operate selectors. Configuration and results scroll independently.
-Press D to switch theme when not typing into an input.
+Press D to pick a theme when not typing into an input.
 
 Every kit has name fields for **Expertise**, **Appropriate Item**, and **Inappropriate Item**.
 After rolling, select a **Post-roll die** and press **+1 value** beside either named item.

@@ -44,7 +44,7 @@ class RollerApp(SessionActions, App):
     CSS_PATH = "roller.tcss"
     TITLE = "We're in Danger"
     BINDINGS: ClassVar = [
-        ("d", "toggle_dark", "Theme"),
+        ("d", "change_theme", "Theme"),
         ("ctrl+r", "roll", "Repeat attribute"),
         ("ctrl+l", "toggle_history", "Log"),
     ]
@@ -453,6 +453,3 @@ class RollerApp(SessionActions, App):
         self.feedback("")
         self.show_result(result)
         self.log_result(result, f"Reroll dice {', '.join(str(i + 1) for i in sorted(indices))}")
-
-    def action_toggle_dark(self) -> None:
-        self.theme = "textual-dark" if self.theme == "textual-light" else "textual-light"

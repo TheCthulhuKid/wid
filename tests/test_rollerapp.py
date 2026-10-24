@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 from test_rolls import ScriptedRandom
+from textual.command import CommandPalette
 from textual.widgets import Button, Checkbox, Input, RichLog, Select, Static
 
 from wid.profiles import PROFILES, Genre
@@ -327,7 +328,7 @@ def test_oldheart_rerolls_preserve_test_and_history():
     asyncio.run(scenario())
 
 
-def test_maximum_pool_scrolls_in_compact_terminal_and_theme_switches():
+def test_maximum_pool_scrolls_in_compact_terminal():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([4] * 7))
         async with app.run_test(size=(80, 24)) as pilot:
@@ -345,10 +346,25 @@ def test_maximum_pool_scrolls_in_compact_terminal_and_theme_switches():
             await pilot.pause()
             assert summary.region.overlaps(app.query_one("RollerGroup").content_region)
             assert "Hits: 7" in text(app, "#summary")
+
+    asyncio.run(scenario())
+
+
+def test_theme_picker_opens_and_switches_theme():
+    async def scenario():
+        app = RollerApp()
+        async with app.run_test(size=(100, 40)) as pilot:
             previous_theme = app.theme
             app.query_one("#roll-attribute-0").focus()
             await pilot.press("d")
-            assert app.theme != previous_theme
+            await pilot.pause()
+            assert isinstance(app.screen, CommandPalette)
+            await pilot.press(*"nord")
+            await pilot.pause(0.5)
+            await pilot.press("enter")
+            await pilot.pause()
+            assert app.theme == "nord" != previous_theme
+            assert not isinstance(app.screen, CommandPalette)
 
     asyncio.run(scenario())
 
