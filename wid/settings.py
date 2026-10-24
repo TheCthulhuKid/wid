@@ -1,9 +1,12 @@
 import os
+import sys
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, StrictBool
 
 from wid.storage import write_text
+
+IS_WINDOWS = sys.platform == "win32"
 
 
 class Settings(BaseModel):
@@ -20,18 +23,27 @@ class Settings(BaseModel):
     items_collapsed: StrictBool | None = None
 
 
-def settings_path() -> Path:
-    """Where settings live: ``$XDG_CONFIG_HOME/wid/settings.json``, else ``~/.config/wid/``.
+def config_root() -> Path:
+    """The folder that holds per-user program settings on this system.
 
-    Raises ``OSError`` when there is no home directory to fall back on.
+    ``$XDG_CONFIG_HOME`` wins everywhere. Otherwise Windows uses ``%APPDATA%`` and other
+    systems ``~/.config``. Raises ``OSError`` when there is no home directory to fall back on.
     """
-    base = os.environ.get("XDG_CONFIG_HOME")
-    if base:
-        return Path(base) / "wid" / "settings.json"
+    configured = os.environ.get("XDG_CONFIG_HOME")
+    if configured:
+        return Path(configured)
+    appdata = os.environ.get("APPDATA")
+    if IS_WINDOWS and appdata:
+        return Path(appdata)
     try:
-        return Path.home() / ".config" / "wid" / "settings.json"
+        home = Path.home()
     except RuntimeError as error:
         raise OSError("Could not determine the home directory") from error
+    return home / "AppData" / "Roaming" if IS_WINDOWS else home / ".config"
+
+
+def settings_path() -> Path:
+    return config_root() / "wid" / "settings.json"
 
 
 def load_settings(path: Path | None = None) -> Settings:

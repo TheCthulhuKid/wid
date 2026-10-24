@@ -35,7 +35,7 @@ async def export_to(app, pilot, path):
 
 
 def test_exports_the_history_to_a_markdown_file(tmp_path):
-    target = tmp_path / "game.md"
+    target = tmp_path / "export.md"
 
     async def scenario(app, pilot):
         await play(app, pilot)
@@ -47,7 +47,7 @@ def test_exports_the_history_to_a_markdown_file(tmp_path):
         assert "## 2. Roll" in content
         assert str(app.history[0]) in content
         assert text(app, "#feedback") == f"Exported 2 history entries to {target}."
-        assert [p.name for p in tmp_path.iterdir()] == ["game.md"]
+        assert [p.name for p in tmp_path.iterdir()] == ["export.md"]
 
     run(scenario)
 
@@ -112,7 +112,7 @@ def test_cancelling_writes_nothing(tmp_path):
 
 
 def test_an_existing_file_is_replaced_only_after_confirmation(tmp_path):
-    target = tmp_path / "game.md"
+    target = tmp_path / "export.md"
     target.write_text("keep me", encoding="utf-8")
 
     async def scenario(app, pilot):
@@ -134,7 +134,7 @@ def test_an_existing_file_is_replaced_only_after_confirmation(tmp_path):
 def test_a_missing_folder_or_blank_path_is_reported_without_a_file(tmp_path):
     async def scenario(app, pilot):
         await play(app, pilot)
-        await export_to(app, pilot, tmp_path / "missing" / "game.md")
+        await export_to(app, pilot, tmp_path / "missing" / "export.md")
         assert "Could not export history" in text(app, "#feedback")
         await export_to(app, pilot, "   ")
         assert text(app, "#feedback") == "Could not export history: Choose a history file path"
@@ -145,7 +145,7 @@ def test_a_missing_folder_or_blank_path_is_reported_without_a_file(tmp_path):
 
 
 def test_notes_about_kit_changes_are_part_of_the_export(tmp_path):
-    target = tmp_path / "game.md"
+    target = tmp_path / "export.md"
 
     async def scenario(app, pilot):
         await play(app, pilot, rolls=1)

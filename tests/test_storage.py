@@ -1,6 +1,7 @@
 import os
 
 import pytest
+from helpers import posix_only
 
 from wid.storage import write_text
 
@@ -36,6 +37,7 @@ def test_missing_directory_is_an_error(tmp_path):
         write_text(tmp_path / "missing" / "data.json", "x")
 
 
+@posix_only
 def test_new_file_follows_umask_and_overwrite_keeps_mode(tmp_path):
     path = tmp_path / "data.json"
     old = os.umask(0o022)

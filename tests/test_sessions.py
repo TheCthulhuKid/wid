@@ -3,6 +3,7 @@ from pathlib import Path
 from random import Random
 
 import pytest
+from helpers import posix_only
 
 from wid.profiles import PROFILES, Genre
 from wid.rolls import RollRequest
@@ -97,6 +98,7 @@ def test_corrupt_files_are_rejected(tmp_path, content):
         SavedSession.load(path)
 
 
+@posix_only
 def test_unknown_home_directory_is_a_validation_error(saved_session_factory):
     path = Path("~wid_missing_user_8a5e/session.json")
     with pytest.raises(ValueError, match="home directory"):

@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from random import Random
 
 import pytest
@@ -262,9 +263,10 @@ def test_confirmations_errors_and_keyboard_controls(tmp_path, saved_session_fact
             app.query_one("#session-path", Input).value = str(invalid_path)
             await load_game(app, pilot)
             assert "Could not load session" in text(app, "#feedback")
-            app.query_one("#session-path", Input).value = "~wid_missing_user_8a5e/session.json"
-            await load_game(app, pilot)
-            assert "home directory" in text(app, "#feedback")
+            if sys.platform != "win32":  # Windows has no ~user lookup
+                app.query_one("#session-path", Input).value = "~wid_missing_user_8a5e/session.json"
+                await load_game(app, pilot)
+                assert "home directory" in text(app, "#feedback")
             app.query_one("#session-path", Input).value = str(tmp_path / "missing" / "s.json")
             await click_control(app, pilot, "#save-session")
             assert "Could not save session" in text(app, "#feedback")

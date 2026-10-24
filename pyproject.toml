@@ -21,7 +21,7 @@ packages = ["wid"]
 
 [tool.hatch.build.targets.sdist]
 only-include = [
-    "wid", "README.md", "pyproject.toml", "uv.lock", "game.md", "tests",
+    "wid", "release", "README.md", "HOWTO.md", "pyproject.toml", "uv.lock", "tests",
 ]
 
 [tool.uv.workspace]
@@ -34,6 +34,12 @@ dev = [
     "textual-dev>=1.8.0",
     "huckdeck",
     "pytest-xdist>=3.8.0",
+]
+release = [
+    "pyinstaller>=6.22.3",
+]
+smoke = [
+    "pywinpty>=2 ; sys_platform == 'win32'",
 ]
 
 [tool.pytest.ini_options]

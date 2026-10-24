@@ -139,7 +139,7 @@ def test_card_symbols_and_literal_descriptions(suit, rank):
 
 def test_dealer_entry_points_and_stylesheet():
     with patch("huckdeck.cli.HuckDeck") as app:
-        main()
+        main([])
     app.return_value.run.assert_called_once_with()
     with patch("huckdeck.cli.main") as launcher:
         runpy.run_module("huckdeck", run_name="__main__")

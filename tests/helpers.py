@@ -1,3 +1,6 @@
+import sys
+
+import pytest
 from textual.widget import Widget
 from textual.widgets import Collapsible, TabbedContent, TabPane
 
@@ -19,3 +22,7 @@ async def reveal(app, pilot, selector: str) -> Widget:
     widget.scroll_visible(animate=False)
     await pilot.pause()
     return widget
+
+
+# Windows has no POSIX permission bits, umask or ``~user`` lookup; tests of those are skipped there.
+posix_only = pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behaviour")

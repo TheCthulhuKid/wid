@@ -1,9 +1,14 @@
 import runpy
 import subprocess
 import sys
+from importlib.metadata import version
 from importlib.resources import files
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
+
+from huckdeck.cli import main
 
 PACKAGE = "huckdeck"
 BLOCKED = "wid"
@@ -71,3 +76,21 @@ def test_ui_stylesheet_is_a_nonempty_package_resource():
 
     assert stylesheet.is_file()
     assert stylesheet.read_text(encoding="utf-8").strip()
+
+
+def test_version_flag_prints_the_version_without_starting_the_app(capsys):
+    with patch("huckdeck.cli.HuckDeck") as app, pytest.raises(SystemExit) as stop:
+        main(["--version"])
+
+    assert stop.value.code == 0
+    assert capsys.readouterr().out == f"huckdeck {version('huckdeck')}\n"
+    app.assert_not_called()
+
+
+def test_unknown_arguments_are_refused(capsys):
+    with patch("huckdeck.cli.HuckDeck") as app, pytest.raises(SystemExit) as stop:
+        main(["--bogus"])
+
+    assert stop.value.code == 2
+    assert "unrecognized arguments" in capsys.readouterr().err
+    app.assert_not_called()

@@ -2,6 +2,29 @@
 
 A terminal dice roller for **We're in Danger**, using Textual and model-owned Pydantic rules.
 
+**Using the program: see [HOWTO.md](HOWTO.md).** The rest of this page is for installing,
+building and developing it.
+
+## Windows program (no Python needed)
+
+A Windows release is one zip, `wid-<version>-windows-x86_64.zip`, with a `.sha256` file beside
+it. Unzip it anywhere and run `wid.exe` in Windows Terminal or PowerShell (double-clicking
+works too). Windows SmartScreen may say "Windows protected your PC" because the program is not
+code-signed: choose **More info**, then **Run anyway**. To check the download, compare
+`Get-FileHash <zip> -Algorithm SHA256` with the `.sha256` file. `wid.exe --self-test` runs the
+program without a terminal and reports `ok` or `FAIL` for each check. On Windows, settings
+live in `%APPDATA%\wid\settings.json`.
+
+To build the release on Windows you need [uv](https://docs.astral.sh/uv/):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File release\build_release.ps1 -Smoke
+```
+
+It installs the pinned build environment, builds with PyInstaller, runs the self-test, and
+(with `-Smoke`) presses real keys in a Windows pseudo console, then writes the zip and its
+checksum to `dist\`. Add `-Python 3.13` to choose the interpreter.
+
 ## Install and run
 
 Requires Python 3.13+. Install [uv](https://docs.astral.sh/uv/), then install from
@@ -12,7 +35,7 @@ uv tool install .
 wid
 ```
 
-The `wid` command works from any directory. If your shell cannot find it, run
+`wid --version` shows the installed version. The `wid` command works from any directory. If your shell cannot find it, run
 `uv tool update-shell` and restart the shell. To install from elsewhere, replace
 `.` with the path to this project. No package-index release is required.
 
@@ -35,6 +58,8 @@ uv run wid
 ```
 
 You can also launch the package with `.venv/bin/python -m wid`.
+Release builds need PyInstaller, which lives in its own dependency group:
+`uv sync --locked --group dev --group release` (a plain `--group dev` sync removes it).
 Run checks with `uv run pytest` (4 parallel workers by default, about 90 seconds;
 add `-m "not ui"` for the quick domain tests, or `-n0` to run serially) and
 `uv run ruff check .`.
@@ -45,7 +70,7 @@ add `-m "not ui"` for the quick domain tests, or `-n0` to run serially) and
 wid/
 ├── __init__.py         # Lightweight package marker
 ├── __main__.py         # python -m wid
-├── cli.py              # Installed wid command
+├── cli.py              # Installed wid command (--version, --help, --self-test)
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── formatting.py       # Plain-text roll, dice, and resource renderings
@@ -53,6 +78,7 @@ wid/
 ├── history.py          # Structured action history entries and their text rendering
 ├── sessions.py         # Versioned JSON snapshots and atomic local storage
 ├── storage.py          # Atomic file writes shared by saves
+├── selftest.py         # `wid --self-test`: the app checked headless, for release builds
 ├── settings.py         # Remembered preferences in a small JSON file
 └── ui/
     ├── __init__.py
@@ -64,8 +90,9 @@ wid/
     └── roller.tcss     # Bundled interface styles
 packages/huckdeck/      # Separate distribution (own pyproject.toml and tests)
 └── huckdeck/           # cli.py, deck.py, ui/{app,dialogs}.py, ui/dealer.tcss
+release/                # PyInstaller spec, Windows build script, smoke test, icon
 tests/                  # Domain, persistence, headless UI, and launch tests
-game.md                 # Supplied rules
+HOWTO.md                # How to use the program (for players)
 ```
 
 The UI calls the domain models; game rules remain independent of Textual.
@@ -139,8 +166,8 @@ Press **Roll** beside the attribute to test; no attribute selection is needed.
 Tab/Shift+Tab navigate controls; Enter activates a focused Roll button; Space toggles checkboxes;
 arrow keys and Enter operate selectors. Configuration and results scroll independently.
 Shortcuts, active when you are not typing into a text field and listed in the footer:
-**D** picks a theme (remembered in `~/.config/wid/settings.json`, or under
-`$XDG_CONFIG_HOME`), **C** and **S** open the Character and Session tabs and focus the tab bar (press Tab to
+**D** picks a theme (remembered in `~/.config/wid/settings.json`, `%APPDATA%\wid\settings.json`
+on Windows, or under `$XDG_CONFIG_HOME`), **C** and **S** open the Character and Session tabs and focus the tab bar (press Tab to
 enter the tab, or the arrow keys to switch tabs), **T** and **I** collapse or expand the strain tracker and the items, and
 **Ctrl+L** shows the log. **Ctrl+R** repeats the last roll from anywhere, even in a text
 field. Tab never stops on a control in a hidden tab or a collapsed section. The last open
