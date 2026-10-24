@@ -166,11 +166,8 @@ def test_load_every_kit_and_continue_playing(tmp_path, genre, saved_session_fact
             app.query_one("#session-path", Input).value = str(path)
             await load_game(app, pilot)
             assert app.session.model_dump() == saved.session.model_dump()
-            expected_draft = saved.draft.model_copy(update={"item_allocations": ()})
-            assert app.draft_request().model_dump() == expected_draft.model_dump()
-            if saved.draft.item_allocations:
-                assert "Legacy pre-roll item assignments cleared" in text(app, "#feedback")
-                assert app.session.current_result.dice == saved.session.current_result.dice
+            assert app.draft_request().model_dump() == saved.draft.model_dump()
+            assert app.session.current_result.dice == saved.session.current_result.dice
             assert app.query_one("#attribute-setup").display
             assert "Loaded" in text(app, "#feedback")
             await pilot.press("ctrl+r")

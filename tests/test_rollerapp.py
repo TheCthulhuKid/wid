@@ -143,7 +143,7 @@ def test_attribute_mouse_buttons_roll_each_attribute(genre):
     asyncio.run(scenario())
 
 
-def test_minimum_roll_accepts_post_roll_item():
+def test_minimum_roll_accepts_an_item():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([4]))
         async with app.run_test(size=(80, 24)) as pilot:

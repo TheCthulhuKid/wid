@@ -21,8 +21,7 @@ packages = ["wid"]
 
 [tool.hatch.build.targets.sdist]
 only-include = [
-    "wid", "rollerapp.py",
-    "README.md", "pyproject.toml", "uv.lock", "game.md", "tests",
+    "wid", "README.md", "pyproject.toml", "uv.lock", "game.md", "tests",
 ]
 
 [tool.uv.workspace]

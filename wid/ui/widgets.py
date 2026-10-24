@@ -194,6 +194,7 @@ class SessionFile(Vertical):
         yield Input(placeholder="/path/to/session.json", id="session-path")
         with Horizontal(classes="button-row"):
             yield Button("Save session", id="save-session")
+            yield Button("Export history", id="export-history")
 
 
 class RollOptions(Horizontal):
@@ -235,16 +236,16 @@ class KitControls(Vertical):
             yield Static("Tech: not initialized", id="tech-strength")
             yield Static(id="tech-attributes")
             yield Button("Initialize / replace Tech", id="initialize-tech")
-            yield Label("Pre-roll Tech target")
+            yield Label("Tech target")
             yield Select([("No Tech", -1)], value=-1, allow_blank=False, id="tech-target")
 
 
 class ItemsGroup(Vertical):
-    """Post-roll target die and the named items."""
+    """The target die and the named items."""
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="item-target-row"):
-            yield Label("Post-roll die")
+            yield Label("Apply to die")
             yield Select([("Roll first", -1)], value=-1, allow_blank=False, id="item-target")
         for kind in (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM):
             label = BONUS_LABELS[kind]

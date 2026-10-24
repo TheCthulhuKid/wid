@@ -88,7 +88,7 @@ def test_aligned_options_and_red_wound_highlights(size):
     asyncio.run(scenario())
 
 
-def test_names_target_and_post_roll_bonuses_survive_save_load(tmp_path):
+def test_names_target_and_item_bonuses_survive_save_load(tmp_path):
     path = tmp_path / "named.json"
 
     async def scenario():

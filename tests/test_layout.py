@@ -99,7 +99,7 @@ def test_short_inputs_share_rows_and_remain_accessible(size):
     asyncio.run(scenario())
 
 
-def test_maximum_pool_uses_single_line_results_and_post_roll_targets():
+def test_maximum_pool_uses_single_line_results_and_item_targets():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([4] * 7))
         async with app.run_test(size=(100, 35)) as pilot:

@@ -20,7 +20,7 @@ class HistoryEntry(FrozenModel):
     notice: str = ""
     action: str = ""
     result: RollResult | None = None
-    charged: bool = True  # False for post-roll items, which cost no resources
+    charged: bool = True  # False for items, which cost no resources
     total_strain: Count = 0
     total_corruption: Count = 0
     tech_remaining: Count | None = None

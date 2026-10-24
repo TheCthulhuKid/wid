@@ -37,22 +37,28 @@ class ConfirmSessionAction(ModalScreen[bool]):
         self.dismiss(event.button.id == "confirm-session")
 
 
-class LoadGame(ModalScreen[str | None]):
+class PathPrompt(ModalScreen[str | None]):
+    """Ask for a file path; dismisses with the path, or ``None`` when cancelled."""
+
     BINDINGS: ClassVar = [("escape", "cancel", "Cancel")]
+    prefix: ClassVar[str]
+    heading: ClassVar[str]
+    placeholder: ClassVar[str]
+    action: ClassVar[str]
 
     def __init__(self, path: str):
         super().__init__()
         self.path = path
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="load-dialog"):
-            yield Label("Load game — file path (JSON)")
-            yield Input(self.path, placeholder="/path/to/session.json", id="load-path")
-            yield Button("Load game", id="submit-load", variant="primary")
-            yield Button("Cancel", id="cancel-load")
+        with Vertical(id=f"{self.prefix}-dialog"):
+            yield Label(self.heading)
+            yield Input(self.path, placeholder=self.placeholder, id=f"{self.prefix}-path")
+            yield Button(self.action, id=f"submit-{self.prefix}", variant="primary")
+            yield Button("Cancel", id=f"cancel-{self.prefix}")
 
     def on_mount(self) -> None:
-        self.query_one("#load-path", Input).focus()
+        self.query_one(f"#{self.prefix}-path", Input).focus()
 
     def action_cancel(self) -> None:
         self.dismiss(None)
@@ -63,6 +69,19 @@ class LoadGame(ModalScreen[str | None]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         event.stop()
-        self.dismiss(
-            self.query_one("#load-path", Input).value if event.button.id == "submit-load" else None
-        )
+        submitted = event.button.id == f"submit-{self.prefix}"
+        self.dismiss(self.query_one(f"#{self.prefix}-path", Input).value if submitted else None)
+
+
+class LoadGame(PathPrompt):
+    prefix = "load"
+    heading = "Load game — file path (JSON)"
+    placeholder = "/path/to/session.json"
+    action = "Load game"
+
+
+class ExportHistory(PathPrompt):
+    prefix = "export"
+    heading = "Export history — file path (Markdown)"
+    placeholder = "/path/to/history.md"
+    action = "Export history"

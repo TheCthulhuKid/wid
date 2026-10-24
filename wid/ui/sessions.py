@@ -2,16 +2,18 @@ from pathlib import Path
 
 from textual.widgets import Checkbox, Input, RichLog, Select, TextArea
 
+from wid.export import history_markdown
 from wid.history import HistoryEntry
 from wid.profiles import Genre
 from wid.rolls import RollSession
 from wid.sessions import CharacterDetails, SavedSession, session_file_path
-from wid.ui.dialogs import ConfirmSessionAction, LoadGame
+from wid.storage import write_text
+from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
 from wid.ui.widgets import CHARACTER_LABELS, BonusName, RerollDie
 
 
 class SessionActions:
-    """Save, load, and character-detail handling mixed into ``RollerApp``."""
+    """Save, load, export and character-detail handling mixed into ``RollerApp``."""
 
     session: RollSession
     history: list[HistoryEntry]
@@ -73,6 +75,53 @@ class SessionActions:
             self.write_session(saved, path, overwrite=True)
         else:
             self.feedback("Save canceled; existing file unchanged.")
+
+    def action_export_history(self) -> None:
+        if self.pending_genre is not None:
+            return
+        if not self.history:
+            self.feedback("There is no history to export yet.")
+            return
+        self.push_screen(ExportHistory(self.default_export_path()), self.export_history_path)
+
+    def default_export_path(self) -> str:
+        """The session file's path with a .md ending, or a plain name when none is set."""
+        path = Path(self.query_one("#session-path", Input).value.strip())
+        if not path.name or path.name == "..":
+            return "history.md"
+        return str(path.with_suffix(".md"))
+
+    def export_history_path(self, value: str | None) -> None:
+        if value is None:
+            return
+        try:
+            path = session_file_path(value, label="history file")
+        except ValueError as error:
+            self.feedback(f"Could not export history: {error}")
+            return
+        name = self.query_one("#session-name", Input).value
+        text = history_markdown(name, self.character_details(), self.history)
+        self.write_export(text, path, len(self.history))
+
+    def write_export(self, text: str, path: Path, count: int, *, overwrite: bool = False) -> None:
+        try:
+            write_text(path, text, overwrite=overwrite)
+        except FileExistsError:
+            self.push_screen(
+                ConfirmSessionAction(f"Replace the existing file at {path}?"),
+                lambda confirmed: self.finish_export(text, path, count, confirmed),
+            )
+            return
+        except OSError as error:
+            self.feedback(f"Could not export history: {error}")
+            return
+        self.feedback(f"Exported {count} history entries to {path}.")
+
+    def finish_export(self, text: str, path: Path, count: int, confirmed: bool) -> None:
+        if confirmed:
+            self.write_export(text, path, count, overwrite=True)
+        else:
+            self.feedback("Export canceled; existing file unchanged.")
 
     def action_load_session(self) -> None:
         if self.pending_genre is not None:
@@ -155,6 +204,4 @@ class SessionActions:
         self.query_one("#session-notes", TextArea).load_text(saved.notes)
         self.sub_title = saved.name
         message = f"Loaded {saved.name} from {path}."
-        if draft.item_allocations:
-            message += " Legacy pre-roll item assignments cleared; apply named items after rolling."
         self.feedback(message)

@@ -36,7 +36,7 @@ def test_sections_start_open_and_the_strain_title_is_a_summary():
         assert not section(app, "strain").collapsed
         assert not section(app, "items").collapsed
         assert section(app, "strain").title == "Strain 0 / 12"
-        assert section(app, "items").title == "Post-roll items"
+        assert section(app, "items").title == "Items"
 
     run(scenario)
 

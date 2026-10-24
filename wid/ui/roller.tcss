@@ -70,10 +70,10 @@ Checkbox { width: 1fr; height: auto; }
 #log { height: 1fr; border: solid $secondary; }
 Button { min-width: 14; }
 ConfirmReset, ConfirmSessionAction, LoadGame { align: center middle; background: $background 80%; }
-#confirmation, #load-dialog {
+#confirmation, #load-dialog, #export-dialog {
     width: 54; max-width: 100%; height: auto; padding: 1 2; border: thick $warning;
 }
-#confirmation Button, #load-dialog Button { width: 1fr; margin-top: 1; }
+#confirmation Button, #load-dialog Button, #export-dialog Button { width: 1fr; margin-top: 1; }
 
 /* Short terminals: one-row controls, so the attributes and options fit without scrolling. */
 .short #profile-fields, .short #game-controls { height: 2; }

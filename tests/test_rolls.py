@@ -52,15 +52,15 @@ def test_every_face(rank, assisted, face):
     assert DieResult(raw=face).classify(request) == expected
 
 
-def test_items_expertise_and_modified_fumbles():
-    request = RollRequest(attribute_rank=2, item_allocations=[0, 0, 1, 2], expertise=True)
+def test_expertise_and_fumbles_at_a_higher_rank():
+    request = RollRequest(attribute_rank=2, expertise=True)
     result = configured_session(ranks=(2, 1, 3)).roll(request, rng=ScriptedRandom([6, 2, 1, 4]))
-    assert [die.effective for die in result.dice] == [8, 3, 2, 4]
+    assert [die.effective for die in result.dice] == [6, 2, 1, 4]
     assert result.totals().model_dump() == {
         "dice_hits": 1,
         "expertise_hits": 1,
-        "misses": 2,
-        "fumbles": 1,
+        "misses": 1,
+        "fumbles": 2,
     }
     zero_hits = configured_session().roll(RollRequest(expertise=True), rng=ScriptedRandom([1] * 4))
     assert zero_hits.totals().hits == 1
@@ -74,12 +74,8 @@ def test_items_expertise_and_modified_fumbles():
         {"fear_level": -1},
         {"fear_level": 4},
         {"fear_level": True},
-        {"item_allocations": [-1]},
-        {"item_allocations": [4]},
-        {"item_allocations": [1], "fear_level": 3},
         {"power": "reliable"},
         {"tech_target": 0},
-        {"profile_id": Genre.SECOND_CONTACT, "item_allocations": [0]},
     ],
 )
 def test_invalid_request(changes):
@@ -102,10 +98,7 @@ def test_failed_generation_and_invalid_request_are_atomic():
 
 
 def test_result_snapshot_is_immutable():
-    allocations = [0]
-    request = RollRequest(item_allocations=allocations)
-    allocations.append(1)
-    assert request.item_allocations == (0,)
+    request = RollRequest()
     with pytest.raises(ValidationError):
         request.fear_level = 3
 
@@ -203,10 +196,12 @@ def test_oldheart_subset_repeated_rerolls_and_immutable_snapshots():
         attribute="Depravity",
         attribute_rank=2,
         expertise=True,
-        item_allocations=[0, 0, 2],
     )
+    session.set_bonus_name("appropriate_item", "Sword")
     initial = session.roll(request, rng=ScriptedRandom([1, 2, 3, 4]))
     initial_snapshot = initial.model_dump()
+    for index in (0, 0, 2):
+        session.apply_item("appropriate_item", index)
     first = session.reroll({0, 2}, rng=ScriptedRandom([6, 1]))
     assert [die.raw for die in first.dice] == [6, 2, 1, 4]
     assert [die.bonus for die in first.dice] == [2, 0, 1, 0]

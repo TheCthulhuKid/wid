@@ -9,10 +9,10 @@ from wid.rolls import FrozenModel, Index, RollRequest, RollSession, TechState
 from wid.storage import write_text
 
 
-def session_file_path(value: str | Path) -> Path:
+def session_file_path(value: str | Path, *, label: str = "session file") -> Path:
     value = str(value).strip()
     if not value:
-        raise ValueError("Choose a session file path")
+        raise ValueError(f"Choose a {label} path")
     try:
         return Path(value).expanduser()
     except RuntimeError as error:

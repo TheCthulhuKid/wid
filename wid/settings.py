@@ -1,17 +1,23 @@
 import os
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StrictBool
 
 from wid.storage import write_text
 
 
 class Settings(BaseModel):
-    """User preferences kept between runs; unknown keys are ignored."""
+    """User preferences kept between runs; unknown keys are ignored.
+
+    ``None`` means the user has not chosen, so the app uses its own default.
+    """
 
     model_config = ConfigDict(frozen=True, extra="ignore")
 
     theme: str | None = None
+    tab: str | None = None
+    strain_collapsed: StrictBool | None = None
+    items_collapsed: StrictBool | None = None
 
 
 def settings_path() -> Path:

@@ -118,8 +118,9 @@ def test_rerolls_preserve_modifiers_and_expertise_resets_only_for_new_test(
     session.set_bonus_name("appropriate_item", "Sword")
     session.set_bonus_name("inappropriate_item", "Teacup")
     session.set_bonus_name("expertise", "Dueling")
-    roll_test(session, item_allocations=(0, 0))
-    session.apply_item("appropriate_item", 0)
+    roll_test(session)
+    for _ in range(3):
+        session.apply_item("appropriate_item", 0)
     session.apply_item("inappropriate_item", 1)
     modified = session.apply_expertise()
     snapshot = modified.model_dump()
@@ -139,17 +140,17 @@ def test_rerolls_preserve_modifiers_and_expertise_resets_only_for_new_test(
     assert session.apply_expertise().totals().expertise_hits == 1
 
 
-def test_legacy_expertise_cannot_be_applied_twice(session_factory):
+def test_expertise_cannot_be_applied_twice(session_factory):
     session = session_factory()
-    initial = roll_test(session, expertise=True, item_allocations=(0, 0))
+    initial = roll_test(session, expertise=True)
     session.set_bonus_name("expertise", "Training")
     before = session.model_dump()
     with pytest.raises(ValueError):
         session.apply_expertise()
     assert session.model_dump() == before
     session.set_bonus_name("appropriate_item", "Tool")
-    assert session.apply_item("appropriate_item", 0).dice[0].bonus == 3
-    assert initial.dice[0].bonus == 2
+    assert session.apply_item("appropriate_item", 0).dice[0].bonus == 1
+    assert initial.dice[0].bonus == 0
 
 
 def test_expertise_adds_a_hit_without_any_dice_hits(session_factory):

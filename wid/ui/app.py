@@ -60,6 +60,8 @@ from wid.ui.widgets import (
 # Below these sizes the panel switches to one-row controls and starts with sections collapsed.
 SHORT_HEIGHT = 30
 SMALL_WIDTH = 100
+TAB_NAMES = ("character", "session")
+SECTION_NAMES = ("strain", "items")
 
 
 class RollerApp(SessionActions, App):
@@ -82,6 +84,7 @@ class RollerApp(SessionActions, App):
         self.rng = rng if rng is not None else Random()
         self.settings_path = settings_path
         self.settings = load_settings(settings_path)
+        self.layout: dict[str, object] = {}
         self.session = RollSession()
         self.history: list[HistoryEntry] = []
         self.pending_genre: Genre | None = None
@@ -102,7 +105,7 @@ class RollerApp(SessionActions, App):
                         yield SessionFile()
                 yield RollOptions(id="test-options")
                 yield KitControls()
-                with Collapsible(title="Post-roll items", collapsed=False, id="items-section"):
+                with Collapsible(title="Items", collapsed=False, id="items-section"):
                     yield ItemsGroup(id="items")
                 with Collapsible(
                     title=strain_summary(StrainTracker()), collapsed=False, id="strain-section"
@@ -130,11 +133,43 @@ class RollerApp(SessionActions, App):
         for control in controls.exclude(".strain-box, .strain-ending"):
             control.compact = short
 
-    def collapse_sections_in_small_terminals(self) -> None:
-        if self.size.width >= SMALL_WIDTH and self.size.height >= SHORT_HEIGHT:
+    def restore_layout(self) -> None:
+        """Apply the remembered tab and sections, or the defaults for this terminal size."""
+        tabs = self.query_one("#details", TabbedContent)
+        if self.settings.tab in TAB_NAMES:
+            tabs.active = f"tab-{self.settings.tab}"
+        small = self.size.width < SMALL_WIDTH or self.size.height < SHORT_HEIGHT
+        for name in SECTION_NAMES:
+            remembered = getattr(self.settings, f"{name}_collapsed")
+            self.section(name).collapsed = small if remembered is None else remembered
+        self.layout = {"tab": tabs.active.removeprefix("tab-")} | {
+            f"{name}_collapsed": self.section(name).collapsed for name in SECTION_NAMES
+        }
+
+    def section(self, name: str) -> Collapsible:
+        return self.query_one(f"#{name}-section", Collapsible)
+
+    def remember_layout(self, key: str, value: object) -> None:
+        """Save a layout choice the user made; changes made while starting up are not saved."""
+        if key not in self.layout or self.layout[key] == value:
             return
-        for name in ("strain", "items"):
-            self.query_one(f"#{name}-section", Collapsible).collapsed = True
+        self.layout[key] = value
+        self.save_settings_change(**{key: value})
+
+    def on_collapsible_expanded(self, event: Collapsible.Expanded) -> None:
+        self.remember_section(event.collapsible)
+
+    def on_collapsible_collapsed(self, event: Collapsible.Collapsed) -> None:
+        self.remember_section(event.collapsible)
+
+    def remember_section(self, section: Collapsible) -> None:
+        name = (section.id or "").removesuffix("-section")
+        if name in SECTION_NAMES:
+            self.remember_layout(f"{name}_collapsed", section.collapsed)
+
+    def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
+        # The tab bar's current value, not the event's: a startup event can arrive late.
+        self.remember_layout("tab", event.tabbed_content.active.removeprefix("tab-"))
 
     def action_show_tab(self, name: str) -> None:
         tabs = self.query_one("#details", TabbedContent)
@@ -143,7 +178,7 @@ class RollerApp(SessionActions, App):
         tabs.query_one(ContentTabs).focus()
 
     def action_toggle_section(self, name: str) -> None:
-        section = self.query_one(f"#{name}-section", Collapsible)
+        section = self.section(name)
         section.collapsed = not section.collapsed
         if section.collapsed:
             section.query_one("CollapsibleTitle").focus()
@@ -159,7 +194,7 @@ class RollerApp(SessionActions, App):
     def on_mount(self) -> None:
         self.restore_theme()
         self.set_short_mode(self.size.height < SHORT_HEIGHT)
-        self.collapse_sections_in_small_terminals()
+        self.restore_layout()
         self.update_attribute_controls()
         self.update_kit_controls()
         self.update_preview()
@@ -180,7 +215,10 @@ class RollerApp(SessionActions, App):
         self.query_one("#summary", Static).update(summary_content(result, variables))
 
     def remember_theme(self, theme: str) -> None:
-        self.settings = self.settings.model_copy(update={"theme": theme})
+        self.save_settings_change(theme=theme)
+
+    def save_settings_change(self, **changes: object) -> None:
+        self.settings = self.settings.model_copy(update=changes)
         try:
             save_settings(self.settings, self.settings_path)
         except OSError as error:
@@ -433,6 +471,7 @@ class RollerApp(SessionActions, App):
             return
         action = {
             "save-session": self.action_save_session,
+            "export-history": self.action_export_history,
             "load-session": self.action_load_session,
             "take-strain": self.take_strain,
             "toggle-history": self.action_toggle_history,

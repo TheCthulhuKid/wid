@@ -57,7 +57,6 @@ class RollRequest(FrozenModel):
     attribute_rank: Rank = 1
     attribute: str = "Athleticism"
     expertise: bool = False
-    item_allocations: tuple[Index, ...] = ()
     power: PowerMode = PowerMode.NONE
     tech_target: Index | None = None
 
@@ -72,7 +71,6 @@ class RollRequest(FrozenModel):
     def validate_options(self) -> Self:
         self.validate_power()
         self.validate_tech_target()
-        self.validate_item_allocations()
         return self
 
     def validate_power(self) -> None:
@@ -86,12 +84,6 @@ class RollRequest(FrozenModel):
             raise ValueError("Only Second Contact can use Tech")
         if self.tech_target >= self.pool_size():
             raise ValueError("Tech target is outside the dice pool")
-
-    def validate_item_allocations(self) -> None:
-        if self.profile_id == Genre.SECOND_CONTACT and self.item_allocations:
-            raise ValueError("Second Contact uses Tech instead of items")
-        if any(index >= self.pool_size() for index in self.item_allocations):
-            raise ValueError("Item target is outside the dice pool")
 
 
 class DieResult(FrozenModel):
@@ -335,8 +327,6 @@ class RollSession(BaseModel):
     def dice_bonuses(self, request: RollRequest) -> tuple[list[int], TechState | None]:
         """Per-die bonuses for a request and the Tech state after it; changes nothing."""
         bonuses = [0] * request.pool_size()
-        for index in request.item_allocations:
-            bonuses[index] += 1
         tech = self.tech
         if request.tech_target is None:
             return bonuses, tech

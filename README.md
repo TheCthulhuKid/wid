@@ -34,7 +34,6 @@ uv sync
 uv run wid
 ```
 
-The original `uv run python rollerapp.py` launch also remains supported.
 You can also launch the package with `.venv/bin/python -m wid`.
 Run checks with `uv run pytest` (4 parallel workers by default, about 90 seconds;
 add `-m "not ui"` for the quick domain tests, or `-n0` to run serially) and
@@ -50,6 +49,7 @@ wid/
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── formatting.py       # Plain-text roll, dice, and resource renderings
+├── export.py           # Markdown text of the action history
 ├── history.py          # Structured action history entries and their text rendering
 ├── sessions.py         # Versioned JSON snapshots and atomic local storage
 ├── storage.py          # Atomic file writes shared by saves
@@ -65,7 +65,6 @@ wid/
 packages/huckdeck/      # Separate distribution (own pyproject.toml and tests)
 └── huckdeck/           # cli.py, deck.py, ui/{app,dialogs}.py, ui/dealer.tcss
 tests/                  # Domain, persistence, headless UI, and launch tests
-rollerapp.py            # Compatibility source launcher
 game.md                 # Supplied rules
 ```
 
@@ -142,14 +141,16 @@ arrow keys and Enter operate selectors. Configuration and results scroll indepen
 Shortcuts, active when you are not typing into a text field and listed in the footer:
 **D** picks a theme (remembered in `~/.config/wid/settings.json`, or under
 `$XDG_CONFIG_HOME`), **C** and **S** open the Character and Session tabs and focus the tab bar (press Tab to
-enter the tab, or the arrow keys to switch tabs), **T** and **I** collapse or expand the strain tracker and the post-roll items, and
+enter the tab, or the arrow keys to switch tabs), **T** and **I** collapse or expand the strain tracker and the items, and
 **Ctrl+L** shows the log. **Ctrl+R** repeats the last roll from anywhere, even in a text
-field. Tab never stops on a control in a hidden tab or a collapsed section.
+field. Tab never stops on a control in a hidden tab or a collapsed section. The last open
+tab and whether the strain tracker and the items are collapsed are remembered in the same
+settings file; until you change them, a small terminal starts with both sections collapsed.
 Hits, misses, and fumbles are coloured; the words are always shown too, so colour is
 never the only signal.
 
 Every kit has name fields for **Expertise**, **Appropriate Item**, and **Inappropriate Item**.
-After rolling, select a **Post-roll die** and press **+1 value** beside either named item.
+After rolling, select an **Apply to die** target and press **+1 value** beside either named item.
 Each press adds +1 to that die's value and recalculates its outcome; either item can be
 used repeatedly, including on the same die. Appropriate and inappropriate items have
 the same bonus; deciding whether their use makes sense is up to the players.
@@ -157,7 +158,7 @@ Item actions never roll dice or spend Tech, strain, or Corruption.
 Name expertise and press **+1 hit** to add its single hit after rolling, or check
 **Expertise** before rolling to include it immediately. It cannot add a second hit
 to the same test, even if renamed. The checkbox configures the next roll; the button
-modifies the current result. Blank names disable post-roll actions.
+modifies the current result. Blank names disable item actions.
 Changing draft fear or assistance does not change the active result or
 its item targets. A new roll starts fresh bonuses; Oldheart rerolls keep them.
 
@@ -166,7 +167,7 @@ The tested attribute and rank appear with the results, without a separate rank l
 The character/configuration panel uses about two-thirds of the terminal width;
 roll output uses the remaining third. The genre row (with Start and Load) is always at the
 top, followed by the **Character** and **Session** tabs. Ctrl+R repeats the last roll
-even while the Session tab hides the Roll buttons. The strain tracker and the post-roll
+even while the Session tab hides the Roll buttons. The strain tracker and the
 items are collapsible sections; a collapsed strain tracker still shows its total, such as
 `Strain 3 / 12`. In a terminal under 30 rows the controls switch to a one-row form so the
 attributes and options fit on screen, and in a terminal under 100 columns or 30 rows the
@@ -220,6 +221,12 @@ The parent directory must already exist. Choose a different path to create a
 separate copy; overwriting an existing file requires confirmation. Changing only
 the name renames the session within that file on the next confirmed save.
 
+**Export history** (beside **Save session**) writes the action history to a Markdown file:
+a title, the character's name, looks, and nature, then one numbered section per action with
+its dice lines in a code block. The dialog suggests the session file's path ending in
+`.md`; replacing an existing file asks first, and there is nothing to export before the first
+action.
+
 Use **Session notes** (in the **Session** tab) for multiline character or campaign
 notes in Markdown: headings,
 **bold**, *italics*, lists, and links. Click **Preview** to see formatted notes in the
@@ -245,15 +252,13 @@ in the session section below.
 
 Saves include the session name, character Name/Looks/Nature, notes, genre, fixed attribute
 ranks, fear, assistance, expertise,
-expertise/item names, last-used attribute, power choice, post-roll item target, Tech strength/target,
+expertise/item names, last-used attribute, power choice, item target, Tech strength/target,
 strain boxes and wound/defeat names, cumulative power strain, Corruption,
 current dice/result, selected reroll dice, and full history.
 Draft controls are saved separately from the current test: changing fear before
 saving does not change the settings of an existing Oldheart reroll.
 Loading never rolls dice, charges resources, or replenishes Tech.
-Older saves without named bonuses load with empty names. Their current rolled bonuses
-remain intact, but pending pre-roll item allocations are cleared with an explanation;
-use the named post-roll item controls instead. Names remain when switching genre kits.
+Names remain when switching genre kits.
 
 Saving is explicit, not automatic; save again after playing to keep new changes.
 Use a nonblank session name (up to 100 characters). Invalid or
