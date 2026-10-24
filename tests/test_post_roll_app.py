@@ -47,9 +47,9 @@ def test_named_items_apply_repeatedly_after_roll_in_every_kit(genre):
             assert original.dice[0].bonus == 0
             assert app.history[:-4] == history
             assert len(app.history) == len(history) + 4
-            assert "Sword [bold]" in app.history[-4]
-            assert "Teacup" in app.history[-2]
-            assert "Fencing" in app.history[-1]
+            assert "Sword [bold]" in str(app.history[-4])
+            assert "Teacup" in str(app.history[-2])
+            assert "Fencing" in str(app.history[-1])
             assert app.session.total_strain == app.session.total_corruption == 0
             app.query_one("#fear", Select).value = 3
             await pilot.pause()
@@ -138,11 +138,11 @@ def test_bonus_history_does_not_report_another_resource_cost(
             before = app.session.model_dump(exclude={"current_result", "bonuses"})
             app.query_one("#name-appropriate_item", Input).value = "Tool"
             await click_visible(app, pilot, "#apply-appropriate_item")
-            assert "Strain +0" in app.history[-1]
+            assert "Strain +0" in str(app.history[-1])
             if genre == Genre.OLDHEART:
-                assert "Corruption +0" in app.history[-1]
+                assert "Corruption +0" in str(app.history[-1])
             else:
-                assert "Corruption" not in app.history[-1]
+                assert "Corruption" not in str(app.history[-1])
                 assert "Corruption" not in text(app, "#resources")
             assert app.session.model_dump(exclude={"current_result", "bonuses"}) == before
 

@@ -116,7 +116,7 @@ def test_maximum_pool_uses_single_line_results_and_post_roll_targets():
             dice = app.query_one("#dice")
             assert dice.size.height == 7
             assert "7: 4+0=4 hit" in text(app, "#dice")
-            assert "Die 7: raw 4 +0 = 4 — hit" in app.history[-1]
+            assert "Die 7: raw 4 +0 = 4 — hit" in str(app.history[-1])
 
     asyncio.run(scenario())
 

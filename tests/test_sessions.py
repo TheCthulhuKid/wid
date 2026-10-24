@@ -70,19 +70,29 @@ def test_failed_fallback_save_leaves_no_file(tmp_path, monkeypatch, saved_sessio
     path = tmp_path / "campaign.json"
     monkeypatch.setattr("wid.sessions.os.link", _no_hard_links)
 
-    real_fsync = os.fsync
-    calls = []
+    def fail_replace(*args):
+        raise OSError("disk failure")
 
-    def fail_second_fsync(fd):
-        calls.append(fd)
-        if len(calls) == 2:
-            raise OSError("disk failure")
-        real_fsync(fd)
-
-    monkeypatch.setattr("wid.sessions.os.fsync", fail_second_fsync)
+    monkeypatch.setattr("wid.sessions.os.replace", fail_replace)
     with pytest.raises(OSError, match="disk failure"):
         saved_session_factory().save(path)
     assert list(tmp_path.iterdir()) == []
+
+
+def test_save_permissions_follow_umask_and_overwrite_keeps_mode(
+    tmp_path, saved_session_factory
+):
+    saved = saved_session_factory()
+    path = tmp_path / "campaign.json"
+    old = os.umask(0o022)
+    try:
+        saved.save(path)
+    finally:
+        os.umask(old)
+    assert path.stat().st_mode & 0o777 == 0o644
+    path.chmod(0o664)
+    saved.model_copy(update={"name": "Renamed"}).save(path, overwrite=True)
+    assert path.stat().st_mode & 0o777 == 0o664
 
 
 def test_overwrite_and_missing_parent(tmp_path, saved_session_factory):

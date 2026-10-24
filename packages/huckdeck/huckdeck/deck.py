@@ -38,7 +38,6 @@ class Card(BaseModel):
 
     suit: Suit
     rank: Rank
-    description: str = ""
 
     def __str__(self) -> str:
         return f"{self.rank} of {self.suit}"

@@ -48,6 +48,7 @@ wid/
 ├── cli.py              # Installed wid command
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
+├── history.py          # Structured action history entries and their text rendering
 ├── sessions.py         # Versioned JSON snapshots and atomic local storage
 └── ui/
     ├── __init__.py
@@ -119,14 +120,11 @@ and uses exactly one 1, one 2, and one 3. Core WiD uses **Athleticism, Composure
 and Reasoning**. Assignments stay fixed until changing kits.
 Each attribute has its own **Roll** button, available after pressing **Start game**.
 The assigned ranks remain visible and locked during play.
-Older Core WiD saves containing only one assigned attribute cannot be loaded;
-start a new game to assign all three. Previous three-attribute Core saves map their
-placeholder labels to the new names in the same order, preserving assigned ranks.
 
 Below the genre controls, enter **Name**, **Looks**, and **Nature** for your character.
 These optional fields can be edited at any time and stay in place when switching kits.
 **Save session** saves them alongside the rest of the game; loading restores them.
-Older saves without character details load with empty fields. Loading asks before
+Loading asks before
 discarding unsaved character details, even before starting a game.
 
 Choose fear (0–3), assistance,

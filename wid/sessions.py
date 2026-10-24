@@ -1,12 +1,14 @@
 import os
+import stat
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, StringConstraints, model_validator
 
+from wid.history import HistoryEntry
 from wid.profiles import Genre
-from wid.rolls import FrozenModel, Index, RollRequest, RollSession, StrainTracker
+from wid.rolls import FrozenModel, Index, RollRequest, RollSession
 
 
 def session_file_path(value: str | Path) -> Path:
@@ -32,48 +34,9 @@ class SavedSession(FrozenModel):
     draft: RollRequest
     notes: str = ""
     character: CharacterDetails = Field(default_factory=CharacterDetails)
-    history: tuple[str, ...] = ()
+    history: tuple[HistoryEntry, ...] = ()
     reroll_indices: tuple[Index, ...] = ()
     item_target: Index | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def migrate_legacy_state(cls, value):
-        if not isinstance(value, dict) or not isinstance(value.get("session"), dict):
-            return value
-        value = dict(value)
-        session = dict(value["session"])
-        value["session"] = session
-        total = session.get("total_strain", 0)
-        if "strain" not in session and type(total) is int and total >= 0:
-            session["strain"] = StrainTracker().take(total).model_dump()
-        if session.get("profile_id", Genre.CORE) != Genre.CORE:
-            return value
-        labels = dict(
-            zip(
-                ("Tested attribute", "Attribute 2", "Attribute 3"),
-                ("Athleticism", "Composure", "Reasoning"),
-                strict=True,
-            )
-        )
-
-        def migrate_request(request):
-            if not isinstance(request, dict):
-                return request
-            request = dict(request)
-            attribute = request.get("attribute")
-            if isinstance(attribute, str) and attribute in labels:
-                request["attribute"] = labels[attribute]
-            return request
-
-        value["draft"] = migrate_request(value.get("draft"))
-        result = session.get("current_result")
-        if isinstance(result, dict):
-            session["current_result"] = {
-                **result,
-                "request": migrate_request(result.get("request")),
-            }
-        return value
 
     @model_validator(mode="after")
     def validate_state(self) -> Self:
@@ -145,6 +108,7 @@ class SavedSession(FrozenModel):
                 temporary = Path(output.name)
                 output.write(candidate.model_dump_json(indent=2))
                 output.flush()
+                os.chmod(temporary, self._target_mode(path))
                 os.fsync(output.fileno())
             if overwrite:
                 os.replace(temporary, path)
@@ -155,6 +119,16 @@ class SavedSession(FrozenModel):
                 temporary.unlink(missing_ok=True)
 
     @staticmethod
+    def _target_mode(path: Path) -> int:
+        """Keep an existing save's permissions; otherwise honour the umask."""
+        try:
+            return stat.S_IMODE(path.stat().st_mode)
+        except FileNotFoundError:
+            umask = os.umask(0)
+            os.umask(umask)
+            return 0o666 & ~umask
+
+    @staticmethod
     def _publish_new(temporary: Path, path: Path) -> None:
         """Move a finished file into place without replacing an existing one."""
         try:
@@ -162,15 +136,14 @@ class SavedSession(FrozenModel):
         except FileExistsError:
             raise
         except OSError:
-            # Filesystems without hard links: reserve the name exclusively, then copy.
-            with path.open("xb") as output:
-                try:
-                    output.write(temporary.read_bytes())
-                    output.flush()
-                    os.fsync(output.fileno())
-                except BaseException:
-                    path.unlink(missing_ok=True)
-                    raise
+            # No hard links (e.g. FAT/exFAT): reserve the name exclusively, then
+            # rename over the empty reservation so the path never holds a partial save.
+            path.open("xb").close()
+            try:
+                os.replace(temporary, path)
+            except BaseException:
+                path.unlink(missing_ok=True)
+                raise
 
     @classmethod
     def load(cls, path: Path) -> Self:

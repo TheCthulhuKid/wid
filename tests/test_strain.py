@@ -107,30 +107,8 @@ def test_tracker_round_trip_and_recovery(tmp_path, saved_session_factory, genre)
     assert not SavedSession.load(path).session.strain.defeated
 
 
-@pytest.mark.parametrize("attribute", ["Tested attribute", "Attribute 2", "Attribute 3"])
-def test_legacy_core_labels_migrate(saved_session_factory, attribute):
-    data = saved_session_factory().model_dump(mode="json")
-    position = ("Tested attribute", "Attribute 2", "Attribute 3").index(attribute)
-    for request in (data["draft"], data["session"]["current_result"]["request"]):
-        request.update(attribute=attribute, attribute_rank=position + 1)
-    data["session"].pop("strain")
-    saved = SavedSession.model_validate(data)
-    expected = ("Athleticism", "Composure", "Reasoning")[position]
-    assert saved.draft.attribute == saved.session.current_result.request.attribute == expected
-    assert data["draft"]["attribute"] == attribute
-    assert saved.session.strain == StrainTracker()
-
-
-@pytest.mark.parametrize("total", [0, 3, 4, 8, 12, 30])
-def test_legacy_power_strain_migrates(saved_session_factory, total):
-    data = saved_session_factory(Genre.HECKBOY).model_dump(mode="json")
-    data["session"].pop("strain")
-    data["session"].update(total_strain=total, current_result=None)
-    assert SavedSession.model_validate(data).session.strain == StrainTracker().take(total)
-
-
 @pytest.mark.parametrize("tracker", [{"boxes": []}, {"names": ["", "", None]}])
-def test_invalid_saved_tracker_is_not_replaced_by_legacy_default(saved_session_factory, tracker):
+def test_invalid_saved_tracker_is_rejected(saved_session_factory, tracker):
     data = saved_session_factory().model_dump(mode="json")
     data["session"]["strain"] = tracker
     with pytest.raises(ValueError):

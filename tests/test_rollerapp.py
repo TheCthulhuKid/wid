@@ -45,7 +45,7 @@ def test_corruption_is_only_displayed_for_oldheart(genre):
             await start_game(app, pilot)
             await pilot.press("ctrl+r")
             resources = text(app, "#resources")
-            history = app.history[-1]
+            history = str(app.history[-1])
             if genre == Genre.OLDHEART:
                 assert "Corruption: +0 (session 0)" in resources
                 assert "Corruption +0 (session 0)" in history
@@ -53,7 +53,7 @@ def test_corruption_is_only_displayed_for_oldheart(genre):
                 await pilot.pause()
                 app.action_reroll()
                 assert "Corruption: +1 (session 1)" in text(app, "#resources")
-                assert "Corruption +1 (session 1)" in app.history[-1]
+                assert "Corruption +1 (session 1)" in str(app.history[-1])
             else:
                 assert "Corruption" not in resources
                 assert "Corruption" not in history
@@ -78,7 +78,7 @@ def test_core_flow_and_invalid_input():
             assert "4: 4+0=4 hit" in text(app, "#dice")
             assert "Hits: 3" in text(app, "#summary")
             assert len(app.history) == 3
-            assert "rank 2" in app.history[0]
+            assert "rank 2" in str(app.history[0])
             await pilot.press("ctrl+l")
             assert app.query_one("#log", RichLog).lines
             previous = app.session.current_result
@@ -230,7 +230,7 @@ def test_tech_widgets_depletion_draft_edits_and_reset():
             await pilot.click("#roll-attribute-0")
             assert app.session.tech.remaining_bonus == 2
             assert "1+3=4" in text(app, "#dice")
-            snapshot = app.history[-1]
+            snapshot = str(app.history[-1])
             app.tested_attribute = "Culture"
             await pilot.pause()
             assert app.tested_attribute == "Culture"
@@ -246,7 +246,7 @@ def test_tech_widgets_depletion_draft_edits_and_reset():
             assert app.query_one("#tech-target", Select).value == -1
             assert "Tech strength: 0" in text(app, "#tech-strength")
             assert "depleted" in text(app, "#feedback")
-            assert snapshot in app.history
+            assert snapshot in [str(entry) for entry in app.history]
             assert "Tech remaining 2" in snapshot
             app.query_one("#initialize-tech").scroll_visible()
             await pilot.pause()
@@ -285,7 +285,7 @@ def test_oldheart_rerolls_preserve_test_and_history():
             await pilot.click("#roll-attribute-0")
             await apply_item(app, pilot, times=2)
             original = app.session.current_result
-            snapshot = app.history[-1]
+            snapshot = str(app.history[-1])
             app.query_one("#reroll-die-0", Checkbox).value = True
             app.query_one("#reroll-die-2", Checkbox).value = True
             await pilot.pause()
@@ -302,8 +302,8 @@ def test_oldheart_rerolls_preserve_test_and_history():
             assert "1: 6+2=8 hit" in text(app, "#dice")
             assert "Hits: 2 (dice 1, expertise 1)" in text(app, "#summary")
             assert "Corruption: +2 (session 2)" in text(app, "#resources")
-            assert "Reroll dice 1, 3" in app.history[-1]
-            assert app.history[-2] == snapshot
+            assert "Reroll dice 1, 3" in str(app.history[-1])
+            assert str(app.history[-2]) == snapshot
             assert "raw 1 +2 = 3" in snapshot
             assert app.query_one("#reroll_button", Button).disabled
             app.query_one("#reroll-die-0", Checkbox).value = True

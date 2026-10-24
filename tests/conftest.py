@@ -2,6 +2,7 @@ from random import Random
 
 import pytest
 
+from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import PowerMode, RollRequest, RollSession
 from wid.sessions import SavedSession
@@ -39,7 +40,7 @@ def saved_session_factory(session_factory):
             name="Friday's danger 🎲",
             session=session,
             draft=request,
-            history=("First roll", "Second action"),
+            history=(HistoryEntry(notice="First roll"), HistoryEntry(notice="Second action")),
             reroll_indices=(0,) if genre == Genre.OLDHEART else (),
         )
 

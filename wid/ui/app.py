@@ -18,6 +18,7 @@ from textual.widgets import (
     TextArea,
 )
 
+from wid.history import HistoryEntry, summarize
 from wid.profiles import PROFILES, Genre
 from wid.rolls import BonusKind, PowerMode, RollRequest, RollResult, RollSession
 from wid.sessions import CharacterDetails, SavedSession, session_file_path
@@ -48,7 +49,7 @@ class RollerApp(App):
         super().__init__()
         self.rng = rng if rng is not None else Random()
         self.session = RollSession()
-        self.history: list[str] = []
+        self.history: list[HistoryEntry] = []
         self.pending_genre: Genre | None = None
         self.tested_attribute = PROFILES[Genre.CORE].attributes[0]
 
@@ -249,8 +250,7 @@ class RollerApp(App):
         self.update_strain_controls()
         message = f"Switched to {PROFILES[genre].name}; active test cleared."
         self.feedback(message)
-        self.history.append(message)
-        self.query_one("#log", RichLog).write(message)
+        self.record(HistoryEntry(notice=message))
 
     def feedback(self, message: str) -> None:
         self.query_one("#feedback", Static).update(message)
@@ -388,7 +388,7 @@ class RollerApp(App):
         log = self.query_one("#log", RichLog)
         log.clear()
         for entry in self.history:
-            log.write(entry)
+            log.write(str(entry))
         self.query_one("#session-name", Input).value = saved.name
         self.query_one("#session-path", Input).value = str(path)
         self.query_one("#session-notes", TextArea).load_text(saved.notes)
@@ -499,8 +499,7 @@ class RollerApp(App):
                 f"Culture {tech.culture} = {tech.remaining_bonus}."
             )
             self.feedback(message)
-            self.history.append(message)
-            self.query_one("#log", RichLog).write(message)
+            self.record(HistoryEntry(notice=message))
 
     def take_strain(self) -> None:
         self.session.strain = self.session.strain.take(1)
@@ -525,22 +524,6 @@ class RollerApp(App):
         self.show_result(result)
         self.log_result(result, action, resource_cost=False)
 
-    @staticmethod
-    def describe(result: RollResult) -> str:
-        return "\n".join(
-            f"Die {index + 1}: raw {die.raw} +{die.bonus} = {die.effective} — "
-            f"{die.classify(result.request).value}"
-            for index, die in enumerate(result.dice)
-        )
-
-    @staticmethod
-    def summary(result: RollResult) -> str:
-        totals = result.totals()
-        return (
-            f"Hits: {totals.hits} (dice {totals.dice_hits}, expertise {totals.expertise_hits}) | "
-            f"Misses: {totals.misses} | Fumbles: {totals.fumbles}"
-        )
-
     def show_result(self, result: RollResult) -> None:
         self.query_one("#dice", Static).update(
             "\n".join(
@@ -549,7 +532,7 @@ class RollerApp(App):
                 for index, die in enumerate(result.dice)
             )
         )
-        self.query_one("#summary", Static).update(self.summary(result))
+        self.query_one("#summary", Static).update(summarize(result))
         self.query_one("#tested-attribute", Static).update(
             f"{result.request.attribute} (rank {result.request.attribute_rank})"
         )
@@ -572,32 +555,25 @@ class RollerApp(App):
         self.update_reroll_controls()
         self.update_bonus_controls()
 
+    def record(self, entry: HistoryEntry) -> None:
+        self.history.append(entry)
+        self.query_one("#log", RichLog).write(str(entry))
+
     def log_result(
         self, result: RollResult, action: str = "Roll", *, resource_cost: bool = True
     ) -> None:
-        request = result.request
-        strain_delta = result.strain_delta if resource_cost else 0
-        corruption_delta = result.corruption_delta if resource_cost else 0
-        snapshot = (
-            f"{action}: {request.profile_id.value}, {request.attribute} "
-            f"rank {request.attribute_rank}; assisted={request.assisted}, "
-            f"fear={request.fear_level}, expertise={request.expertise}, "
-            f"power={request.power.value}, Tech target="
-            f"{request.tech_target + 1 if request.tech_target is not None else 'none'}\n"
-            + (f"Expertise name: {self.session.bonuses.expertise}\n" if request.expertise else "")
-            + (
-                f"{self.describe(result)}\n{self.summary(result)}\n"
-                f"Strain +{strain_delta} (session {self.session.total_strain})"
+        tech = self.session.tech
+        self.record(
+            HistoryEntry(
+                action=action,
+                result=result,
+                charged=resource_cost,
+                total_strain=self.session.total_strain,
+                total_corruption=self.session.total_corruption,
+                tech_remaining=tech.remaining_bonus if tech else None,
+                expertise_name=self.session.bonuses.expertise,
             )
-            + (
-                f"; Corruption +{corruption_delta} (session {self.session.total_corruption})"
-                if PROFILES[request.profile_id].has_rerolls
-                else ""
-            )
-            + (f"; Tech remaining {self.session.tech.remaining_bonus}" if self.session.tech else "")
         )
-        self.history.append(snapshot)
-        self.query_one("#log", RichLog).write(snapshot)
 
     def action_roll_attribute(self, index: int) -> None:
         if self.pending_genre is not None or self.session.attributes is None:
