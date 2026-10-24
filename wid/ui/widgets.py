@@ -87,38 +87,45 @@ class RerollDie(Checkbox):
         self.index = index
 
 
-class ProfileGroup(Vertical):
+class GameRow(Horizontal):
+    """Genre kit selector beside the Start and Load buttons."""
+
     def compose(self) -> ComposeResult:
-        with Horizontal(id="profile-fields"):
+        with Vertical(classes="field"):
+            yield Label("Genre kit")
+            yield Select(
+                [(profile.name, genre) for genre, profile in PROFILES.items()],
+                value=Genre.CORE,
+                allow_blank=False,
+                id="genre",
+            )
+        with Horizontal(id="game-controls"):
+            yield Button("Start game", id="start-game", variant="primary")
+            yield Button("Load game", id="load-session")
+
+
+class CharacterGroup(Grid):
+    def compose(self) -> ComposeResult:
+        for field, label in CHARACTER_LABELS.items():
             with Vertical(classes="field"):
-                yield Label("Genre kit")
-                yield Select(
-                    [(profile.name, genre) for genre, profile in PROFILES.items()],
-                    value=Genre.CORE,
-                    allow_blank=False,
-                    id="genre",
-                )
-            with Horizontal(id="game-controls"):
-                yield Button("Start game", id="start-game", variant="primary")
-                yield Button("Load game", id="load-session")
-        with Grid(id="character-fields"):
-            for field, label in CHARACTER_LABELS.items():
-                with Vertical(classes="field"):
-                    yield Label(label)
-                    yield Input(placeholder=label, id=f"character-{field}")
-        with Vertical(id="attribute-setup"):
-            yield Label("Assign unique ranks (1–3), then start", id="attribute-instructions")
-            with Vertical(id="attribute-ranks"):
-                for index in range(3):
-                    with Horizontal(classes="attribute-row", id=f"attribute-row-{index}"):
-                        yield Label(id=f"attribute-label-{index}")
-                        yield Select(
-                            [(str(rank), rank) for rank in range(1, 4)],
-                            value=index + 1,
-                            allow_blank=False,
-                            id=f"attribute-rank-{index}",
-                        )
-                        yield AttributeRollButton(index, variant="primary", disabled=True)
+                yield Label(label)
+                yield Input(placeholder=label, id=f"character-{field}")
+
+
+class AttributeSetup(Vertical):
+    def compose(self) -> ComposeResult:
+        yield Label("Assign unique ranks (1–3), then start", id="attribute-instructions")
+        with Vertical(id="attribute-ranks"):
+            for index in range(3):
+                with Horizontal(classes="attribute-row", id=f"attribute-row-{index}"):
+                    yield Label(id=f"attribute-label-{index}")
+                    yield Select(
+                        [(str(rank), rank) for rank in range(1, 4)],
+                        value=index + 1,
+                        allow_blank=False,
+                        id=f"attribute-rank-{index}",
+                    )
+                    yield AttributeRollButton(index, variant="primary", disabled=True)
 
 
 class NotesGroup(Vertical):
@@ -175,32 +182,42 @@ class NotesGroup(Vertical):
         editor.focus()
 
 
-class SessionGroup(Vertical):
+class SessionName(Vertical):
     def compose(self) -> ComposeResult:
         yield Label("Session name")
         yield Input(placeholder="Name this game", max_length=100, id="session-name")
-        yield NotesGroup()
+
+
+class SessionFile(Vertical):
+    def compose(self) -> ComposeResult:
         yield Label("Save / load file path (JSON)")
         yield Input(placeholder="/path/to/session.json", id="session-path")
         with Horizontal(classes="button-row"):
             yield Button("Save session", id="save-session")
 
 
-class OptionsGroup(Vertical):
+class RollOptions(Horizontal):
+    """Fear, assisted and expertise for the next test."""
+
     def compose(self) -> ComposeResult:
-        with Horizontal(id="test-options"):
-            with Vertical(id="fear-field", classes="field"):
-                yield Label("Fear")
-                yield Select([(str(n), n) for n in range(4)], value=0, allow_blank=False, id="fear")
-            with Vertical(classes="field", id="assisted-field"):
-                yield Label("Assisted")
-                yield Checkbox(id="assisted", tooltip="Assisted: +1 die; hits on 4+")
-            with Vertical(classes="field", id="expertise-field"):
-                yield Label("Expertise")
-                with Horizontal(id="expertise-controls"):
-                    yield Checkbox(id="expertise", tooltip="Include expertise: +1 hit")
-                    yield BonusName(BonusKind.EXPERTISE, placeholder="Describe expertise")
-                    yield BonusButton("+1 hit", BonusKind.EXPERTISE, disabled=True)
+        with Vertical(id="fear-field", classes="field"):
+            yield Label("Fear")
+            yield Select([(str(n), n) for n in range(4)], value=0, allow_blank=False, id="fear")
+        with Vertical(classes="field", id="assisted-field"):
+            yield Label("Assisted")
+            yield Checkbox(id="assisted", tooltip="Assisted: +1 die; hits on 4+")
+        with Vertical(classes="field", id="expertise-field"):
+            yield Label("Expertise")
+            with Horizontal(id="expertise-controls"):
+                yield Checkbox(id="expertise", tooltip="Include expertise: +1 hit")
+                yield BonusName(BonusKind.EXPERTISE, placeholder="Describe expertise")
+                yield BonusButton("+1 hit", BonusKind.EXPERTISE, disabled=True)
+
+
+class KitControls(Vertical):
+    """Kit-specific controls that change the dice pool, and the resulting pool size."""
+
+    def compose(self) -> ComposeResult:
         with Vertical(id="powers"):
             yield Label("Power (extra dice / strain)")
             yield Select(
@@ -220,17 +237,22 @@ class OptionsGroup(Vertical):
             yield Button("Initialize / replace Tech", id="initialize-tech")
             yield Label("Pre-roll Tech target")
             yield Select([("No Tech", -1)], value=-1, allow_blank=False, id="tech-target")
-        with Vertical(id="items"):
-            with Horizontal(id="item-target-row"):
-                yield Label("Post-roll die")
-                yield Select([("Roll first", -1)], value=-1, allow_blank=False, id="item-target")
-            for kind in (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM):
-                label = BONUS_LABELS[kind]
-                with Horizontal(classes="named-bonus"):
-                    with Vertical(classes="field"):
-                        yield Label(label)
-                        yield BonusName(kind, placeholder=f"{label} name")
-                    yield BonusButton("+1 value", kind, disabled=True)
+
+
+class ItemsGroup(Vertical):
+    """Post-roll target die and the named items."""
+
+    def compose(self) -> ComposeResult:
+        with Horizontal(id="item-target-row"):
+            yield Label("Post-roll die")
+            yield Select([("Roll first", -1)], value=-1, allow_blank=False, id="item-target")
+        for kind in (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM):
+            label = BONUS_LABELS[kind]
+            with Horizontal(classes="named-bonus"):
+                with Vertical(classes="field"):
+                    yield Label(label)
+                    yield BonusName(kind, placeholder=f"{label} name")
+                yield BonusButton("+1 value", kind, disabled=True)
 
 
 class StrainGroup(Vertical):

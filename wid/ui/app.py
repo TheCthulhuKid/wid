@@ -28,13 +28,19 @@ from wid.ui.sessions import SessionActions
 from wid.ui.widgets import (
     BONUS_LABELS,
     AttributeRollButton,
+    AttributeSetup,
     BonusButton,
     BonusName,
-    OptionsGroup,
-    ProfileGroup,
+    CharacterGroup,
+    GameRow,
+    ItemsGroup,
+    KitControls,
+    NotesGroup,
     RerollDie,
     RollerGroup,
-    SessionGroup,
+    RollOptions,
+    SessionFile,
+    SessionName,
     StrainBox,
     StrainGroup,
     StrainName,
@@ -66,10 +72,16 @@ class RollerApp(SessionActions, App):
         yield Header()
         with Horizontal(id="workspace"):
             with VerticalScroll(id="configuration"):
-                yield ProfileGroup()
-                yield OptionsGroup()
+                yield GameRow(id="profile-fields")
+                yield CharacterGroup(id="character-fields")
+                yield AttributeSetup(id="attribute-setup")
+                yield RollOptions(id="test-options")
+                yield KitControls()
+                yield ItemsGroup(id="items")
                 yield StrainGroup()
-                yield SessionGroup()
+                yield SessionName()
+                yield NotesGroup()
+                yield SessionFile()
             with Vertical(id="output"):
                 with Horizontal(id="actions"):
                     yield Button("Show log", id="toggle-history")

@@ -1,7 +1,7 @@
 Screen { background: $surface; }
 #workspace { height: 1fr; }
 #configuration { width: 2fr; padding: 0 1; border: solid $primary; }
-ProfileGroup, OptionsGroup, SessionGroup, NotesGroup { height: auto; }
+KitControls, ItemsGroup, SessionName, SessionFile, NotesGroup { height: auto; }
 .field { height: auto; }
 #profile-fields { height: 4; }
 #profile-fields .field { width: 1fr; margin-right: 1; }

@@ -283,16 +283,3 @@ Corruption is displayed only for Oldheart and has no added mechanical consequenc
 Rerolls replace faces rather than create a new test.
 Tech has no separate inventory or automatic replenishment; its current state is
 included when saving a session.
-
-## Rule assumptions
-
-`game.md` is the supplied rules source. Assistance adds a die even when afraid,
-and lowers the hit threshold from 5 to 4. Ranks are limited to 1–3: an unassisted
-4 misses, while an assisted 4 hits. Modified values at or below rank fumble;
-other non-hits miss. Multiple items may target the same die, and effective values
-above 6 hit. Expertise contributes exactly one extra hit, never a die.
-The requested named, repeatable post-roll items in every kit override the original
-pre-roll allocation design and Second Contact's Tech-only item rule in `game.md`.
-
-Sessions can be saved locally; there is no separate character/inventory system,
-networking, or animation. No changes to the separate deck prototypes are required.
