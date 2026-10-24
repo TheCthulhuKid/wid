@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from helpers import reveal
 from test_rollerapp import start_game
 from test_session_app import click_control, load_game
 from textual.widgets import Input, Select
@@ -34,6 +35,7 @@ def test_character_fields_layout_and_editing(size):
     async def scenario():
         app = RollerApp()
         async with app.run_test(size=size) as pilot:
+            await reveal(app, pilot, "#character-name")
             fields = [
                 app.query_one(f"#character-{field}", Input) for field in ("name", "looks", "nature")
             ]

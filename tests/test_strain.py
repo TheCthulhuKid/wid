@@ -2,6 +2,7 @@ import asyncio
 from random import Random
 
 import pytest
+from helpers import reveal
 from test_rollerapp import start_game, text
 from test_session_app import click_control, load_game
 from textual.widgets import Button, Checkbox, Input, Select
@@ -199,9 +200,7 @@ def test_tracker_mouse_clicks(size):
             assert box.styles.background != unchecked_background
             # Box 0 is unmarked and marked again, then every box in order up to Defeat.
             for index in [0, *range(12)]:
-                box = app.query_one(f"#strain-box-{index}", Checkbox)
-                box.scroll_visible(animate=False)
-                await pilot.pause()
+                box = await reveal(app, pilot, f"#strain-box-{index}")
                 previous = box.value
                 assert await pilot.click(box, offset=(1, 1))
                 await pilot.pause()
@@ -225,8 +224,7 @@ def test_tracker_ui_keyboard_save_load_and_defeat(tmp_path):
             assert app.tested_attribute == "Athleticism"
             await click_control(app, pilot, "#take-strain")
             assert app.session.strain.boxes[0]
-            box = app.query_one("#strain-box-0", Checkbox)
-            box.scroll_visible(animate=False)
+            box = await reveal(app, pilot, "#strain-box-0")
             box.focus()
             await pilot.press("space")
             assert not app.session.strain.boxes[0]
@@ -236,9 +234,7 @@ def test_tracker_ui_keyboard_save_load_and_defeat(tmp_path):
                 field = app.query_one(f"#strain-name-{row}", Input)
                 field.value = name
             await pilot.pause()
-            field = app.query_one("#strain-name-0", Input)
-            field.scroll_visible(animate=False)
-            await pilot.pause()
+            field = await reveal(app, pilot, "#strain-name-0")
             assert app.query_one("#configuration").content_region.contains_region(field.region)
             field.focus()
             await pilot.press("end", "!")

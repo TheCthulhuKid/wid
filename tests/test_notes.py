@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import patch
 
 import pytest
+from helpers import reveal
 from test_rollerapp import start_game
 from test_session_app import click_control, load_game
 from textual.document._document import Selection
@@ -38,11 +39,11 @@ def test_notes_preview_preserves_source_and_fits_panel(size):
                 open_url.assert_not_called()
             assert app.query_one("#notes-bold", Button).disabled
             assert editor.text == notes
-            toolbar = app.query_one("#notes-toolbar")
+            toolbar = await reveal(app, pilot, "#notes-toolbar")
             for button in toolbar.query(Button):
                 assert toolbar.content_region.contains_region(button.region)
                 assert button.content_size.width >= len(str(button.label))
-            toggle = app.query_one("#toggle-notes-preview", Button)
+            toggle = await reveal(app, pilot, "#toggle-notes-preview")
             toggle.focus()
             await pilot.pause(0.4)
             await pilot.press("enter")

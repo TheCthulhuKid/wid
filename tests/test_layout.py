@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from helpers import reveal
 from test_rollerapp import start_game, text
 from test_rolls import ScriptedRandom
 from textual.widgets import Button, Checkbox, Input, Label, RichLog, Select
@@ -92,9 +93,7 @@ def test_short_inputs_share_rows_and_remain_accessible(size):
             assert fear.value == 1
             assert fear.region.y == app.query_one("#assisted").region.y
             assert fear.region.y == app.query_one("#expertise").region.y
-            name = app.query_one("#name-appropriate_item", Input)
-            name.scroll_visible(animate=False)
-            await pilot.pause()
+            name = await reveal(app, pilot, "#name-appropriate_item")
             assert app.query_one("#configuration").content_region.contains_region(name.region)
 
     asyncio.run(scenario())
@@ -184,9 +183,7 @@ def test_wound_names_and_strain_boxes_have_room(size):
             await start_game(app, pilot)
             configuration = app.query_one("#configuration")
             for row in range(3):
-                field = app.query_one(f"#strain-name-{row}", Input)
-                field.scroll_visible(animate=False)
-                await pilot.pause()
+                field = await reveal(app, pilot, f"#strain-name-{row}")
                 assert field.size.width >= 24
                 assert configuration.content_region.contains_region(field.region)
                 field.focus()
@@ -213,10 +210,10 @@ def test_layout_adapts_on_resize_without_losing_edits():
     async def scenario():
         app = RollerApp()
         async with app.run_test(size=(140, 45)) as pilot:
-            field = app.query_one("#strain-name-0", Input)
+            field = await reveal(app, pilot, "#strain-name-0")
             field.value = "Broken ribs"
             await pilot.pause()
-            box = app.query_one("#strain-box-3")
+            box = await reveal(app, pilot, "#strain-box-3")
             assert field.region.y == box.region.y
             await pilot.resize_terminal(80, 24)
             await pilot.pause()

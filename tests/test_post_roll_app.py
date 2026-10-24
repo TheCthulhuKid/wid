@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from helpers import reveal
 from test_rollerapp import start_game, text
 from test_rolls import ScriptedRandom
 from test_session_app import load_game
@@ -12,10 +13,7 @@ from wid.ui.app import RollerApp
 
 
 async def click_visible(app, pilot, selector):
-    await pilot.pause()
-    control = app.query_one(selector)
-    control.scroll_visible(animate=False)
-    await pilot.pause()
+    control = await reveal(app, pilot, selector)
     assert await pilot.click(control)
     await pilot.pause()
 

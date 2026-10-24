@@ -2,6 +2,7 @@ import asyncio
 from random import Random
 
 import pytest
+from helpers import reveal
 from test_rollerapp import start_game, text
 from textual.widgets import Button, Checkbox, Input, RichLog, Select, TextArea
 
@@ -11,8 +12,7 @@ from wid.ui.app import RollerApp
 
 
 async def click_control(app, pilot, selector):
-    app.query_one(selector).scroll_visible(animate=False)
-    await pilot.pause()
+    await reveal(app, pilot, selector)
     await pilot.click(selector)
     await pilot.pause()
 
@@ -35,10 +35,8 @@ def test_edit_save_load_and_clear_notes(tmp_path):
         app = RollerApp()
         async with app.run_test(size=(80, 24)) as pilot:
             await start_game(app, pilot)
-            editor = app.query_one("#session-notes", TextArea)
+            editor = await reveal(app, pilot, "#session-notes")
             editor.load_text(notes)
-            editor.scroll_visible(animate=False)
-            await pilot.pause()
             editor.focus()
             editor.move_cursor((2, len(notes.splitlines()[-1])))
             await pilot.press("enter", "d")
@@ -277,7 +275,7 @@ def test_confirmations_errors_and_keyboard_controls(tmp_path, saved_session_fact
             assert app.history == history
             assert SavedSession.load(path).session.model_dump() == before
 
-            app.query_one("#session-name", Input).focus()
+            (await reveal(app, pilot, "#session-name")).focus()
             await pilot.press("home", "shift+end", "N", "a", "m", "e", "tab")
             assert app.query_one("#session-name", Input).value == "Name"
             assert app.focused.id == "session-notes"
