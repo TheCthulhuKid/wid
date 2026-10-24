@@ -139,8 +139,12 @@ Press **Roll** beside the attribute to test; no attribute selection is needed.
 **Ctrl+R** repeats the last-used attribute (the first attribute before any roll).
 Tab/Shift+Tab navigate controls; Enter activates a focused Roll button; Space toggles checkboxes;
 arrow keys and Enter operate selectors. Configuration and results scroll independently.
-Press D to pick a theme when not typing into an input. The choice is remembered in
-`~/.config/wid/settings.json` (or under `$XDG_CONFIG_HOME`).
+Shortcuts, active when you are not typing into a text field and listed in the footer:
+**D** picks a theme (remembered in `~/.config/wid/settings.json`, or under
+`$XDG_CONFIG_HOME`), **C** and **S** open the Character and Session tabs and focus the tab bar (press Tab to
+enter the tab, or the arrow keys to switch tabs), **T** and **I** collapse or expand the strain tracker and the post-roll items, and
+**Ctrl+L** shows the log. **Ctrl+R** repeats the last roll from anywhere, even in a text
+field. Tab never stops on a control in a hidden tab or a collapsed section.
 Hits, misses, and fumbles are coloured; the words are always shown too, so colour is
 never the only signal.
 
@@ -164,7 +168,9 @@ roll output uses the remaining third. The genre row (with Start and Load) is alw
 top, followed by the **Character** and **Session** tabs. Ctrl+R repeats the last roll
 even while the Session tab hides the Roll buttons. The strain tracker and the post-roll
 items are collapsible sections; a collapsed strain tracker still shows its total, such as
-`Strain 3 / 12`.
+`Strain 3 / 12`. In a terminal under 30 rows the controls switch to a one-row form so the
+attributes and options fit on screen, and in a terminal under 100 columns or 30 rows the
+strain tracker and the items start collapsed. 80x24 is supported.
 Each attribute occupies a left-aligned compact row, keeping its label, rank, and Roll
 button close together. Fear, Assisted, and Expertise are aligned in one row, with a
 small fear selector and a single Assisted label. The Expertise description box sits

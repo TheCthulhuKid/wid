@@ -74,3 +74,16 @@ ConfirmReset, ConfirmSessionAction, LoadGame { align: center middle; background:
     width: 54; max-width: 100%; height: auto; padding: 1 2; border: thick $warning;
 }
 #confirmation Button, #load-dialog Button { width: 1fr; margin-top: 1; }
+
+/* Short terminals: one-row controls, so the attributes and options fit without scrolling. */
+.short #profile-fields, .short #game-controls { height: 2; }
+.short .attribute-row, .short .attribute-row Label { height: 1; }
+.short .attribute-row Button { margin-left: 1; }
+.short #test-options { height: 2; }
+.short #expertise-controls { height: 1; }
+.short #test-options Checkbox { height: 1; border: none; }
+.short #item-target-row { height: 1; }
+.short #item-target-row Label { padding: 0; }
+.short .named-bonus { height: 2; }
+.short .named-bonus Button { margin: 0 0 0 1; }
+.short .button-row, .short #notes-toolbar { height: 1; }

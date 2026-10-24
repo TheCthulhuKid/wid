@@ -19,6 +19,7 @@ from textual.widgets import (
     TabbedContent,
     TabPane,
 )
+from textual.widgets.tabbed_content import ContentTabs
 
 from wid.formatting import attribute_label, resources_line, strain_summary
 from wid.history import HistoryEntry
@@ -56,6 +57,10 @@ from wid.ui.widgets import (
     StrainName,
 )
 
+# Below these sizes the panel switches to one-row controls and starts with sections collapsed.
+SHORT_HEIGHT = 30
+SMALL_WIDTH = 100
+
 
 class RollerApp(SessionActions, App):
     """Configure tests in widgets; resolve them through the session model."""
@@ -64,7 +69,11 @@ class RollerApp(SessionActions, App):
     TITLE = "We're in Danger"
     BINDINGS: ClassVar = [
         ("d", "change_theme", "Theme"),
-        ("ctrl+r", "roll", "Repeat attribute"),
+        ("c", "show_tab('character')", "Character"),
+        ("s", "show_tab('session')", "Session"),
+        ("t", "toggle_section('strain')", "Strain"),
+        ("i", "toggle_section('items')", "Items"),
+        ("ctrl+r", "roll", "Repeat"),
         ("ctrl+l", "toggle_history", "Log"),
     ]
 
@@ -111,6 +120,33 @@ class RollerApp(SessionActions, App):
 
     def on_resize(self, event: Resize) -> None:
         self.set_class(event.size.width < 112, "compact")
+        self.query_one(Footer).compact = event.size.width < 90
+        self.set_short_mode(event.size.height < SHORT_HEIGHT)
+
+    def set_short_mode(self, short: bool) -> None:
+        """In a short terminal, use one-row controls so more of the panel fits."""
+        self.set_class(short, "short")
+        controls = self.query_one("#configuration").query("Button, Input, Select, Checkbox")
+        for control in controls.exclude(".strain-box, .strain-ending"):
+            control.compact = short
+
+    def collapse_sections_in_small_terminals(self) -> None:
+        if self.size.width >= SMALL_WIDTH and self.size.height >= SHORT_HEIGHT:
+            return
+        for name in ("strain", "items"):
+            self.query_one(f"#{name}-section", Collapsible).collapsed = True
+
+    def action_show_tab(self, name: str) -> None:
+        tabs = self.query_one("#details", TabbedContent)
+        tabs.active = f"tab-{name}"
+        # Focus the tab bar, not a field: letters typed in a field would swallow the shortcuts.
+        tabs.query_one(ContentTabs).focus()
+
+    def action_toggle_section(self, name: str) -> None:
+        section = self.query_one(f"#{name}-section", Collapsible)
+        section.collapsed = not section.collapsed
+        if section.collapsed:
+            section.query_one("CollapsibleTitle").focus()
 
     def action_toggle_history(self) -> None:
         panel = self.query_one("#history-panel")
@@ -122,6 +158,8 @@ class RollerApp(SessionActions, App):
 
     def on_mount(self) -> None:
         self.restore_theme()
+        self.set_short_mode(self.size.height < SHORT_HEIGHT)
+        self.collapse_sections_in_small_terminals()
         self.update_attribute_controls()
         self.update_kit_controls()
         self.update_preview()
