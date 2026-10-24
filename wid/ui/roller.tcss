@@ -1,0 +1,72 @@
+Screen { background: $surface; }
+#workspace { height: 1fr; }
+#configuration { width: 2fr; padding: 0 1; border: solid $primary; }
+ProfileGroup, OptionsGroup, SessionGroup, NotesGroup { height: auto; }
+.field { height: auto; }
+#profile-fields { height: 4; }
+#profile-fields .field { width: 1fr; margin-right: 1; }
+#game-controls { width: 28; height: 4; }
+#start-game, #load-session { width: 14; margin-top: 1; }
+#character-fields { grid-size: 3; grid-rows: auto; grid-gutter: 0 1; height: auto; }
+#attribute-ranks { height: auto; }
+.attribute-row { height: 3; }
+.attribute-row Label { width: 13; height: 3; content-align: left middle; }
+#attribute-ranks Select { width: 8; }
+.attribute-row Button { width: 8; min-width: 8; margin-left: 1; }
+#test-options { height: 4; }
+#fear-field { width: 9; margin-right: 1; }
+#assisted-field { width: 10; }
+#expertise-field { width: 1fr; }
+#expertise-controls { height: 3; }
+#expertise { width: 4; }
+#name-expertise { width: 1fr; min-width: 0; }
+#apply-expertise { width: 8; min-width: 8; }
+#test-options Checkbox { height: 3; padding: 0; border: tall transparent; }
+.button-row { height: 3; }
+.button-row Button { margin-right: 1; }
+StrainGroup { height: auto; margin: 1 0; }
+.strain-row { height: 3; }
+.strain-checks { width: 25; height: 3; }
+.strain-row Checkbox { padding: 0; }
+.strain-row Checkbox.-on { background: $success 35%; border: tall $success; }
+.strain-row Checkbox.-on > .toggle--button {
+    background: $success;
+    color: $text;
+    text-style: bold;
+}
+.strain-row .strain-ending.-on { background: $error 35%; border: tall $error; }
+.strain-row .strain-ending.-on > .toggle--button { background: $error; }
+#strain-total { text-style: bold; }
+.strain-box { width: 4; }
+.strain-ending { width: 13; }
+.strain-row Input { width: 1fr; min-width: 30; }
+.compact .strain-row { layout: vertical; height: 6; }
+#output { width: 1fr; padding: 0 1; }
+#actions { height: 3; }
+#actions Button { width: 1fr; min-width: 0; }
+RollerGroup { height: 1fr; padding: 1; border: solid $primary; }
+Label, Static { height: auto; }
+Select, Input { width: 1fr; }
+#session-notes { width: 1fr; height: 8; }
+#notes-preview-panel { display: none; height: 8; border: solid $primary; }
+#notes-toolbar { height: 3; }
+#notes-toolbar Button { width: 1fr; min-width: 0; }
+Checkbox { width: 1fr; height: auto; }
+#items, #powers, #tech-controls, #reroll-controls, #attribute-setup { height: auto; }
+#item-target-row { height: 3; }
+#item-target-row Label { width: 14; padding: 1 0; }
+#item-target { width: 16; }
+.named-bonus { height: 4; }
+.named-bonus .field { width: 1fr; }
+.named-bonus Button { width: 10; min-width: 0; margin: 1 0 0 1; }
+#feedback { color: $warning; max-height: 5; overflow-y: auto; }
+#pool, #summary, #resources { margin: 1 0; }
+#pool { margin: 0; }
+#history-panel { display: none; height: 6; }
+#log { height: 1fr; border: solid $secondary; }
+Button { min-width: 14; }
+ConfirmReset, ConfirmSessionAction, LoadGame { align: center middle; background: $background 80%; }
+#confirmation, #load-dialog {
+    width: 54; max-width: 100%; height: auto; padding: 1 2; border: thick $warning;
+}
+#confirmation Button, #load-dialog Button { width: 1fr; margin-top: 1; }

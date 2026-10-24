@@ -1,0 +1,56 @@
+Screen {
+    layout: vertical;
+}
+
+#dealer-layout {
+    height: 1fr;
+}
+
+#draw-panel {
+    width: 1fr;
+    min-width: 25;
+    padding: 1 2;
+}
+
+#deck-panel {
+    width: 2fr;
+    padding: 1 2;
+    border-left: solid $primary;
+}
+
+HuckDeck Static, HuckDeck Label {
+    height: auto;
+    margin-bottom: 1;
+}
+
+HuckDeck Input {
+    margin-bottom: 1;
+}
+
+#draw-panel Button {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+#dealer-status {
+    color: $accent;
+}
+
+ConfirmShuffle {
+    align: center middle;
+    background: $background 80%;
+}
+
+#confirmation {
+    width: 52;
+    max-width: 95%;
+    height: auto;
+    padding: 1 2;
+    border: thick $primary;
+    background: $surface;
+}
+
+#confirmation Button {
+    width: 100%;
+    margin-top: 1;
+}
