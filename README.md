@@ -36,7 +36,8 @@ uv run wid
 
 The original `uv run python rollerapp.py` launch also remains supported.
 You can also launch the package with `.venv/bin/python -m wid`.
-Run checks with `uv run pytest` and
+Run checks with `uv run pytest` (4 parallel workers by default, about 90 seconds;
+add `-m "not ui"` for the quick domain tests, or `-n0` to run serially) and
 `uv run ruff check .`.
 
 ## Project structure
@@ -67,8 +68,7 @@ game.md                 # Supplied rules
 
 The UI calls the domain models; game rules remain independent of Textual.
 Persistence depends on the models, not the interface. Package initializers do not
-import the application. Reorganising modules does not change the JSON save format;
-existing sessions continue to load without conversion.
+import the application.
 WiD and HuckDeck are independent sibling packages: neither imports the other.
 They are separate distributions in one uv workspace: installing `wid` does not install
 `huckdeck`, and vice versa. Only the root `uv.lock` and dev environment are shared.

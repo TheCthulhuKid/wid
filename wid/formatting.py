@@ -4,21 +4,27 @@ from wid.profiles import PROFILES
 from wid.rolls import RollResult
 
 
-def describe_dice(result: RollResult) -> str:
-    """Verbose per-die lines, as written to the history log."""
+def _per_die(result: RollResult, template: str) -> str:
     return "\n".join(
-        f"Die {index + 1}: raw {die.raw} +{die.bonus} = {die.effective} — "
-        f"{die.classify(result.request).value}"
+        template.format(
+            n=index + 1,
+            raw=die.raw,
+            bonus=die.bonus,
+            effective=die.effective,
+            outcome=die.classify(result.request).value,
+        )
         for index, die in enumerate(result.dice)
     )
+
+
+def describe_dice(result: RollResult) -> str:
+    """Verbose per-die lines, as written to the history log."""
+    return _per_die(result, "Die {n}: raw {raw} +{bonus} = {effective} — {outcome}")
 
 
 def dice_lines(result: RollResult) -> str:
     """Compact per-die lines, as shown in the result panel."""
-    return "\n".join(
-        f"{index + 1}: {die.raw}+{die.bonus}={die.effective} {die.classify(result.request).value}"
-        for index, die in enumerate(result.dice)
-    )
+    return _per_die(result, "{n}: {raw}+{bonus}={effective} {outcome}")
 
 
 def summarize(result: RollResult) -> str:

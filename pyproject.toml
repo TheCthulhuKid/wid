@@ -34,11 +34,14 @@ dev = [
     "ruff>=0.16.7",
     "textual-dev>=1.8.0",
     "huckdeck",
+    "pytest-xdist>=3.8.0",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests", "packages/huckdeck/tests"]
+addopts = "-n 4"
+markers = ["ui: starts an application (slow); deselect with -m \"not ui\""]
 
 [tool.uv.sources]
 huckdeck = { workspace = true }

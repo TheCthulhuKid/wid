@@ -95,10 +95,10 @@ class RollerApp(SessionActions, App):
     def update_strain_controls(self) -> None:
         tracker = self.session.strain
         with self.prevent(Checkbox.Changed, Input.Changed):
-            for index, checked in enumerate(tracker.boxes):
-                self.query_one(f"#strain-box-{index}", Checkbox).value = checked
-            for row, name in enumerate(tracker.names):
-                self.query_one(f"#strain-name-{row}", Input).value = name
+            for box in self.query(StrainBox):
+                box.value = tracker.boxes[box.index]
+            for field in self.query(StrainName):
+                field.value = tracker.names[field.row]
         self.update_strain_status()
 
     def update_strain_status(self) -> None:
@@ -184,17 +184,14 @@ class RollerApp(SessionActions, App):
             self.query_one(f"#apply-{kind}", Button).disabled = not available
 
     def selected_dice(self) -> set[int]:
-        return {
-            index for index in range(7) if self.query_one(f"#reroll-die-{index}", Checkbox).value
-        }
+        return {box.index for box in self.query(RerollDie) if box.value}
 
     def update_reroll_controls(self) -> None:
         enabled = PROFILES[self.session.profile_id].has_rerolls
         self.query_one("#reroll-controls").display = enabled
         result = self.session.current_result
-        for index in range(7):
-            checkbox = self.query_one(f"#reroll-die-{index}", Checkbox)
-            available = enabled and result is not None and index < len(result.dice)
+        for checkbox in self.query(RerollDie):
+            available = enabled and result is not None and checkbox.index < len(result.dice)
             checkbox.display = available
             checkbox.disabled = not available
             if not available:
@@ -395,8 +392,8 @@ class RollerApp(SessionActions, App):
                 tech_remaining=tech.remaining_bonus if tech else None,
             )
         )
-        for index in range(7):
-            self.query_one(f"#reroll-die-{index}", Checkbox).value = False
+        for box in self.query(RerollDie):
+            box.value = False
         self.update_reroll_controls()
         self.update_bonus_controls()
 

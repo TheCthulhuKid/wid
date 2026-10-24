@@ -4,18 +4,14 @@ from textual.widgets import Checkbox, Input, RichLog, Select, TextArea
 
 from wid.history import HistoryEntry
 from wid.profiles import Genre
-from wid.rolls import BonusKind, RollSession
+from wid.rolls import RollSession
 from wid.sessions import CharacterDetails, SavedSession, session_file_path
 from wid.ui.dialogs import ConfirmSessionAction, LoadGame
-from wid.ui.widgets import CHARACTER_LABELS
+from wid.ui.widgets import CHARACTER_LABELS, BonusName, RerollDie
 
 
 class SessionActions:
-    """Save, load, and character-detail handling for ``RollerApp``.
-
-    A mixin: it relies on the app's widgets and update methods, and keeps file and
-    dialog orchestration out of the main application module.
-    """
+    """Save, load, and character-detail handling mixed into ``RollerApp``."""
 
     session: RollSession
     history: list[HistoryEntry]
@@ -94,14 +90,7 @@ class SessionActions:
         except (OSError, ValueError) as error:
             self.feedback(f"Could not load session: {error}")
             return
-        if (
-            self.session.attributes is not None
-            or self.history
-            or self.query_one("#session-notes", TextArea).text
-            or any(self.character_details().model_dump().values())
-            or any(self.session.bonuses.model_dump().values())
-            or self.has_resources()
-        ):
+        if self.has_unsaved_state():
             self.push_screen(
                 ConfirmSessionAction(
                     f"Load {saved.name}? This replaces the current game and history. "
@@ -111,6 +100,16 @@ class SessionActions:
             )
         else:
             self.finish_load(saved, path, True)
+
+    def has_unsaved_state(self) -> bool:
+        return bool(
+            self.session.attributes is not None
+            or self.history
+            or self.query_one("#session-notes", TextArea).text
+            or any(self.character_details().model_dump().values())
+            or any(self.session.bonuses.model_dump().values())
+            or self.has_resources()
+        )
 
     def finish_load(self, saved: SavedSession, path: Path, confirmed: bool) -> None:
         if not confirmed:
@@ -130,8 +129,8 @@ class SessionActions:
             self.query_one("#expertise", Checkbox).value = draft.expertise
             self.update_attribute_controls()
             self.update_preview()
-            for kind in BonusKind:
-                self.query_one(f"#name-{kind}", Input).value = getattr(self.session.bonuses, kind)
+            for field in self.query(BonusName):
+                field.value = getattr(self.session.bonuses, field.kind)
             self.query_one("#tech-target", Select).value = (
                 draft.tech_target if draft.tech_target is not None else -1
             )
@@ -140,10 +139,8 @@ class SessionActions:
                 self.show_result(self.session.current_result)
             else:
                 self.clear_result_display()
-            for index in range(7):
-                self.query_one(f"#reroll-die-{index}", Checkbox).value = (
-                    index in saved.reroll_indices
-                )
+            for box in self.query(RerollDie):
+                box.value = box.index in saved.reroll_indices
             self.update_reroll_controls()
             self.update_strain_controls()
             self.update_bonus_controls()
