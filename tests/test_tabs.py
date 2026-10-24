@@ -28,14 +28,54 @@ def test_character_and_session_areas_are_in_their_own_tabs():
         assert tabs(app).active == "tab-character"
         character = app.query_one("#tab-character")
         session = app.query_one("#tab-session")
-        for selector in ("#character-name", "#character-looks", "#character-nature"):
-            assert character.query(selector)
-        assert character.query("#session-notes") and character.query("#toggle-notes-preview")
-        for selector in ("#session-name", "#session-path", "#save-session"):
-            assert session.query(selector)
+        character_widgets = (
+            "#character-name",
+            "#character-looks",
+            "#character-nature",
+            "#attribute-rank-0",
+            "#roll-attribute-0",
+            "#attribute-instructions",
+        )
+        for selector in character_widgets:
+            assert character.query(selector), selector
+        session_widgets = (
+            "#session-name",
+            "#session-notes",
+            "#toggle-notes-preview",
+            "#session-path",
+            "#save-session",
+        )
+        for selector in session_widgets:
+            assert session.query(selector), selector
         play_area = ("#genre", "#start-game", "#load-session", "#fear", "#assisted", "#take-strain")
         for selector in play_area:
-            assert not app.query_one("#details").query(selector)
+            assert not app.query_one("#details").query(selector), selector
+
+    run(scenario)
+
+
+def test_character_tab_is_the_first_thing_under_the_game_row():
+    async def scenario(app, pilot):
+        row = app.query_one("#profile-fields")
+        bar = app.query_one("#details Tabs")
+        assert bar.region.y == row.region.bottom
+        assert app.query_one("#character-name").region.y < app.query_one("#fear").region.y
+        assert app.query_one("#roll-attribute-0").region.y < app.query_one("#fear").region.y
+
+    run(scenario, (100, 40))
+
+
+def test_repeat_roll_works_while_the_roll_buttons_are_hidden():
+    async def scenario(app, pilot):
+        await start_game(app, pilot)
+        await pilot.press("ctrl+r")
+        first = app.session.current_result
+        await reveal(app, pilot, "#session-name")
+        assert tabs(app).active == "tab-session"
+        assert app.query_one("#roll-attribute-0", Button).region.width == 0
+        await pilot.press("ctrl+r")
+        assert app.session.current_result is not first
+        assert len(app.history) == 2
 
     run(scenario)
 
@@ -108,8 +148,10 @@ def test_notes_preview_stays_on_across_tab_switches():
         await click_control(app, pilot, "#toggle-notes-preview")
         assert app.query_one("#notes-preview-panel").display
         assert not app.query_one("#session-notes").display
-        await reveal(app, pilot, "#session-name")
+        await reveal(app, pilot, "#character-name")
+        assert tabs(app).active == "tab-character"
         await reveal(app, pilot, "#toggle-notes-preview")
+        assert tabs(app).active == "tab-session"
         assert app.query_one("#notes-preview-panel").display
         assert str(app.query_one("#toggle-notes-preview", Button).label) == "Edit"
         assert app.query_one("#notes-preview", Markdown).query("MarkdownH1")

@@ -8,6 +8,7 @@ from textual.events import Resize
 from textual.widgets import (
     Button,
     Checkbox,
+    Collapsible,
     Footer,
     Header,
     Input,
@@ -19,10 +20,17 @@ from textual.widgets import (
     TabPane,
 )
 
-from wid.formatting import attribute_label, resources_line
+from wid.formatting import attribute_label, resources_line, strain_summary
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
-from wid.rolls import BonusKind, PowerMode, RollRequest, RollResult, RollSession
+from wid.rolls import (
+    BonusKind,
+    PowerMode,
+    RollRequest,
+    RollResult,
+    RollSession,
+    StrainTracker,
+)
 from wid.settings import load_settings, save_settings
 from wid.ui.dialogs import ConfirmReset
 from wid.ui.outcomes import dice_content, summary_content
@@ -75,18 +83,22 @@ class RollerApp(SessionActions, App):
         with Horizontal(id="workspace"):
             with VerticalScroll(id="configuration"):
                 yield GameRow(id="profile-fields")
-                yield AttributeSetup(id="attribute-setup")
-                yield RollOptions(id="test-options")
-                yield KitControls()
-                yield ItemsGroup(id="items")
-                yield StrainGroup()
                 with TabbedContent(id="details"):
                     with TabPane("Character", id="tab-character"):
                         yield CharacterGroup(id="character-fields")
-                        yield NotesGroup()
+                        yield AttributeSetup(id="attribute-setup")
                     with TabPane("Session", id="tab-session"):
                         yield SessionName()
+                        yield NotesGroup()
                         yield SessionFile()
+                yield RollOptions(id="test-options")
+                yield KitControls()
+                with Collapsible(title="Post-roll items", collapsed=False, id="items-section"):
+                    yield ItemsGroup(id="items")
+                with Collapsible(
+                    title=strain_summary(StrainTracker()), collapsed=False, id="strain-section"
+                ):
+                    yield StrainGroup()
             with Vertical(id="output"):
                 with Horizontal(id="actions"):
                     yield Button("Show log", id="toggle-history")
@@ -154,6 +166,7 @@ class RollerApp(SessionActions, App):
 
     def update_strain_status(self) -> None:
         tracker = self.session.strain
+        self.query_one("#strain-section", Collapsible).title = strain_summary(tracker)
         self.query_one("#strain-total", Label).update(
             f"Character strain: {sum(tracker.boxes)} / 12 marked"
         )

@@ -126,8 +126,8 @@ and Reasoning**. Assignments stay fixed until changing kits.
 Each attribute has its own **Roll** button, available after pressing **Start game**.
 The assigned ranks remain visible and locked during play.
 
-In the **Character** tab below the strain tracker, enter **Name**, **Looks**, and
-**Nature** for your character.
+In the **Character** tab under the genre row, enter **Name**, **Looks**, and **Nature**
+for your character; the attributes and their Roll buttons are in the same tab.
 These optional fields can be edited at any time and stay in place when switching kits.
 **Save session** saves them alongside the rest of the game; loading restores them.
 Loading asks before
@@ -160,9 +160,11 @@ its item targets. A new roll starts fresh bonuses; Oldheart rerolls keep them.
 Results show raw faces, bonuses, effective values, textual outcomes, and totals.
 The tested attribute and rank appear with the results, without a separate rank label.
 The character/configuration panel uses about two-thirds of the terminal width;
-roll output uses the remaining third. Strain and wound controls stay with the
-attributes in the wider panel.
-Genre and Start/Load buttons share the top row.
+roll output uses the remaining third. The genre row (with Start and Load) is always at the
+top, followed by the **Character** and **Session** tabs. Ctrl+R repeats the last roll
+even while the Session tab hides the Roll buttons. The strain tracker and the post-roll
+items are collapsible sections; a collapsed strain tracker still shows its total, such as
+`Strain 3 / 12`.
 Each attribute occupies a left-aligned compact row, keeping its label, rank, and Roll
 button close together. Fear, Assisted, and Expertise are aligned in one row, with a
 small fear selector and a single Assisted label. The Expertise description box sits
@@ -205,14 +207,14 @@ Recovery edits do not change the separate cumulative Heckboy power-cost total.
 
 ## Named sessions
 
-After **Start game**, open the **Session** tab below the strain tracker.
+After **Start game**, open the **Session** tab under the genre row.
 Enter a **Session name** and a **Save / load file path (JSON)**, then press **Save session**.
 Paths can be absolute, relative to the launch directory, or start with `~`.
 The parent directory must already exist. Choose a different path to create a
 separate copy; overwriting an existing file requires confirmation. Changing only
 the name renames the session within that file on the next confirmed save.
 
-Use **Session notes** (in the **Character** tab) for multiline character or campaign
+Use **Session notes** (in the **Session** tab) for multiline character or campaign
 notes in Markdown: headings,
 **bold**, *italics*, lists, and links. Click **Preview** to see formatted notes in the
 same space, then **Edit** to return to the source. Links are displayed but do not open

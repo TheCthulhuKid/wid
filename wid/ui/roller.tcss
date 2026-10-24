@@ -3,6 +3,8 @@ Screen { background: $surface; }
 #configuration { width: 2fr; padding: 0 1; border: solid $primary; }
 KitControls, ItemsGroup, SessionName, SessionFile, NotesGroup { height: auto; }
 #details, #details TabPane { height: auto; }
+Collapsible { padding: 0 0 1 0; border-top: none; }
+Collapsible > Contents { padding: 0; }
 #details TabPane { padding: 0; }
 .field { height: auto; }
 #profile-fields { height: 4; }
