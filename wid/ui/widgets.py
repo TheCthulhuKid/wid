@@ -131,14 +131,14 @@ class AttributeSetup(Vertical):
 class NotesGroup(Vertical):
     def compose(self) -> ComposeResult:
         yield Label("Session notes (Markdown)")
-        yield TextArea(placeholder="Character and campaign notes", id="session-notes")
-        with VerticalScroll(id="notes-preview-panel"):
-            yield Markdown(open_links=False, id="notes-preview")
         with Horizontal(id="notes-toolbar"):
             yield Button("Preview", id="toggle-notes-preview")
             yield Button("Bold", id="notes-bold")
             yield Button("Italic", id="notes-italic")
             yield Button("Heading", id="notes-heading")
+        yield TextArea(placeholder="Character and campaign notes", id="session-notes")
+        with VerticalScroll(id="notes-preview-panel"):
+            yield Markdown(open_links=False, id="notes-preview")
 
     @on(Button.Pressed, "#toggle-notes-preview")
     async def toggle_preview(self, event: Button.Pressed) -> None:

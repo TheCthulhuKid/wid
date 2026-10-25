@@ -123,3 +123,14 @@ def test_save_and_load_markdown_while_previewing(tmp_path):
             assert editor.text == preview.source == ""
 
     asyncio.run(scenario())
+
+
+def test_notes_toolbar_is_above_the_editor():
+    async def scenario():
+        app = RollerApp()
+        async with app.run_test(size=(100, 45)) as pilot:
+            await start_game(app, pilot)
+            toolbar = await reveal(app, pilot, "#notes-toolbar")
+            assert toolbar.region.y < app.query_one("#session-notes").region.y
+
+    asyncio.run(scenario())
