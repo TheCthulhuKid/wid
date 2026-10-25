@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from helpers import reveal
 from rich.color import Color as RichColor
 from test_rollerapp import start_game
 from test_rolls import ScriptedRandom
@@ -49,5 +50,30 @@ def test_outcome_colours_are_readable_in_every_theme(theme):
             assert len(summary) == 3
             for text, foreground, background in dice + summary:
                 assert rendered_contrast(foreground, background) >= MIN_CONTRAST, (theme, text)
+
+    asyncio.run(scenario())
+
+
+BUTTONS = ("#roll-attribute-0", "#take-strain", "#save-session")
+
+
+@pytest.mark.parametrize("theme", themes())
+def test_action_buttons_are_readable_in_every_theme(theme):
+    async def scenario():
+        app = RollerApp()
+        async with app.run_test(size=(120, 50)) as pilot:
+            app.theme = theme
+            await start_game(app, pilot)
+            for selector in BUTTONS:
+                button = await reveal(app, pilot, selector)
+                assert not button.disabled, selector
+                words = coloured_words(button, str(button.label).split())
+                assert words, (theme, selector)
+                for text, foreground, background in words:
+                    assert rendered_contrast(foreground, background) >= MIN_CONTRAST, (
+                        theme,
+                        selector,
+                        text,
+                    )
 
     asyncio.run(scenario())

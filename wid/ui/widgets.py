@@ -193,7 +193,7 @@ class SessionFile(Vertical):
         yield Label("Save / load file path (JSON)")
         yield Input(placeholder="/path/to/session.json", id="session-path")
         with Horizontal(classes="button-row"):
-            yield Button("Save session", id="save-session")
+            yield Button("Save session", id="save-session", variant="primary")
             yield Button("Export history", id="export-history")
 
 
@@ -212,7 +212,7 @@ class RollOptions(Horizontal):
             with Horizontal(id="expertise-controls"):
                 yield Checkbox(id="expertise", tooltip="Include expertise: +1 hit")
                 yield BonusName(BonusKind.EXPERTISE, placeholder="Describe expertise")
-                yield BonusButton("+1 hit", BonusKind.EXPERTISE, disabled=True)
+                yield BonusButton("+1 hit", BonusKind.EXPERTISE, variant="primary", disabled=True)
 
 
 class KitControls(Vertical):
@@ -253,7 +253,7 @@ class ItemsGroup(Vertical):
                 with Vertical(classes="field"):
                     yield Label(label)
                     yield BonusName(kind, placeholder=f"{label} name")
-                yield BonusButton("+1 value", kind, disabled=True)
+                yield BonusButton("+1 value", kind, variant="primary", disabled=True)
 
 
 class StrainGroup(Vertical):
@@ -272,7 +272,7 @@ class StrainGroup(Vertical):
                             tooltip=f"Row {row + 1}: {description}",
                         )
                 yield StrainName(row, placeholder=f"{ending} name")
-        yield Button("Take 1 strain", id="take-strain")
+        yield Button("Take 1 strain", id="take-strain", variant="primary")
         yield Static(id="strain-status", markup=False)
 
 
