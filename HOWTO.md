@@ -19,8 +19,8 @@ Set the options under the attributes, then press **Roll**:
 - **Assisted**: tick it when the roll is assisted.
 - **Expertise**: tick it to include your expertise in the next roll.
 
-**Assisted** and **Expertise** apply to one roll: they untick themselves afterwards, so tick them
-again when they apply to the next one. **Scared** stays as you set it.
+**Assisted**, **Expertise** and a Heckboy power apply to one roll: they untick themselves
+afterwards, so tick them again when they apply to the next one. **Scared** stays as you set it.
 
 The line under the options shows the size of the pool (for example `Pool: 4d6`). The result
 lists every die as *hit*, *miss* or *fumble* (green, yellow, red) with the totals below.
@@ -48,19 +48,25 @@ Every kit has the same screen. Each adds at most one thing:
 | Kit | Attributes | Extra control |
 |---|---|---|
 | **Core WiD** | Athleticism, Composure, Reasoning | None |
-| **Heckboy** | Aberrance, Ferocity, Savvy | **Power** list: None, Reliable, Erratic. The strain is added to the tracker for you. |
+| **Heckboy** | Aberrance, Ferocity, Savvy | Two powers (below) |
 | **Second Contact** | Science, Culture, Muscle | **Tech** buttons (below) |
 | **Oldheart** | Depravity, Hospitality, Fitness | Tick dice in the result, then **Reroll selected**. A running Corruption total is shown. |
 | **Ball Season** | Propriety, Stoutness, Yearning | None |
 | **This Isn't Happening** | Instincts, Endurance, Charity | None |
 
+**Powers (Heckboy).** Every Heckboy has a **Reliable power** (+1 die, +1 strain) and an
+**Erratic power** (+2 dice, +2 strain). Type each power's name in its box. Tick **Use** beside one
+before rolling to use it: the pool grows and the strain is added to the tracker for you. Only one power
+can be used per roll, and **Use** unticks itself after the roll.
+
 **Tech.** Press **Initialize / replace Tech** to set it up. The current strength is shown next to
 it. Choose a die in **Tech target** before rolling to use it; at 0 the target list is disabled.
 Press the button again to start over.
 
-**Changing kit.** Pick another kit in **Genre kit**. The current roll is cleared, and you are
-asked first if there is strain, Tech or Corruption to lose. The history stays. Set the ranks
-again and press **Start game**.
+**Changing kit.** A kit lasts the whole game, so picking another kit in **Genre kit** starts a
+new game: the character, names, strain, history, notes, session name and file path are all
+cleared. You are asked first if there is anything unsaved. Set the ranks and press
+**Start game**.
 
 ## Strain tracker
 

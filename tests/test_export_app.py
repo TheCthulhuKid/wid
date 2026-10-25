@@ -6,7 +6,6 @@ from test_rollerapp import start_game, text
 from test_session_app import click_control
 from textual.widgets import Input
 
-from wid.profiles import Genre
 from wid.ui.app import RollerApp
 from wid.ui.dialogs import ExportHistory
 
@@ -140,23 +139,5 @@ def test_a_missing_folder_or_blank_path_is_reported_without_a_file(tmp_path):
         assert text(app, "#feedback") == "Could not export history: Choose a history file path"
         assert not list(tmp_path.iterdir())
         assert len(app.history) == 2
-
-    run(scenario)
-
-
-def test_notes_about_kit_changes_are_part_of_the_export(tmp_path):
-    target = tmp_path / "export.md"
-
-    async def scenario(app, pilot):
-        await play(app, pilot, rolls=1)
-        app.session.strain = app.session.strain.take(1)
-        app.query_one("#genre").value = Genre.HECKBOY
-        await pilot.pause()
-        await pilot.click("#confirm-reset")
-        await pilot.pause()
-        await export_to(app, pilot, target)
-        content = target.read_text(encoding="utf-8")
-        assert "## 2. Note" in content
-        assert "Switched to Heckboy; active test cleared." in content
 
     run(scenario)

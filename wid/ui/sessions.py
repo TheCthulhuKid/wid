@@ -4,12 +4,12 @@ from textual.widgets import Checkbox, Input, RichLog, Select, TextArea
 
 from wid.export import history_markdown
 from wid.history import HistoryEntry
-from wid.profiles import Genre
+from wid.profiles import PROFILES, Genre
 from wid.rolls import RollSession
 from wid.sessions import CharacterDetails, SavedSession, session_file_path
 from wid.storage import write_text
 from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
-from wid.ui.widgets import CHARACTER_LABELS, BonusName, RerollDie
+from wid.ui.widgets import CHARACTER_LABELS, BonusName, PowerName, RerollDie
 
 
 class SessionActions:
@@ -141,16 +141,31 @@ class SessionActions:
         if not confirmed:
             self.feedback("New character canceled; current character unchanged.")
             return
-        with self.prevent(Input.Changed, Select.Changed):
-            for field in CHARACTER_LABELS:
-                self.query_one(f"#character-{field}", Input).value = ""
-            for field in self.query(BonusName):
-                field.value = ""
-            self.query_one("#fear", Select).value = 0
-        self.start_fresh_session(RollSession(profile_id=self.session.profile_id))
+        self.clear_sheet(self.session.profile_id)
         message = "New character started."
         self.feedback(message)
         self.record(HistoryEntry(notice=message))
+
+    def start_new_game(self, genre: Genre) -> None:
+        """A genre kit lasts a whole game, so changing it starts over: sheet, history and file."""
+        self.clear_sheet(genre)
+        self.history.clear()
+        self.query_one("#log", RichLog).clear()
+        self.query_one("#session-name", Input).value = ""
+        self.query_one("#session-path", Input).value = ""
+        self.query_one("#session-notes", TextArea).load_text("")
+        self.sub_title = ""
+        self.feedback(f"New {PROFILES[genre].name} game started.")
+
+    def clear_sheet(self, genre: Genre) -> None:
+        """Blank the character and every name on the sheet, then start a fresh session."""
+        with self.prevent(Input.Changed, Select.Changed):
+            for field in CHARACTER_LABELS:
+                self.query_one(f"#character-{field}", Input).value = ""
+            for field in self.query("BonusName, PowerName"):
+                field.value = ""
+            self.query_one("#fear", Select).value = 0
+        self.start_fresh_session(RollSession(profile_id=genre))
 
     def action_load_session(self) -> None:
         if self.pending_genre is not None:
@@ -186,6 +201,7 @@ class SessionActions:
             or self.query_one("#session-notes", TextArea).text
             or any(self.character_details().model_dump().values())
             or any(self.session.bonuses.model_dump().values())
+            or any(self.session.power_names)
             or self.has_resources()
         )
 
@@ -202,13 +218,15 @@ class SessionActions:
             self.query_one("#genre", Select).value = self.session.profile_id
             self.tested_attribute = draft.attribute
             self.query_one("#fear", Select).value = draft.fear_level
-            self.query_one("#power", Select).value = draft.power
+            self.set_power(draft.power)
             self.query_one("#assisted", Checkbox).value = draft.assisted
             self.query_one("#expertise", Checkbox).value = draft.expertise
             self.update_attribute_controls()
             self.update_preview()
             for field in self.query(BonusName):
                 field.value = getattr(self.session.bonuses, field.kind)
+            for field in self.query(PowerName):
+                field.value = self.session.power_names[field.index]
             self.query_one("#tech-target", Select).value = (
                 draft.tech_target if draft.tech_target is not None else -1
             )

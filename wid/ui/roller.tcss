@@ -63,6 +63,7 @@ Checkbox { width: 1fr; height: auto; }
 .named-bonus { height: 4; }
 .named-bonus .field { width: 1fr; }
 .named-bonus Button { width: 10; min-width: 0; margin: 1 0 0 1; }
+.named-bonus PowerToggle { width: 13; margin: 1 0 0 1; }
 #feedback { color: $warning; max-height: 5; overflow-y: auto; }
 #pool, #summary, #resources { margin: 1 0; }
 #pool { margin: 0; }
@@ -85,7 +86,7 @@ ConfirmReset, ConfirmSessionAction, LoadGame { align: center middle; background:
 .short #item-target-row { height: 1; }
 .short #item-target-row Label { padding: 0; }
 .short .named-bonus { height: 2; }
-.short .named-bonus Button { margin: 0 0 0 1; }
+.short .named-bonus Button, .short .named-bonus PowerToggle { margin: 0 0 0 1; }
 .short .button-row, .short #notes-toolbar { height: 1; }
 
 /* Danger theme: cream paper behind lavender fields, with a charcoal title bar. */

@@ -244,6 +244,8 @@ class RollSession(BaseModel):
     total_corruption: int = Field(default=0, ge=0)
     strain: StrainTracker = Field(default_factory=StrainTracker)
     bonuses: NamedBonuses = Field(default_factory=NamedBonuses)
+    # Heckboy power names, for the player's reference; they do not change rolls.
+    power_names: tuple[str, str] = ("", "")
     # Results before each item or expertise bonus, newest last; not saved and cleared by a roll.
     _before_bonus: list[RollResult] = PrivateAttr(default_factory=list)
 
@@ -258,6 +260,11 @@ class RollSession(BaseModel):
         candidate = NamedBonuses.model_validate({**self.bonuses.model_dump(), kind.value: name})
         self.bonuses = candidate
         return candidate
+
+    def set_power_name(self, index: int, name: str) -> None:
+        names = list(self.power_names)
+        names[index] = name
+        self.power_names = tuple(names)
 
     def _named_bonus_result(self, kind: BonusKind) -> RollResult:
         previous = self.current_result

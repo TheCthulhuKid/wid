@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from helpers import reveal
+from helpers import change_genre, reveal
 from test_rollerapp import start_game, text
 from test_rolls import ScriptedRandom
 from textual.widgets import Button, Checkbox, Input, Label, RichLog, Select
@@ -67,8 +67,7 @@ def test_start_game_shares_first_row_with_genre(size):
             assert app.session.attributes is not None
             assert not genre.disabled
             assert not button.display
-            app.query_one("#genre", Select).value = Genre.OLDHEART
-            await pilot.pause()
+            await change_genre(app, pilot, Genre.OLDHEART)
             assert button.display
             assert button.region.y == genre.region.y
             assert button.region.x >= genre.region.right
@@ -107,7 +106,7 @@ def test_maximum_pool_uses_single_line_results_and_item_targets():
             await pilot.pause()
             await start_game(app, pilot)
             app.query_one("#assisted").value = True
-            app.query_one("#power", Select).value = PowerMode.ERRATIC
+            app.set_power(PowerMode.ERRATIC)
             await pilot.pause()
             await pilot.press("ctrl+r")
             app.query_one("#item-target", Select).value = 6

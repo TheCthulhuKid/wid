@@ -2,7 +2,9 @@ import sys
 
 import pytest
 from textual.widget import Widget
-from textual.widgets import Collapsible, TabbedContent, TabPane
+from textual.widgets import Collapsible, Select, TabbedContent, TabPane
+
+from wid.ui.dialogs import ConfirmReset
 
 
 async def reveal(app, pilot, selector: str) -> Widget:
@@ -22,6 +24,15 @@ async def reveal(app, pilot, selector: str) -> Widget:
     widget.scroll_visible(animate=False)
     await pilot.pause()
     return widget
+
+
+async def change_genre(app, pilot, genre) -> None:
+    """Switch the genre kit, confirming the new game if the app asks."""
+    app.query_one("#genre", Select).value = genre
+    await pilot.pause()
+    if isinstance(app.screen, ConfirmReset):
+        await pilot.click("#confirm-reset")
+        await pilot.pause()
 
 
 # Windows has no POSIX permission bits, umask or ``~user`` lookup; tests of those are skipped there.

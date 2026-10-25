@@ -39,6 +39,31 @@ class BonusButton(Button):
         self.kind = kind
 
 
+# Heckboy characters always have one reliable and one erratic power, in this order.
+POWERS = (PowerMode.RELIABLE, PowerMode.ERRATIC)
+POWER_LABELS = {
+    PowerMode.RELIABLE: "Reliable power (+1 die / +1 strain)",
+    PowerMode.ERRATIC: "Erratic power (+2 dice / +2 strain)",
+}
+
+
+class PowerName(Input):
+    """Text box naming the Heckboy power at ``index`` of ``POWERS``."""
+
+    def __init__(self, index: int, **kwargs):
+        mode = POWERS[index].value.capitalize()
+        super().__init__(placeholder=f"{mode} power name", id=f"power-name-{index}", **kwargs)
+        self.index = index
+
+
+class PowerToggle(Checkbox):
+    """Uses the power ``mode`` in the next roll; at most one is ticked."""
+
+    def __init__(self, mode: PowerMode, **kwargs):
+        super().__init__("Use", id=f"use-{mode}", **kwargs)
+        self.mode = mode
+
+
 class BonusName(Input):
     """Text box naming the bonus ``kind``."""
 
@@ -221,17 +246,12 @@ class KitControls(Vertical):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="powers"):
-            yield Label("Power (extra dice / strain)")
-            yield Select(
-                [
-                    ("None", PowerMode.NONE),
-                    ("Reliable (+1 / +1)", PowerMode.RELIABLE),
-                    ("Erratic (+2 / +2)", PowerMode.ERRATIC),
-                ],
-                value=PowerMode.NONE,
-                allow_blank=False,
-                id="power",
-            )
+            for index, mode in enumerate(POWERS):
+                with Horizontal(classes="named-bonus"):
+                    with Vertical(classes="field"):
+                        yield Label(POWER_LABELS[mode])
+                        yield PowerName(index)
+                    yield PowerToggle(mode)
         yield Static(id="pool")
         with Vertical(id="tech-controls"):
             yield Static("Tech: not initialized", id="tech-strength")

@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from helpers import change_genre
 from test_rollerapp import start_game, text
 from test_rolls import ScriptedRandom
 from textual.widgets import Button, Select
@@ -50,8 +51,7 @@ def test_kit_switch_updates_all_labels_and_locks_buttons_until_setup():
         app = RollerApp()
         async with app.run_test(size=(100, 35)) as pilot:
             for genre, profile in PROFILES.items():
-                app.query_one("#genre", Select).value = genre
-                await pilot.pause()
+                await change_genre(app, pilot, genre)
                 assert app.tested_attribute == profile.attributes[0]
                 assert app.query_one("#attribute-setup").display
                 for index, attribute in enumerate(profile.attributes):

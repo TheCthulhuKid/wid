@@ -57,10 +57,10 @@ def test_character_edit_save_load_and_clear(tmp_path):
     async def scenario():
         app = RollerApp()
         async with app.run_test(size=(100, 40)) as pilot:
-            for field, value in details.items():
-                app.query_one(f"#character-{field}", Input).value = value
             app.query_one("#genre", Select).value = Genre.BALL_SEASON
             await pilot.pause()
+            for field, value in details.items():
+                app.query_one(f"#character-{field}", Input).value = value
             await start_game(app, pilot)
             app.query_one("#session-name", Input).value = "Campaign"
             app.query_one("#session-path", Input).value = str(path)

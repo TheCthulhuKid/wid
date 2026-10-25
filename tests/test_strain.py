@@ -324,7 +324,7 @@ def test_power_ui_and_confirmed_tracker_reset():
             app.query_one("#genre", Select).value = Genre.HECKBOY
             await pilot.pause()
             await start_game(app, pilot)
-            app.query_one("#power", Select).value = PowerMode.ERRATIC
+            app.set_power(PowerMode.ERRATIC)
             await pilot.pause()
             await pilot.press("ctrl+r")
             assert app.session.strain == StrainTracker().take(2)
@@ -332,7 +332,7 @@ def test_power_ui_and_confirmed_tracker_reset():
             assert app.query_one("#strain-box-1", Checkbox).value
             app.show_result(app.session.current_result)
             assert app.session.strain == StrainTracker().take(2)
-            app.query_one("#power", Select).value = PowerMode.ERRATIC
+            app.set_power(PowerMode.ERRATIC)
             await pilot.pause()
             await pilot.press("ctrl+r")
             assert app.session.strain == StrainTracker().take(4)

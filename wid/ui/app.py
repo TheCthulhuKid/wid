@@ -48,6 +48,8 @@ from wid.ui.widgets import (
     ItemsGroup,
     KitControls,
     NotesGroup,
+    PowerName,
+    PowerToggle,
     RerollDie,
     RollerGroup,
     RollOptions,
@@ -367,7 +369,7 @@ class RollerApp(SessionActions, App):
         if genre == self.session.profile_id or self.pending_genre is not None:
             return
         self.pending_genre = genre
-        if self.has_resources():
+        if self.has_unsaved_state():
             self.push_screen(ConfirmReset(), self.finish_genre_change)
         else:
             self.finish_genre_change(True)
@@ -378,15 +380,12 @@ class RollerApp(SessionActions, App):
         if not confirmed or genre is None:
             self.query_one("#genre", Select).value = self.session.profile_id
             return
-        self.start_fresh_session(RollSession(profile_id=genre, bonuses=self.session.bonuses))
-        message = f"Switched to {PROFILES[genre].name}; active test cleared."
-        self.feedback(message)
-        self.record(HistoryEntry(notice=message))
+        self.start_new_game(genre)
 
     def start_fresh_session(self, session: RollSession) -> None:
         """Replace the game with ``session`` and reset the controls that belong to a test."""
         self.session = session
-        self.query_one("#power", Select).value = PowerMode.NONE
+        self.set_power(PowerMode.NONE)
         self.query_one("#tech-target", Select).value = -1
         self.tested_attribute = PROFILES[session.profile_id].attributes[0]
         for index in range(3):
@@ -417,7 +416,7 @@ class RollerApp(SessionActions, App):
             fear_level=self.query_one("#fear", Select).value,
             expertise=self.query_one("#expertise", Checkbox).value,
             power=(
-                self.query_one("#power", Select).value
+                self.chosen_power()
                 if PROFILES[self.session.profile_id].has_powers
                 else PowerMode.NONE
             ),
@@ -429,6 +428,16 @@ class RollerApp(SessionActions, App):
                 else None
             ),
         )
+
+    def chosen_power(self) -> PowerMode:
+        return next(
+            (toggle.mode for toggle in self.query(PowerToggle) if toggle.value), PowerMode.NONE
+        )
+
+    def set_power(self, mode: PowerMode) -> None:
+        """Tick the toggle for ``mode`` and untick the other, since one power is used per roll."""
+        for toggle in self.query(PowerToggle):
+            toggle.value = toggle.mode == mode
 
     def update_preview(self) -> None:
         request = self.draft_request(preview=True)
@@ -446,7 +455,7 @@ class RollerApp(SessionActions, App):
             return
         if event.select.id == "genre" and event.value != Select.BLANK:
             self.request_genre(Genre(event.value))
-        elif event.select.id in ("fear", "power"):
+        elif event.select.id == "fear":
             self.update_preview()
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
@@ -454,6 +463,10 @@ class RollerApp(SessionActions, App):
             return
         if isinstance(event.checkbox, StrainBox):
             self.change_strain_box(event.checkbox.index, event.value)
+        elif isinstance(event.checkbox, PowerToggle):
+            if event.value:
+                self.set_power(event.checkbox.mode)
+            self.update_preview()
         elif event.checkbox.id == "assisted":
             self.update_preview()
         elif isinstance(event.checkbox, RerollDie):
@@ -465,6 +478,8 @@ class RollerApp(SessionActions, App):
         if isinstance(event.input, StrainName):
             self.session.strain = self.session.strain.set_name(event.input.row, event.value)
             self.update_strain_status()
+        elif isinstance(event.input, PowerName):
+            self.session.set_power_name(event.input.index, event.value)
         elif isinstance(event.input, BonusName):
             self.session.set_bonus_name(event.input.kind, event.value)
             self.update_bonus_controls()
@@ -613,7 +628,7 @@ class RollerApp(SessionActions, App):
         """Assisted, Expertise and a power apply to one test; the next one starts without them."""
         for selector in ("#assisted", "#expertise"):
             self.query_one(selector, Checkbox).value = False
-        self.query_one("#power", Select).value = PowerMode.NONE
+        self.set_power(PowerMode.NONE)
 
     def action_reroll(self) -> None:
         if self.pending_genre is not None:

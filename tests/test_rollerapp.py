@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from helpers import change_genre
 from test_rolls import ScriptedRandom
 from textual.command import CommandPalette
 from textual.widgets import Button, Checkbox, Input, RichLog, Select, Static
@@ -168,7 +169,7 @@ def test_genres_power_maximum_and_reset_confirmation():
             assert app.query_one("#powers").display
             assert app.tested_attribute == "Aberrance"
             app.query_one("#assisted", Checkbox).value = True
-            app.query_one("#power", Select).value = PowerMode.ERRATIC
+            app.set_power(PowerMode.ERRATIC)
             await pilot.pause()
             assert "7d6" in text(app, "#pool")
             await pilot.click("#roll-attribute-0")
@@ -177,7 +178,7 @@ def test_genres_power_maximum_and_reset_confirmation():
             assert "Strain: +2 (session 2)" in text(app, "#resources")
             app.show_result(app.session.current_result)
             assert app.session.total_strain == 2
-            app.query_one("#power", Select).value = PowerMode.NONE
+            app.set_power(PowerMode.NONE)
             await pilot.pause()
             assert app.query_one("#item-target", Select).value == 6
             assert app.session.current_result.dice[6].bonus == 1
@@ -197,8 +198,7 @@ def test_genres_power_maximum_and_reset_confirmation():
             assert not app.query_one("#powers").display
             await start_game(app, pilot)
             for genre, profile in PROFILES.items():
-                app.query_one("#genre", Select).value = genre
-                await pilot.pause()
+                await change_genre(app, pilot, genre)
                 await start_game(app, pilot)
                 for index, attribute in enumerate(profile.attributes):
                     assert text(app, f"#attribute-label-{index}") == attribute
@@ -335,7 +335,7 @@ def test_maximum_pool_scrolls_in_compact_terminal():
             await pilot.pause()
             await start_game(app, pilot)
             app.query_one("#assisted", Checkbox).value = True
-            app.query_one("#power", Select).value = PowerMode.ERRATIC
+            app.set_power(PowerMode.ERRATIC)
             await pilot.pause()
             await pilot.press("ctrl+r")
             assert len(app.session.current_result.dice) == 7
@@ -382,8 +382,7 @@ def test_startup_and_genre_setup_require_unique_fixed_attributes():
             assert app.query_one("#attribute-setup").display
             assert app.session.attribute_rank("Athleticism") == 3
 
-            app.query_one("#genre", Select).value = Genre.BALL_SEASON
-            await pilot.pause()
+            await change_genre(app, pilot, Genre.BALL_SEASON)
             assert app.query_one("#attribute-setup").display
             assert all(app.query_one(f"#roll-attribute-{i}", Button).disabled for i in range(3))
             assert app.session.attributes is None
@@ -448,11 +447,11 @@ def test_heckboy_power_is_cleared_after_a_roll():
             app.query_one("#genre", Select).value = Genre.HECKBOY
             await pilot.pause()
             await start_game(app, pilot)
-            app.query_one("#power", Select).value = PowerMode.RELIABLE
+            app.set_power(PowerMode.RELIABLE)
             await pilot.press("ctrl+r")
             await pilot.pause()
             assert app.session.current_result.request.power == PowerMode.RELIABLE
-            assert app.query_one("#power", Select).value == PowerMode.NONE
+            assert app.chosen_power() == PowerMode.NONE
             assert text(app, "#pool").startswith("Pool: 4d6")
 
     asyncio.run(scenario())

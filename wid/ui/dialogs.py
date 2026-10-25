@@ -10,11 +10,11 @@ class ConfirmReset(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
         with Vertical(id="confirmation"):
             yield Static(
-                "Changing genre discards current kit resources, strain boxes, "
-                "wound/defeat names, and the active test."
+                "A genre kit lasts the whole game, so changing it starts a new game: the "
+                "character, history, notes and file path are cleared. Unsaved changes will be lost."
             )
-            yield Button("Discard and switch", id="confirm-reset", variant="warning")
-            yield Button("Keep current genre", id="cancel-reset")
+            yield Button("Start new game", id="confirm-reset", variant="warning")
+            yield Button("Keep current game", id="cancel-reset")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         event.stop()

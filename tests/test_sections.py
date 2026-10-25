@@ -71,7 +71,7 @@ def test_strain_title_follows_power_strain_while_collapsed():
         app.query_one("#genre", Select).value = Genre.HECKBOY
         await pilot.pause()
         await start_game(app, pilot)
-        app.query_one("#power", Select).value = PowerMode.ERRATIC
+        app.set_power(PowerMode.ERRATIC)
         await pilot.pause()
         section(app, "strain").collapsed = True
         await pilot.pause()
