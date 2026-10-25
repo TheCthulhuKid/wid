@@ -314,3 +314,29 @@ def test_invalid_save_keeps_game_and_file_unchanged(tmp_path):
                 assert app.history == []
 
     asyncio.run(scenario())
+
+
+def test_new_character_clears_the_sheet_but_keeps_history_and_file_path():
+    async def scenario():
+        app = RollerApp(rng=Random(1))
+        async with app.run_test(size=(100, 40)) as pilot:
+            await start_game(app, pilot)
+            app.query_one("#character-name", Input).value = "Ada"
+            app.query_one("#name-appropriate_item", Input).value = "Sword"
+            app.query_one("#session-path", Input).value = "game.json"
+            await pilot.press("ctrl+r")
+            await click_control(app, pilot, "#take-strain")
+            await click_control(app, pilot, "#new-character")
+            await pilot.click("#confirm-session")
+            await pilot.pause()
+            assert app.query_one("#character-name", Input).value == ""
+            assert app.query_one("#name-appropriate_item", Input).value == ""
+            assert app.session.attributes is None
+            assert app.session.current_result is None
+            assert not any(app.session.strain.boxes)
+            assert app.query_one("#start-game", Button).display
+            assert app.query_one("#session-path", Input).value == "game.json"
+            assert str(app.history[-1]) == "New character started."
+            assert len(app.history) == 2
+
+    asyncio.run(scenario())

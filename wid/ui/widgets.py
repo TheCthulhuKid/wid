@@ -195,6 +195,7 @@ class SessionFile(Vertical):
         with Horizontal(classes="button-row"):
             yield Button("Save session", id="save-session", variant="primary")
             yield Button("Export history", id="export-history")
+            yield Button("New character", id="new-character")
 
 
 class RollOptions(Horizontal):

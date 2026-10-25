@@ -36,10 +36,10 @@ After a roll:
 2. Press **+1 value** beside the item you are using.
 
 Each item adds +1 to a single die, once per roll; its button greys out until your next roll. Use
-the other item on the same die or another. **Undo** takes back the last item or expertise bonus
-(and frees the item again); a new roll clears it. For expertise, name it and press **+1 hit**
-(or tick **Expertise** before rolling). Buttons stay greyed out until the name is filled in
-and there is a roll to change.
+the other item on the same die or another. **Undo** (beside **Apply to die**) takes back the last
+item or expertise bonus and frees it again; press it again for the one before. A new roll clears
+it. For expertise, name it and press **+1 hit** (or tick **Expertise** before rolling). Buttons
+stay greyed out until the name is filled in and there is a roll to change.
 
 ## Genre kits
 
@@ -89,6 +89,10 @@ folded away. A wound is not counted as strain.
   tab. You are asked first if you would lose anything unsaved.
 - **Export history**: writes all the rolls to a Markdown file you can read or share. The
   suggested name is your save file's name ending in `.md`.
+- **New character**: clears the sheet for a new character in the same kit (after a character
+  dies, for example): name, looks, nature, ranks, item and expertise names, strain, Scared and the
+  current roll. The history, notes, session name and file path stay. You are asked first if
+  there is anything to lose. Set the ranks again and press **Start game**.
 
 A save includes everything on screen: kit, ranks, options, items, Tech, strain, Corruption,
 notes, character details and the history.

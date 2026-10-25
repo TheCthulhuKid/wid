@@ -378,10 +378,17 @@ class RollerApp(SessionActions, App):
         if not confirmed or genre is None:
             self.query_one("#genre", Select).value = self.session.profile_id
             return
-        self.session = RollSession(profile_id=genre, bonuses=self.session.bonuses)
+        self.start_fresh_session(RollSession(profile_id=genre, bonuses=self.session.bonuses))
+        message = f"Switched to {PROFILES[genre].name}; active test cleared."
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def start_fresh_session(self, session: RollSession) -> None:
+        """Replace the game with ``session`` and reset the controls that belong to a test."""
+        self.session = session
         self.query_one("#power", Select).value = PowerMode.NONE
         self.query_one("#tech-target", Select).value = -1
-        self.tested_attribute = PROFILES[genre].attributes[0]
+        self.tested_attribute = PROFILES[session.profile_id].attributes[0]
         for index in range(3):
             self.query_one(f"#attribute-rank-{index}", Select).value = index + 1
         self.clear_result_display()
@@ -389,9 +396,6 @@ class RollerApp(SessionActions, App):
         self.update_kit_controls()
         self.update_preview()
         self.update_strain_controls()
-        message = f"Switched to {PROFILES[genre].name}; active test cleared."
-        self.feedback(message)
-        self.record(HistoryEntry(notice=message))
 
     def clear_result_display(self) -> None:
         self.query_one("#tested-attribute", Static).update("")
@@ -475,6 +479,7 @@ class RollerApp(SessionActions, App):
         action = {
             "save-session": self.action_save_session,
             "export-history": self.action_export_history,
+            "new-character": self.action_new_character,
             "load-session": self.action_load_session,
             "take-strain": self.take_strain,
             "take-wound": self.take_wound,

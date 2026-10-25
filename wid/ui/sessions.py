@@ -123,6 +123,35 @@ class SessionActions:
         else:
             self.feedback("Export canceled; existing file unchanged.")
 
+    def action_new_character(self) -> None:
+        if self.pending_genre is not None:
+            return
+        if self.has_unsaved_state():
+            self.push_screen(
+                ConfirmSessionAction(
+                    "Start a new character? This clears the character, ranks, items, strain and "
+                    "the current roll. The history, notes and file path stay."
+                ),
+                self.finish_new_character,
+            )
+        else:
+            self.finish_new_character(True)
+
+    def finish_new_character(self, confirmed: bool) -> None:
+        if not confirmed:
+            self.feedback("New character canceled; current character unchanged.")
+            return
+        with self.prevent(Input.Changed, Select.Changed):
+            for field in CHARACTER_LABELS:
+                self.query_one(f"#character-{field}", Input).value = ""
+            for field in self.query(BonusName):
+                field.value = ""
+            self.query_one("#fear", Select).value = 0
+        self.start_fresh_session(RollSession(profile_id=self.session.profile_id))
+        message = "New character started."
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
     def action_load_session(self) -> None:
         if self.pending_genre is not None:
             return
