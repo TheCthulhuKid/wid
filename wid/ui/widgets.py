@@ -259,6 +259,7 @@ class ItemsGroup(Vertical):
 class StrainGroup(Vertical):
     def compose(self) -> ComposeResult:
         yield Label(id="strain-total")
+        yield Button("Take 1 strain", id="take-strain", variant="primary")
         for row, ending in enumerate(("Wound", "Wound", "Defeat")):
             with Horizontal(classes="strain-row"):
                 with Horizontal(classes="strain-checks"):
@@ -272,7 +273,6 @@ class StrainGroup(Vertical):
                             tooltip=f"Row {row + 1}: {description}",
                         )
                 yield StrainName(row, placeholder=f"{ending} name")
-        yield Button("Take 1 strain", id="take-strain", variant="primary")
         yield Static(id="strain-status", markup=False)
 
 

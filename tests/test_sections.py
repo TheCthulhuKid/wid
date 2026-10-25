@@ -115,3 +115,14 @@ def test_reveal_opens_a_collapsed_section_for_the_controls_inside():
         assert app.session.strain.boxes[0]
 
     run(scenario)
+
+
+def test_take_strain_button_is_above_the_strain_boxes():
+    async def scenario(app, pilot):
+        await start_game(app, pilot)
+        button = await reveal(app, pilot, "#take-strain")
+        first_box = app.query_one("#strain-box-0")
+        last_box = app.query_one("#strain-box-11")
+        assert button.region.y < first_box.region.y < last_box.region.y
+
+    run(scenario)
