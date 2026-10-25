@@ -19,7 +19,7 @@ async def click_visible(app, pilot, selector):
 
 
 @pytest.mark.parametrize("genre", list(Genre))
-def test_named_items_apply_repeatedly_after_roll_in_every_kit(genre):
+def test_named_items_apply_once_after_roll_in_every_kit(genre):
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([3, 2, 1, 6, 1]))
         async with app.run_test(size=(100, 40)) as pilot:
@@ -33,9 +33,9 @@ def test_named_items_apply_repeatedly_after_roll_in_every_kit(genre):
             await pilot.press("ctrl+r")
             original = app.session.current_result
             history = list(app.history)
-            for _ in range(2):
-                await click_visible(app, pilot, "#apply-appropriate_item")
-            assert "1: 3+2=5 hit" in text(app, "#dice")
+            await click_visible(app, pilot, "#apply-appropriate_item")
+            assert "1: 3+1=4 miss" in text(app, "#dice")
+            assert app.query_one("#apply-appropriate_item", Button).disabled
             app.query_one("#item-target", Select).value = 1
             await click_visible(app, pilot, "#apply-inappropriate_item")
             assert "2: 2+1=3 miss" in text(app, "#dice")
@@ -43,9 +43,9 @@ def test_named_items_apply_repeatedly_after_roll_in_every_kit(genre):
             assert app.session.current_result.totals().expertise_hits == 1
             assert app.query_one("#apply-expertise", Button).disabled
             assert original.dice[0].bonus == 0
-            assert app.history[:-4] == history
-            assert len(app.history) == len(history) + 4
-            assert "Sword [bold]" in str(app.history[-4])
+            assert app.history[:-3] == history
+            assert len(app.history) == len(history) + 3
+            assert "Sword [bold]" in str(app.history[-3])
             assert "Teacup" in str(app.history[-2])
             assert "Fencing" in str(app.history[-1])
             assert app.session.total_strain == app.session.total_corruption == 0
@@ -145,5 +145,24 @@ def test_bonus_history_does_not_report_another_resource_cost(
                 assert "Corruption" not in str(app.history[-1])
                 assert "Corruption" not in text(app, "#resources")
             assert app.session.model_dump(exclude={"current_result", "bonuses"}) == before
+
+    asyncio.run(scenario())
+
+
+def test_undo_button_takes_back_the_last_item():
+    async def scenario():
+        app = RollerApp(rng=ScriptedRandom([3, 2, 1, 6]))
+        async with app.run_test(size=(100, 40)) as pilot:
+            await start_game(app, pilot)
+            app.query_one("#name-appropriate_item", Input).value = "Sword"
+            await pilot.press("ctrl+r")
+            assert app.query_one("#undo-bonus", Button).disabled
+            await click_visible(app, pilot, "#apply-appropriate_item")
+            assert "1: 3+1=4 miss" in text(app, "#dice")
+            await click_visible(app, pilot, "#undo-bonus")
+            assert "1: 3+0=3 miss" in text(app, "#dice")
+            assert app.query_one("#undo-bonus", Button).disabled
+            assert not app.query_one("#apply-appropriate_item", Button).disabled
+            assert "Undo" in str(app.history[-1])
 
     asyncio.run(scenario())

@@ -247,6 +247,7 @@ class ItemsGroup(Vertical):
         with Horizontal(id="item-target-row"):
             yield Label("Apply to die")
             yield Select([("Roll first", -1)], value=-1, allow_blank=False, id="item-target")
+            yield Button("Undo", id="undo-bonus", disabled=True)
         for kind in (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM):
             label = BONUS_LABELS[kind]
             with Horizontal(classes="named-bonus"):

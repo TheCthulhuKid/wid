@@ -59,6 +59,7 @@ Checkbox { width: 1fr; height: auto; }
 #item-target-row { height: 3; }
 #item-target-row Label { width: 14; padding: 1 0; }
 #item-target { width: 16; }
+#undo-bonus { margin-left: 1; }
 .named-bonus { height: 4; }
 .named-bonus .field { width: 1fr; }
 .named-bonus Button { width: 10; min-width: 0; margin: 1 0 0 1; }

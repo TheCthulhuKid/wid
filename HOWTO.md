@@ -19,6 +19,9 @@ Set the options under the attributes, then press **Roll**:
 - **Assisted**: tick it when the roll is assisted.
 - **Expertise**: tick it to include your expertise in the next roll.
 
+**Assisted** and **Expertise** apply to one roll: they untick themselves afterwards, so tick them
+again when they apply to the next one. **Scared** stays as you set it.
+
 The line under the options shows the size of the pool (for example `Pool: 4d6`). The result
 lists every die as *hit*, *miss* or *fumble* (green, yellow, red) with the totals below.
 
@@ -32,9 +35,11 @@ After a roll:
 1. Choose a die in **Apply to die**.
 2. Press **+1 value** beside the item you are using.
 
-Press it again to add more, on the same die or another. For expertise, name it and press
-**+1 hit** (or tick **Expertise** before rolling). Buttons stay greyed out until the name is filled
-in and there is a roll to change.
+Each item adds +1 to a single die, once per roll; its button greys out until your next roll. Use
+the other item on the same die or another. **Undo** takes back the last item or expertise bonus
+(and frees the item again); a new roll clears it. For expertise, name it and press **+1 hit**
+(or tick **Expertise** before rolling). Buttons stay greyed out until the name is filled in
+and there is a roll to change.
 
 ## Genre kits
 

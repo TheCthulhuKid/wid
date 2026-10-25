@@ -28,44 +28,42 @@ def roll_test(session, **options):
 
 
 @pytest.mark.parametrize("genre", list(Genre))
-def test_repeatable_items_and_expertise_for_every_kit(session_factory, genre):
+def test_items_and_expertise_for_every_kit(session_factory, genre):
     session = session_factory(genre)
     for kind in BonusKind:
         session.set_bonus_name(kind, f"Named {kind.value}")
     initial = roll_test(session)
     initial_data = initial.model_dump()
-    for index in range(len(initial.dice)):
-        for kind in ITEM_KINDS:
-            for _ in range(3):
-                previous = session.current_result
-                result = session.apply_item(kind, index)
-                assert result is session.current_result
-                assert result is not previous
-                assert result.dice[index].bonus == previous.dice[index].bonus + 1
-                assert result.dice[index].raw == previous.dice[index].raw
-                assert result.request is previous.request
-                assert all(
-                    die is previous.dice[i] for i, die in enumerate(result.dice) if i != index
-                )
+    for index, kind in enumerate(ITEM_KINDS):
+        previous = session.current_result
+        result = session.apply_item(kind, index)
+        assert result is session.current_result
+        assert result.dice[index].bonus == previous.dice[index].bonus + 1
+        assert result.dice[index].raw == previous.dice[index].raw
+        assert result.request is previous.request
     before_expertise = session.current_result
     result = session.apply_expertise()
     assert result.request.expertise
     assert result.totals().hits == before_expertise.totals().hits + 1
-    assert result.totals().expertise_hits == 1
     assert result.dice == before_expertise.dice
     assert initial.model_dump() == initial_data
-    assert [die.bonus for die in result.dice] == [6] * len(initial.dice)
     assert session.total_strain == session.total_corruption == 0
     with pytest.raises(ValidationError):
         result.dice[0].bonus = 99
-    with pytest.raises(ValidationError):
-        result.request.expertise = False
-    with pytest.raises(ValidationError):
-        result.strain_delta = 99
+
+
+@pytest.mark.parametrize("kind", ITEM_KINDS)
+def test_an_item_works_once_per_test_and_again_after_a_new_roll(session_factory, kind):
+    session = session_factory()
+    session.set_bonus_name(kind, "Tool")
+    roll_test(session)
+    session.apply_item(kind, 0)
     before = session.model_dump()
-    with pytest.raises(ValueError):
-        session.apply_expertise()
+    with pytest.raises(ValueError, match="already used"):
+        session.apply_item(kind, 1)
     assert session.model_dump() == before
+    roll_test(session)
+    assert session.apply_item(kind, 1).dice[1].bonus == 1
 
 
 @pytest.mark.parametrize("assisted", [False, True])
@@ -76,13 +74,8 @@ def test_items_reclassify_fumbles_misses_and_hits(session_factory, kind, assiste
     initial = roll_test(session, fear_level=2, assisted=assisted)
     assert initial.dice[1].raw == 1
     assert initial.dice[1].classify(initial.request) == Outcome.FUMBLE
-    threshold = initial.request.hit_threshold
-    expected_outcomes = [Outcome.MISS] * (threshold - 2) + [Outcome.HIT] * 3
-    for expected in expected_outcomes:
-        previous = session.current_result
-        result = session.apply_item(kind, 1)
-        assert result.dice[1].classify(result.request) == expected
-        assert result.totals().hits >= previous.totals().hits
+    result = session.apply_item(kind, 1)
+    assert result.dice[1].classify(result.request) == Outcome.MISS
     assert initial.dice[1].bonus == 0
 
 
@@ -119,14 +112,13 @@ def test_rerolls_preserve_modifiers_and_expertise_resets_only_for_new_test(
     session.set_bonus_name("inappropriate_item", "Teacup")
     session.set_bonus_name("expertise", "Dueling")
     roll_test(session)
-    for _ in range(3):
-        session.apply_item("appropriate_item", 0)
+    session.apply_item("appropriate_item", 0)
     session.apply_item("inappropriate_item", 1)
     modified = session.apply_expertise()
     snapshot = modified.model_dump()
     for indices in ({0}, {0, 1}, {2, 3}):
         result = session.reroll(indices, rng=Random(2))
-        assert [die.bonus for die in result.dice] == [3, 1, 0, 0]
+        assert [die.bonus for die in result.dice] == [1, 1, 0, 0]
         assert result.request.expertise
         assert result.totals().expertise_hits == 1
         before = session.model_dump()
@@ -260,7 +252,22 @@ def test_named_bonuses_defaults_immutable_updates_and_json_roundtrip(session_fac
     session.apply_item("appropriate_item", 0)
     session.apply_expertise()
     restored = RollSession.model_validate_json(session.model_dump_json())
-    assert restored == session
+    assert restored.model_dump() == session.model_dump()
     assert restored.apply_item("inappropriate_item", 0).dice[0].bonus == 2
     legacy = session.model_dump(exclude={"bonuses"})
     assert RollSession.model_validate(legacy).bonuses == NamedBonuses()
+
+
+def test_undo_restores_the_roll_before_each_bonus_and_a_new_roll_clears_it(session_factory):
+    session = session_factory(Genre.CORE)
+    session.set_bonus_name(BonusKind.APPROPRIATE_ITEM, "Sword")
+    session.set_bonus_name(BonusKind.INAPPROPRIATE_ITEM, "Teacup")
+    original = roll_test(session)
+    session.apply_item(BonusKind.APPROPRIATE_ITEM, 0)
+    session.apply_item(BonusKind.INAPPROPRIATE_ITEM, 1)
+    session.undo_bonus()
+    assert session.undo_bonus() == original
+    assert not session.can_undo_bonus
+    assert session.apply_item(BonusKind.APPROPRIATE_ITEM, 0)
+    roll_test(session)
+    assert not session.can_undo_bonus

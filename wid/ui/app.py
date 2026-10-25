@@ -321,7 +321,10 @@ class RollerApp(SessionActions, App):
             available = result is not None and bool(getattr(self.session.bonuses, kind).strip())
             if kind == BonusKind.EXPERTISE and result is not None:
                 available = available and not result.request.expertise
+            elif result is not None:
+                available = available and kind not in result.applied_items
             self.query_one(f"#apply-{kind}", Button).disabled = not available
+        self.query_one("#undo-bonus", Button).disabled = not self.session.can_undo_bonus
 
     def selected_dice(self) -> set[int]:
         return {box.index for box in self.query(RerollDie) if box.value}
@@ -475,6 +478,7 @@ class RollerApp(SessionActions, App):
             "load-session": self.action_load_session,
             "take-strain": self.take_strain,
             "take-wound": self.take_wound,
+            "undo-bonus": self.undo_bonus,
             "toggle-history": self.action_toggle_history,
             "start-game": self.start_game,
             "reroll_button": self.action_reroll,
@@ -507,6 +511,16 @@ class RollerApp(SessionActions, App):
         except ValueError as error:
             self.feedback(str(error))
         self.update_strain_controls()
+
+    def undo_bonus(self) -> None:
+        try:
+            result = self.session.undo_bonus()
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.feedback("")
+        self.show_result(result)
+        self.log_result(result, "Undo last item or expertise bonus", resource_cost=False)
 
     def apply_bonus(self, kind: BonusKind) -> None:
         if self.pending_genre is not None:
@@ -583,11 +597,18 @@ class RollerApp(SessionActions, App):
         self.show_result(result)
         self.update_strain_controls()
         self.log_result(result)
+        self.clear_roll_bonuses()
         self.update_tech_controls()
         if result.request.tech_target is not None and self.session.tech.remaining_bonus == 0:
             self.feedback(
                 "Tech depleted: target cleared; initialize/replace explicitly to use again."
             )
+
+    def clear_roll_bonuses(self) -> None:
+        """Assisted, Expertise and a power apply to one test; the next one starts without them."""
+        for selector in ("#assisted", "#expertise"):
+            self.query_one(selector, Checkbox).value = False
+        self.query_one("#power", Select).value = PowerMode.NONE
 
     def action_reroll(self) -> None:
         if self.pending_genre is not None:

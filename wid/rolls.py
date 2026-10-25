@@ -6,6 +6,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PrivateAttr,
     StrictBool,
     TypeAdapter,
     model_validator,
@@ -118,6 +119,8 @@ class RollResult(FrozenModel):
     dice: tuple[DieResult, ...]
     strain_delta: Annotated[int, Field(ge=0)] = 0
     corruption_delta: Annotated[int, Field(ge=0)] = 0
+    # Each item adds +1 to one die per test, so an item used here cannot be used again.
+    applied_items: frozenset[BonusKind] = frozenset()
 
     @model_validator(mode="after")
     def validate_pool(self) -> Self:
@@ -241,6 +244,8 @@ class RollSession(BaseModel):
     total_corruption: int = Field(default=0, ge=0)
     strain: StrainTracker = Field(default_factory=StrainTracker)
     bonuses: NamedBonuses = Field(default_factory=NamedBonuses)
+    # Results before each item or expertise bonus, newest last; not saved and cleared by a roll.
+    _before_bonus: list[RollResult] = PrivateAttr(default_factory=list)
 
     @model_validator(mode="after")
     def validate_attributes(self) -> Self:
@@ -268,14 +273,17 @@ class RollSession(BaseModel):
             raise ValueError("Expertise is not an item")
         previous = self._named_bonus_result(kind)
         index = TypeAdapter(Index).validate_python(index)
+        if kind in previous.applied_items:
+            raise ValueError(f"The {kind.value.replace('_', ' ')} was already used on this test")
         if index >= len(previous.dice):
             raise ValueError("Item target is outside the dice pool")
         dice = list(previous.dice)
         die = dice[index]
         dice[index] = DieResult(raw=die.raw, bonus=die.bonus + 1)
-        candidate = previous.model_copy(update={"dice": tuple(dice)})
-        self.current_result = candidate
-        return candidate
+        candidate = previous.model_copy(
+            update={"dice": tuple(dice), "applied_items": previous.applied_items | {kind}}
+        )
+        return self._replace_result(candidate)
 
     def apply_expertise(self) -> RollResult:
         previous = self._named_bonus_result(BonusKind.EXPERTISE)
@@ -283,8 +291,22 @@ class RollSession(BaseModel):
             raise ValueError("Expertise has already been applied to this test")
         request = previous.request.model_copy(update={"expertise": True})
         candidate = previous.model_copy(update={"request": request})
+        return self._replace_result(candidate)
+
+    def _replace_result(self, candidate: RollResult) -> RollResult:
+        self._before_bonus.append(self.current_result)
         self.current_result = candidate
         return candidate
+
+    @property
+    def can_undo_bonus(self) -> bool:
+        return bool(self._before_bonus)
+
+    def undo_bonus(self) -> RollResult:
+        if not self._before_bonus:
+            raise ValueError("No item or expertise bonus to undo")
+        self.current_result = self._before_bonus.pop()
+        return self.current_result
 
     def configure_attributes(self, ranks: tuple[int, ...]) -> AttributeSetup:
         if self.attributes is not None:
@@ -323,6 +345,7 @@ class RollSession(BaseModel):
         self.tech = next_tech
         self.strain = next_strain
         self.total_strain += candidate.strain_delta
+        self._before_bonus.clear()
         self.current_result = candidate
         return candidate
 
@@ -362,7 +385,9 @@ class RollSession(BaseModel):
                 for index, die in enumerate(previous.dice)
             ),
             corruption_delta=len(indices),
+            applied_items=previous.applied_items,
         )
         self.total_corruption += candidate.corruption_delta
+        self._before_bonus.clear()
         self.current_result = candidate
         return candidate

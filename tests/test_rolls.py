@@ -200,11 +200,10 @@ def test_oldheart_subset_repeated_rerolls_and_immutable_snapshots():
     session.set_bonus_name("appropriate_item", "Sword")
     initial = session.roll(request, rng=ScriptedRandom([1, 2, 3, 4]))
     initial_snapshot = initial.model_dump()
-    for index in (0, 0, 2):
-        session.apply_item("appropriate_item", index)
+    session.apply_item("appropriate_item", 0)
     first = session.reroll({0, 2}, rng=ScriptedRandom([6, 1]))
     assert [die.raw for die in first.dice] == [6, 2, 1, 4]
-    assert [die.bonus for die in first.dice] == [2, 0, 1, 0]
+    assert [die.bonus for die in first.dice] == [1, 0, 0, 0]
     assert first.dice[1] is initial.dice[1]
     assert first.dice[3] is initial.dice[3]
     assert first.request == request
@@ -212,7 +211,7 @@ def test_oldheart_subset_repeated_rerolls_and_immutable_snapshots():
     assert first.strain_delta == 0
     assert first.totals().hits == 2
     second = session.reroll({0}, rng=ScriptedRandom([1]))
-    assert second.dice[0].effective == 3
+    assert second.dice[0].effective == 2
     assert second.corruption_delta == 1
     assert session.total_corruption == 3
     assert second.totals().hits == 1
