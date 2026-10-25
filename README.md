@@ -25,6 +25,12 @@ It installs the pinned build environment, builds with PyInstaller, runs the self
 (with `-Smoke`) presses real keys in a Windows pseudo console, then writes the zip and its
 checksum to `dist\`. Add `-Python 3.13` to choose the interpreter.
 
+`.github/workflows/ci.yml` runs the tests, `ruff check` and `ruff format --check` on Linux for
+every pull request and push to `main`. The workflow `.github/workflows/release.yml` runs the same script (with
+`-Smoke`) on `windows-latest` when something is merged (pushed) to `main` and for version tags, and uploads the zip as a
+build artifact. Pushing a tag such as `v0.1.0` (it must match the version in `pyproject.toml`)
+also attaches the zip and checksum to a draft GitHub release, which you publish yourself.
+
 ## Install and run
 
 Requires Python 3.13+. Install [uv](https://docs.astral.sh/uv/), then install from
@@ -88,8 +94,7 @@ wid/
     ├── dialogs.py      # Confirmation screens
     ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
     └── roller.tcss     # Bundled interface styles
-packages/huckdeck/      # Separate distribution (own pyproject.toml and tests)
-└── huckdeck/           # cli.py, deck.py, ui/{app,dialogs}.py, ui/dealer.tcss
+.github/workflows/      # ci.yml: tests, ruff; release.yml: Windows build, draft release
 release/                # PyInstaller spec, Windows build script, smoke test, icon
 tests/                  # Domain, persistence, headless UI, and launch tests
 HOWTO.md                # How to use the program (for players)
@@ -98,37 +103,7 @@ HOWTO.md                # How to use the program (for players)
 The UI calls the domain models; game rules remain independent of Textual.
 Persistence depends on the models, not the interface. Package initializers do not
 import the application.
-WiD and HuckDeck are independent sibling packages: neither imports the other.
-They are separate distributions in one uv workspace: installing `wid` does not install
-`huckdeck`, and vice versa. Only the root `uv.lock` and dev environment are shared.
 
-## Card dealer
-
-Install with `uv tool install ./packages/huckdeck`, then run `huckdeck`; from a checkout,
-`uv sync` also installs it for development.
-The package also runs with `.venv/bin/python -m huckdeck`.
-For development, `uv sync --offline --locked --group dev` refreshes the installed commands
-when dependencies are cached. The `wid` command continues to launch the dice roller.
-
-- The shuffled deck contains 52 standard cards plus **four suited jokers**, one per suit.
-- Click **Deal** or press **Ctrl+D**. Drawing an **ace or joker** immediately draws
-  another card, continuing until a non-ace, non-joker is drawn or the deck is empty.
-  Every card in the chain is removed from the deck and shown in the deal status and
-  dealt list; the last card becomes the current card. Aces also appear in the separate
-  **Dealt aces** tracker. Running out of cards ends the chain without reshuffling.
-- The current card uses a bordered face with colored **♥ ♦ ♣ ♠** symbols and text labels;
-  no image files, extra dependencies, or terminal image protocol are required.
-- Remaining cards are listed by suit in rank order, without revealing the next draw.
-  Dealt cards are listed oldest first. An exhausted deck cannot deal again until shuffled.
-- Edit each suit's description; it appears beneath cards of that suit.
-- **Restore & shuffle** or **Ctrl+S** returns **all 56 cards**, clears the current card,
-  dealt list, and ace tracker, and randomizes the deck. Confirm before discarding dealt cards.
-  Suit descriptions are retained. Press **D** to change theme when not typing in a field.
-
-Dealer state and suit descriptions last for the current run only; they are independent of
-dice-roller saved sessions. Tab/Shift+Tab navigate controls, Enter activates buttons, and
-both panels scroll on smaller terminals. Domain tests inject seeded random sources;
-run `.venv/bin/python -m pytest packages/huckdeck/tests` for dealer checks.
 
 ## Tests
 

@@ -24,15 +24,11 @@ only-include = [
     "wid", "release", "README.md", "HOWTO.md", "pyproject.toml", "uv.lock", "tests",
 ]
 
-[tool.uv.workspace]
-members = ["packages/huckdeck"]
-
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.7",
     "textual-dev>=1.8.0",
-    "huckdeck",
     "pytest-xdist>=3.8.0",
 ]
 release = [
@@ -44,12 +40,9 @@ smoke = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["tests", "packages/huckdeck/tests"]
+testpaths = ["tests"]
 addopts = "-n 4"
 markers = ["ui: starts an application (slow); deselect with -m \"not ui\""]
-
-[tool.uv.sources]
-huckdeck = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -58,4 +51,4 @@ line-length = 100
 select = ["E", "F", "I", "UP"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["wid", "huckdeck"]
+known-first-party = ["wid"]
