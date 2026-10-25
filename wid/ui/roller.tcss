@@ -40,7 +40,6 @@ StrainGroup { height: auto; margin: 1 0; }
 }
 .strain-row .strain-ending.-on { background: $error 35%; border: tall $error; }
 .strain-row .strain-ending.-on > .toggle--button { background: $error; }
-#strain-total { text-style: bold; }
 .strain-box { width: 4; }
 .strain-ending { width: 13; }
 .strain-row Input { width: 1fr; min-width: 30; }

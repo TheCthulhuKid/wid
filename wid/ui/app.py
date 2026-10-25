@@ -243,9 +243,6 @@ class RollerApp(SessionActions, App):
     def update_strain_status(self) -> None:
         tracker = self.session.strain
         self.query_one("#strain-section", Collapsible).title = strain_summary(tracker)
-        self.query_one("#strain-total", Label).update(
-            f"Character strain: {sum(tracker.boxes)} / 12 marked"
-        )
         status = "Mark strain as it is taken. A wound needs the strain before it marked first."
         if tracker.defeated:
             status = "Defeat — character ended."

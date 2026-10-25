@@ -1,7 +1,7 @@
 """Plain-text renderings of a roll, shared by the result panel and the history log."""
 
 from wid.profiles import PROFILES
-from wid.rolls import Outcome, RollResult, StrainTracker
+from wid.rolls import STRAIN_ENDINGS, Outcome, RollResult, StrainTracker
 
 # A piece of text and the outcome it should be coloured as, if any.
 Part = tuple[str, Outcome | None]
@@ -76,7 +76,14 @@ def resources_line(
     return text
 
 
-def strain_summary(tracker: StrainTracker) -> str:
-    """One-line strain state, for the title of the collapsible strain section."""
-    text = f"Strain {sum(tracker.boxes)} / {len(tracker.boxes)}"
+def strain_counts(tracker: StrainTracker) -> str:
+    """Marked strain and wounds, such as ``3 strain, 1 wound``; Defeat is added when marked."""
+    wounds = sum(tracker.boxes[ending] for ending in STRAIN_ENDINGS[:-1])
+    strain = sum(tracker.boxes) - wounds - tracker.defeated
+    text = f"{strain} strain, {wounds} {'wound' if wounds == 1 else 'wounds'}"
     return f"{text} — Defeat" if tracker.defeated else text
+
+
+def strain_summary(tracker: StrainTracker) -> str:
+    """Title of the collapsible strain section, so the state shows while it is folded away."""
+    return f"Strain tracker: {strain_counts(tracker)}"

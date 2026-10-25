@@ -67,7 +67,8 @@ Three rows of boxes: strain, strain, strain, then a wound (the last row ends in 
 - Boxes that cannot change are greyed out; hover over one to see why.
 - Type a name beside each wound.
 
-The title shows the total (`Strain 3 / 12`) even when the tracker is folded away.
+The title counts what is marked (`Strain tracker: 3 strain, 1 wound`), even when the tracker is
+folded away. A wound is not counted as strain.
 
 ## Character, notes and saving
 

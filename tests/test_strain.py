@@ -5,8 +5,9 @@ import pytest
 from helpers import reveal
 from test_rollerapp import start_game, text
 from test_session_app import click_control, load_game
-from textual.widgets import Button, Checkbox, Input, Select
+from textual.widgets import Button, Checkbox, Collapsible, Input, Select
 
+from wid.formatting import strain_summary
 from wid.profiles import Genre
 from wid.rolls import STRAIN_ENDINGS, PowerMode, RollRequest, StrainTracker
 from wid.sessions import SavedSession
@@ -184,19 +185,23 @@ def test_invalid_saved_tracker_is_rejected(saved_session_factory, tracker):
         SavedSession.model_validate(data)
 
 
+def strain_title(app):
+    return app.query_one("#strain-section", Collapsible).title
+
+
 @pytest.mark.parametrize("size", [(80, 24), (100, 35), (140, 45)])
 def test_tracker_mouse_clicks(size):
     async def scenario():
         app = RollerApp()
         async with app.run_test(size=size) as pilot:
             await start_game(app, pilot)
-            assert text(app, "#strain-total") == "Character strain: 0 / 12 marked"
+            assert strain_title(app) == "Strain tracker: 0 strain, 0 wounds"
             box = app.query_one("#strain-box-0", Checkbox)
             unchecked_background = box.styles.background
             await click_control(app, pilot, "#take-strain")
             assert app.session.strain.boxes[0]
             assert box.value
-            assert text(app, "#strain-total") == "Character strain: 1 / 12 marked"
+            assert strain_title(app) == "Strain tracker: 1 strain, 0 wounds"
             assert box.styles.background != unchecked_background
             # Box 0 is unmarked and marked again, then every box in order up to Defeat.
             for index in [0, *range(12)]:
@@ -206,9 +211,7 @@ def test_tracker_mouse_clicks(size):
                 await pilot.pause()
                 assert box.value is not previous
                 assert app.session.strain.boxes[index] == box.value
-                assert text(app, "#strain-total") == (
-                    f"Character strain: {sum(app.session.strain.boxes)} / 12 marked"
-                )
+                assert strain_title(app) == strain_summary(app.session.strain)
             assert all(app.session.strain.boxes)
 
     asyncio.run(scenario())
@@ -255,9 +258,7 @@ def test_tracker_ui_keyboard_save_load_and_defeat(tmp_path):
             restored.query_one("#session-path", Input).value = str(path)
             await load_game(restored, pilot)
             assert restored.session.strain == expected
-            assert text(restored, "#strain-total") == (
-                f"Character strain: {sum(expected.boxes)} / 12 marked"
-            )
+            assert strain_title(restored) == strain_summary(expected)
             for index, checked in enumerate(expected.boxes):
                 assert restored.query_one(f"#strain-box-{index}", Checkbox).value == checked
             assert restored.query_one("#strain-name-2", Input).value == "Last stand"
@@ -304,7 +305,7 @@ def test_power_ui_and_confirmed_tracker_reset():
             await pilot.pause()
             await pilot.press("ctrl+r")
             assert app.session.strain == StrainTracker().take(2)
-            assert text(app, "#strain-total") == "Character strain: 2 / 12 marked"
+            assert strain_title(app) == "Strain tracker: 2 strain, 0 wounds"
             assert app.query_one("#strain-box-1", Checkbox).value
             app.show_result(app.session.current_result)
             assert app.session.strain == StrainTracker().take(2)

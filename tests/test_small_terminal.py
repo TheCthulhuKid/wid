@@ -31,7 +31,10 @@ def test_a_short_terminal_uses_one_row_controls_and_starts_collapsed():
         for selector in CONFIG_CONTROLS:
             assert app.query_one(selector).compact, selector
         assert collapsed(app, "strain") and collapsed(app, "items")
-        assert app.query_one("#strain-section", Collapsible).title == "Strain 0 / 12"
+        assert (
+            app.query_one("#strain-section", Collapsible).title
+            == "Strain tracker: 0 strain, 0 wounds"
+        )
 
     run(scenario, (80, 24))
 
