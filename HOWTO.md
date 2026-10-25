@@ -15,7 +15,7 @@ wid is a dice roller and tracker for **We're in Danger**.
 
 Set the options under the attributes, then press **Roll**:
 
-- **Fear**: pick 0 to 3.
+- **Scared**: pick 0 to 3.
 - **Assisted**: tick it when the roll is assisted.
 - **Expertise**: tick it to include your expertise in the next roll.
 

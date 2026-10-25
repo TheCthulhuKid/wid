@@ -15,7 +15,7 @@ SCREEN_LABELS = [
     "Load game",
     "Character",
     "Session",
-    "Fear",
+    "Scared",
     "Assisted",
     "Expertise",
     "Items",

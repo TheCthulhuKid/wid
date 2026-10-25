@@ -198,11 +198,11 @@ class SessionFile(Vertical):
 
 
 class RollOptions(Horizontal):
-    """Fear, assisted and expertise for the next test."""
+    """Scared, assisted and expertise for the next test."""
 
     def compose(self) -> ComposeResult:
         with Vertical(id="fear-field", classes="field"):
-            yield Label("Fear")
+            yield Label("Scared")
             yield Select([(str(n), n) for n in range(4)], value=0, allow_blank=False, id="fear")
         with Vertical(classes="field", id="assisted-field"):
             yield Label("Assisted")
