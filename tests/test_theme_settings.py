@@ -4,6 +4,7 @@ from textual.widgets import Static
 
 from wid.settings import Settings, load_settings, save_settings
 from wid.ui.app import RollerApp
+from wid.ui.themes import DANGER, DANGER_THEME, HIGHLIGHT
 
 
 def run(settings_path, scenario):
@@ -30,7 +31,7 @@ def test_unknown_saved_theme_is_ignored(tmp_path):
     save_settings(Settings(theme="no-such-theme"), path)
 
     async def scenario(app, pilot):
-        assert app.theme == "textual-dark"
+        assert app.theme == DANGER_THEME
 
     run(path, scenario)
 
@@ -94,3 +95,30 @@ def test_failed_save_from_the_theme_picker_is_reported(tmp_path):
         assert "Could not save settings" in str(app.query_one("#feedback", Static).content)
 
     run(blocker / "settings.json", scenario)
+
+
+def test_character_sheet_theme_is_the_default_and_in_the_picker(tmp_path):
+    async def scenario(app, pilot):
+        assert app.theme == DANGER_THEME
+        assert app.available_themes[DANGER_THEME] is DANGER
+        assert DANGER.primary == DANGER.error == HIGHLIGHT == "#B22222"
+
+    run(tmp_path / "settings.json", scenario)
+
+
+def test_character_sheet_theme_name_round_trips(tmp_path):
+    path = tmp_path / "settings.json"
+
+    async def pick(app, pilot):
+        app.theme = "nord"
+        await pilot.pause()
+        app.theme = DANGER_THEME
+        await pilot.pause()
+        assert load_settings(path).theme == DANGER_THEME
+
+    run(path, pick)
+
+    async def restored(app, pilot):
+        assert app.theme == DANGER_THEME
+
+    run(path, restored)

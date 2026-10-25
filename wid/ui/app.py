@@ -36,6 +36,7 @@ from wid.settings import load_settings, save_settings
 from wid.ui.dialogs import ConfirmReset
 from wid.ui.outcomes import dice_content, summary_content
 from wid.ui.sessions import SessionActions
+from wid.ui.themes import DANGER, DANGER_THEME
 from wid.ui.widgets import (
     BONUS_LABELS,
     AttributeRollButton,
@@ -84,6 +85,7 @@ class RollerApp(SessionActions, App):
         self.rng = rng if rng is not None else Random()
         self.settings_path = settings_path
         self.settings = load_settings(settings_path)
+        self.register_theme(DANGER)
         self.layout: dict[str, object] = {}
         self.session = RollSession()
         self.history: list[HistoryEntry] = []
@@ -201,8 +203,9 @@ class RollerApp(SessionActions, App):
         self.update_strain_controls()
 
     def restore_theme(self) -> None:
-        if self.settings.theme in self.available_themes:
-            self.theme = self.settings.theme
+        self.theme = (
+            self.settings.theme if self.settings.theme in self.available_themes else DANGER_THEME
+        )
         self.watch(self, "theme", self.remember_theme, init=False)
         self.watch(self, "theme", self.redraw_outcomes, init=False)
 

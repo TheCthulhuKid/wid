@@ -94,7 +94,7 @@ notes, character details and the history.
 | **Ctrl+R** | Roll again with the last attribute |
 | **C** / **S** | Open the Character / Session tab, then Tab or the arrow keys to move in |
 | **T** / **I** | Fold or unfold the strain tracker / the items |
-| **D** | Pick a colour theme (it is remembered) |
+| **D** | Pick a colour theme (it is remembered; the default is "danger", cream with red highlights) |
 | **Ctrl+L** | Show or hide the history log |
 | **Tab** / **Shift+Tab** | Move between controls |
 | **Ctrl+Q** | Quit |

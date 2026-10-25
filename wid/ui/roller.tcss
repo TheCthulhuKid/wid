@@ -86,3 +86,7 @@ ConfirmReset, ConfirmSessionAction, LoadGame { align: center middle; background:
 .short .named-bonus { height: 2; }
 .short .named-bonus Button { margin: 0 0 0 1; }
 .short .button-row, .short #notes-toolbar { height: 1; }
+
+/* Danger theme: cream paper behind lavender fields, with a charcoal title bar. */
+.-theme-danger Screen { background: $background; }
+.-theme-danger Header { background: $secondary; color: $background; }
