@@ -221,6 +221,14 @@ class StrainTracker(FrozenModel):
                 points -= 1
         return type(self)(boxes=boxes, names=self.names)
 
+    def take_wound(self) -> Self:
+        """Mark everything up to and including the next unmarked wound (or Defeat)."""
+        ending = next((index for index in STRAIN_ENDINGS if not self.boxes[index]), None)
+        if ending is None:
+            raise ValueError("Defeat is already marked")
+        boxes = [index <= ending or marked for index, marked in enumerate(self.boxes)]
+        return type(self)(boxes=boxes, names=self.names)
+
 
 class RollSession(BaseModel):
     model_config = ConfigDict(extra="forbid")

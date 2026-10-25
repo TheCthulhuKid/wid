@@ -474,6 +474,7 @@ class RollerApp(SessionActions, App):
             "export-history": self.action_export_history,
             "load-session": self.action_load_session,
             "take-strain": self.take_strain,
+            "take-wound": self.take_wound,
             "toggle-history": self.action_toggle_history,
             "start-game": self.start_game,
             "reroll_button": self.action_reroll,
@@ -498,6 +499,13 @@ class RollerApp(SessionActions, App):
 
     def take_strain(self) -> None:
         self.session.strain = self.session.strain.take(1)
+        self.update_strain_controls()
+
+    def take_wound(self) -> None:
+        try:
+            self.session.strain = self.session.strain.take_wound()
+        except ValueError as error:
+            self.feedback(str(error))
         self.update_strain_controls()
 
     def apply_bonus(self, kind: BonusKind) -> None:

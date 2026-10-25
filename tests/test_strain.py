@@ -94,6 +94,17 @@ def test_take_passes_through_a_marked_wound():
     assert StrainTracker().take(5).boxes == (True,) * 5 + (False,) * 7
 
 
+@pytest.mark.parametrize("points,ending", [(1, 3), (5, 7)])
+def test_take_wound_fills_everything_up_to_the_next_wound(points, ending):
+    result = StrainTracker().take(points).take_wound()
+    assert result.boxes == (True,) * (ending + 1) + (False,) * (11 - ending)
+
+
+def test_take_wound_after_defeat_is_refused():
+    with pytest.raises(ValueError, match="Defeat is already marked"):
+        StrainTracker().take(12).take_wound()
+
+
 @pytest.mark.parametrize("wound", STRAIN_ENDINGS)
 def test_tracker_with_a_wound_and_a_gap_is_rejected(wound):
     boxes = [True] * wound + [False] * (12 - wound)
@@ -187,6 +198,18 @@ def test_invalid_saved_tracker_is_rejected(saved_session_factory, tracker):
 
 def strain_title(app):
     return app.query_one("#strain-section", Collapsible).title
+
+
+def test_take_wound_button_fills_the_row():
+    async def scenario():
+        app = RollerApp()
+        async with app.run_test(size=(100, 45)) as pilot:
+            await start_game(app, pilot)
+            await click_control(app, pilot, "#take-wound")
+            assert app.session.strain.boxes == (True,) * 4 + (False,) * 8
+            assert strain_title(app) == "Strain tracker: 3 strain, 1 wound"
+
+    asyncio.run(scenario())
 
 
 @pytest.mark.parametrize("size", [(80, 24), (100, 35), (140, 45)])

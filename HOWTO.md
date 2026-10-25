@@ -61,7 +61,8 @@ again and press **Start game**.
 
 Three rows of boxes: strain, strain, strain, then a wound (the last row ends in Defeat).
 
-- **Take 1 strain** fills the next box. You can also click boxes yourself.
+- **Take 1 strain** fills the next box. **Take 1 wound** fills every box up to and including
+  the next wound (Defeat after the second). You can also click boxes yourself.
 - A wound can only be ticked after every box before it is ticked.
 - While a wound is ticked, the boxes before it stay ticked. Clear the latest wound first.
 - Boxes that cannot change are greyed out; hover over one to see why.
