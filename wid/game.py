@@ -302,11 +302,15 @@ class Game:
         if not self.history:
             raise ValueError("There is no history to export yet.")
 
-    def export_history(self, text: str, *, overwrite: bool = False) -> str:
+    def history_text(self) -> str:
+        """The history as the Markdown an export writes (or a browser downloads)."""
         self.require_history()
+        return history_markdown(self.name, self.character, self.history)
+
+    def export_history(self, text: str, *, overwrite: bool = False) -> str:
+        markdown = self.history_text()
         try:
             path = session_file_path(text, label="history file")
-            markdown = history_markdown(self.name, self.character, self.history)
             write_text(path, markdown, overwrite=overwrite)
         except FileExistsError as error:
             raise file_exists(path) from error

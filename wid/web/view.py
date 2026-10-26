@@ -23,6 +23,7 @@ from wid.rolls import (
     PowerMode,
     ResourceEffect,
 )
+from wid.web.forms import NeedsConfirmation
 
 # The terminal's Danger theme on paper, and a dark variant for browsers set to dark mode. The
 # outcome colours are checked against the paper and the fields (tests/test_web_sheet.py).
@@ -79,7 +80,9 @@ def notes_html(text: str) -> str:
     return MARKDOWN.render(text)
 
 
-def sheet_context(game: Game, message: str, *, preview: bool) -> dict[str, object]:
+def sheet_context(
+    game: Game, message: str, *, preview: bool, ask: NeedsConfirmation | None = None
+) -> dict[str, object]:
     """Everything the sheet template reads, worded by the same functions the terminal uses."""
     session = game.session
     result = session.current_result
@@ -107,6 +110,8 @@ def sheet_context(game: Game, message: str, *, preview: bool) -> dict[str, objec
         "tech_line": tech_starting_line(session.tech),
         "history": [str(entry) for entry in reversed(game.history)],
         "preview": preview,
+        "ask": ask,
+        "export_path": game.default_export_path(),
         "notes_html": notes_html(game.notes) if preview else "",
         "confirm": game.has_unsaved_state(),
         "bonus_labels": BONUS_LABELS,

@@ -12,6 +12,7 @@ Three checks guard every request, because save and export can write files:
 """
 
 import asyncio
+import re
 import secrets
 from pathlib import Path
 
@@ -22,7 +23,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.templating import Jinja2Templates
 
 from wid.game import Game
-from wid.web.forms import ACTIONS, SheetForm, collect
+from wid.web.forms import ACTIONS, NeedsConfirmation, SheetForm, collect
 from wid.web.view import COLOURS, css_variables, sheet_context
 
 HOSTS = ["127.0.0.1", "localhost"]
@@ -36,10 +37,21 @@ def matches(offered: str, token: str) -> bool:
     return secrets.compare_digest(offered.encode(), token.encode())
 
 
+def download_name(game: Game) -> str:
+    # The name goes into a response header, so only plain filename characters are kept.
+    return re.sub(r"[^\w.-]", "_", Path(game.default_export_path()).name)
+
+
 def render(
-    request: Request, template: str, game: Game, message: str, *, preview: bool = False
+    request: Request,
+    template: str,
+    game: Game,
+    message: str,
+    *,
+    preview: bool = False,
+    ask: NeedsConfirmation | None = None,
 ) -> Response:
-    context = sheet_context(game, message, preview=preview)
+    context = sheet_context(game, message, preview=preview, ask=ask)
     context |= {"light": css_variables(COLOURS["light"]), "dark": css_variables(COLOURS["dark"])}
     return TEMPLATES.TemplateResponse(request, template, context)
 
@@ -80,14 +92,31 @@ def create_app(game: Game, token: str) -> FastAPI:
             raise HTTPException(404, "No such action")
         body = await request.body()
         async with lock:
-            preview = False
+            preview, ask = False, None
             try:
                 form = SheetForm(body)
                 preview = form.ticked("notes-preview")
                 collect(game, form)
                 message = action(game, form)
+            except NeedsConfirmation as question:
+                message, ask = "", question
             except ValueError as error:
                 message = str(error)
-            return render(request, "sheet.html", game, message, preview=preview)
+            return render(request, "sheet.html", game, message, preview=preview, ask=ask)
+
+    @app.get("/history.md")
+    async def download_history() -> Response:
+        async with lock:
+            try:
+                text = game.history_text()
+            except ValueError as error:
+                return PlainTextResponse(str(error), 404)
+            filename = download_name(game)
+        disposition = f'attachment; filename="{filename}"'
+        return Response(
+            text,
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": disposition},
+        )
 
     return app

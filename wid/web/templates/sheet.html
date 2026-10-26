@@ -247,6 +247,21 @@
         <textarea name="notes" rows="8">{{ game.notes }}</textarea>
       </label>
       {% if preview %}<div class="notes-preview">{{ notes_html | safe }}</div>{% endif %}
+
+      <div class="row named">
+        <label class="field grow">Session file
+          <input name="session-path" value="{{ game.path }}" placeholder="/path/to/session.json">
+        </label>
+        <button class="primary" formaction="/actions/save">Save session</button>
+        <button formaction="/actions/load">Load game</button>
+      </div>
+      <div class="row named">
+        <label class="field grow">History file
+          <input name="export-path" value="{{ export_path }}">
+        </label>
+        <button formaction="/actions/export" {% if not history %}disabled{% endif %}>Export history</button>
+        {% if history %}<a class="button" href="/history.md" download>Download history</a>{% endif %}
+      </div>
     </section>
   </div>
 
@@ -290,4 +305,15 @@
     {% endif %}
   </aside>
   </div>
+
+  {% if ask %}
+  {#- Shown as a modal by sheet.js; Replace sends the same action again with its flag set. -#}
+  <dialog class="ask" data-ask aria-labelledby="ask-question">
+    <p id="ask-question">{{ ask.question }}</p>
+    <div class="row">
+      <button class="primary" formaction="/actions/{{ ask.action }}" name="{{ ask.flag }}" value="1">Replace</button>
+      <button type="button" data-close>Cancel</button>
+    </div>
+  </dialog>
+  {% endif %}
 </form>

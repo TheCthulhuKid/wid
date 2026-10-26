@@ -26,6 +26,12 @@ function swap(html) {
   const name = active && active.getAttribute("name");
   const value = active && active.getAttribute("value");
   sheet().outerHTML = html;
+  // A question from the game (replace a file, discard a game) opens as a modal dialog.
+  const ask = sheet().querySelector("dialog[data-ask]");
+  if (ask) {
+    ask.showModal();
+    return;
+  }
   if (!name) return;
   const selector = value === null ? `[name="${name}"]` : `[name="${name}"][value="${value}"]`;
   const again = sheet().querySelector(selector);
@@ -101,6 +107,8 @@ function heading(notes) {
 }
 
 document.addEventListener("click", (event) => {
+  const close = event.target.closest("[data-close]");
+  if (close) close.closest("dialog").close();
   const button = event.target.closest("[data-format]");
   if (!button) return;
   const notes = sheet().elements.notes;

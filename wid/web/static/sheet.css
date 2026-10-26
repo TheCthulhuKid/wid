@@ -100,7 +100,7 @@ input:not([type]), input[type="text"], select, textarea {
 
 textarea { resize: vertical; line-height: 1.55; }
 
-button {
+button, a.button {
   padding: 0.45rem 0.95rem;
   font: inherit;
   font-weight: 600;
@@ -116,6 +116,20 @@ button.primary, button.roll {
   background: var(--danger);
   border-color: var(--danger);
 }
+
+a.button { display: inline-block; text-decoration: none; }
+
+.ask {
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 1.25rem 1.5rem 0.5rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-top: 4px solid var(--danger);
+  border-radius: 6px;
+}
+
+.ask::backdrop { background: rgb(0 0 0 / 0.45); }
 
 button:disabled, input:disabled, select:disabled {
   opacity: 0.45;

@@ -13,6 +13,17 @@ from wid.rolls import BonusKind, PowerMode, ResourceEffect
 from wid.sessions import CharacterDetails
 
 
+class NeedsConfirmation(Exception):
+    """An action that would replace something; the sheet asks, then sends ``action`` again
+    with ``flag`` set (the browser's version of the terminal's confirmation screens)."""
+
+    def __init__(self, question: str, action: str, flag: str):
+        super().__init__(question)
+        self.question = question
+        self.action = action
+        self.flag = flag
+
+
 class SheetForm:
     """The URL-encoded fields of one request.
 
@@ -89,8 +100,34 @@ def collect(game: Game, form: SheetForm) -> None:
     take_numbered(form, "strain-name", len(session.strain.names), session.set_strain_name)
 
 
-# Each route name, as in ``POST /actions/<name>``, and the game call it makes. Saving, loading
-# and exporting come later (PLAN.md step 5), with their confirmations.
+def save(game: Game, form: SheetForm) -> str:
+    try:
+        return game.save(overwrite=form.ticked("overwrite"))
+    except FileExistsError as error:
+        question = f"Replace the existing save at {error.filename}?"
+        raise NeedsConfirmation(question, "save", "overwrite") from error
+
+
+def load(game: Game, form: SheetForm) -> str:
+    saved, path = game.read_save(form.text("session-path"))
+    if game.has_unsaved_state() and not form.ticked("confirm"):
+        question = (
+            f"Load {saved.name}? This replaces the current game and history. "
+            "Unsaved changes will be lost."
+        )
+        raise NeedsConfirmation(question, "load", "confirm")
+    return game.load(saved, path)
+
+
+def export(game: Game, form: SheetForm) -> str:
+    try:
+        return game.export_history(form.text("export-path"), overwrite=form.ticked("overwrite"))
+    except FileExistsError as error:
+        question = f"Replace the existing file at {error.filename}?"
+        raise NeedsConfirmation(question, "export", "overwrite") from error
+
+
+# Each route name, as in ``POST /actions/<name>``, and the game call it makes.
 ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     "start-game": lambda game, form: game.start_game(tuple(form.numbers("rank"))),
     "roll": lambda game, form: game.roll(form.get("attribute")),
@@ -120,4 +157,7 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     # Shows the sheet again with the fields taken in, for changes such as Scared or the notes
     # preview that alter what the sheet shows without being a game action.
     "update": lambda game, form: "",
+    "save": save,
+    "load": load,
+    "export": export,
 }

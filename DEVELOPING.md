@@ -119,6 +119,7 @@ Package initializers do not import the application.
 ## Files the program writes
 
 **Session files** (JSON, chosen by the player). **Save session** is explicit, never automatic.
+The terminal and the browser version read and write the same files.
 A file holds the session name, character details, notes, genre, attribute ranks, the roll
 options, item and expertise names, the Heckboy power names and the power chosen for the next
 roll, the Tech slots and their names, the Oldheart manifestations, the Ball Season Standing, the This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their names, cumulative
