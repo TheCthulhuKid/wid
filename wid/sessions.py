@@ -76,6 +76,10 @@ class SavedSession(FrozenModel):
             raise ValueError("Only Heckboy can have strain")
         if session.total_corruption and session.profile_id != Genre.OLDHEART:
             raise ValueError("Only Oldheart can have Corruption")
+        if session.manifestations and session.profile_id != Genre.OLDHEART:
+            raise ValueError("Only Oldheart can have manifestations")
+        if self.draft.manifestations != len(session.manifestations):
+            raise ValueError("Draft manifestations must match the character's")
         if session.standing != STANDING_START and not PROFILES[session.profile_id].has_standing:
             raise ValueError("Only Ball Season can have Standing")
 

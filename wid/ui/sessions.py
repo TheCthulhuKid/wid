@@ -9,7 +9,14 @@ from wid.rolls import STANDING_START, RollSession
 from wid.sessions import CharacterDetails, SavedSession, session_file_path
 from wid.storage import write_text
 from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
-from wid.ui.widgets import CHARACTER_LABELS, BonusName, PowerName, RerollDie, TechName
+from wid.ui.widgets import (
+    CHARACTER_LABELS,
+    BonusName,
+    ManifestationName,
+    PowerName,
+    RerollDie,
+    TechName,
+)
 
 
 class SessionActions:
@@ -162,7 +169,7 @@ class SessionActions:
         with self.prevent(Input.Changed, Select.Changed):
             for field in CHARACTER_LABELS:
                 self.query_one(f"#character-{field}", Input).value = ""
-            for field in self.query("BonusName, PowerName, TechName"):
+            for field in self.query("BonusName, PowerName, TechName, ManifestationName"):
                 field.value = ""
             self.query_one("#fear", Select).value = 0
         self.start_fresh_session(RollSession(profile_id=genre))
@@ -228,6 +235,9 @@ class SessionActions:
                 field.value = getattr(self.session.bonuses, field.kind)
             for field in self.query(PowerName):
                 field.value = self.session.power_names[field.index]
+            names = self.session.manifestations
+            for field in self.query(ManifestationName):
+                field.value = names[field.index] if field.index < len(names) else ""
             tech = self.session.tech
             for field in self.query(TechName):
                 owned = tech is not None and field.index < len(tech.pieces)

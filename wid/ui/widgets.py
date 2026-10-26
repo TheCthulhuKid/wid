@@ -20,6 +20,7 @@ from textual.widgets import (
 
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
+    MANIFESTATION_LIMIT,
     RESOURCES_MAX,
     STANDING_LABELS,
     STANDING_START,
@@ -102,6 +103,19 @@ class TechUseButton(Button):
 
     def __init__(self, index: int, **kwargs):
         super().__init__("Use", id=f"use-tech-{index}", variant="primary", **kwargs)
+        self.index = index
+
+
+class ManifestationName(Input):
+    """Optional name of the Oldheart manifestation at ``index``."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__(
+            placeholder=f"Manifestation {index + 1}",
+            id=f"manifestation-name-{index}",
+            disabled=True,
+            **kwargs,
+        )
         self.index = index
 
 
@@ -339,6 +353,22 @@ class KitControls(Vertical):
                 yield Button(
                     f"Spend {RESOURCES_MAX} Resources", id="spend-resources", variant="primary"
                 )
+        with Vertical(id="corruption-field", classes="field"):
+            yield Label(id="corruption-status")
+            with Horizontal(id="corruption-row"):
+                yield Select(
+                    [(str(amount), amount) for amount in range(1, 7)],
+                    value=1,
+                    allow_blank=False,
+                    id="corruption-amount",
+                    tooltip="Corruption gained at once, such as from a Danger or avoided strain",
+                )
+                yield Button("Gain corruption", id="gain-corruption", variant="primary")
+            for index in range(MANIFESTATION_LIMIT):
+                yield ManifestationName(index)
+            with Horizontal(classes="button-row"):
+                yield Button("Add manifestation", id="add-manifestation")
+                yield Button("Remove manifestation", id="remove-manifestation")
         with Vertical(id="standing-field", classes="field"):
             yield Label("Standing")
             yield StandingTrack(id="standing")

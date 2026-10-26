@@ -4,7 +4,7 @@ from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
-from wid.formatting import describe_dice, summarize, tech_strengths
+from wid.formatting import check_summary, describe_dice, summarize, tech_strengths
 from wid.profiles import PROFILES
 from wid.rolls import FrozenModel, RollResult, TechPiece
 
@@ -58,12 +58,17 @@ class HistoryEntry(FrozenModel):
             text += f"Expertise name: {self.expertise_name}\n"
         if request.resource_die:
             text += "Resources die: +1d6\n"
+        if request.manifestation_dice:
+            text += f"Manifestations: {request.manifestation_dice:+d}d6\n"
         text += (
             f"{describe_dice(result)}\n{summarize(result)}\n"
             f"Strain +{strain} (session {self.total_strain})"
         )
         if PROFILES[request.profile_id].has_rerolls:
             text += f"; Corruption +{corruption} (session {self.total_corruption})"
+        # Bonuses copy the result they change, check included, but only the reroll made it.
+        if self.charged and result.manifestation_check is not None:
+            text += f"\n{check_summary(result.manifestation_check)}"
         if self.tech_pieces is not None:
             text += f"; Tech remaining {tech_strengths(self.tech_pieces)}"
         return text

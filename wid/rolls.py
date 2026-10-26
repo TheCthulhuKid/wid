@@ -69,6 +69,31 @@ def roll_d6(rng: Random) -> int:
     return rng.randint(1, 6)
 
 
+# Oldheart: the third manifestation means the character succumbs to corruption.
+MANIFESTATION_LIMIT = 3
+# Dice each manifestation adds to (or takes from) tests of these attributes.
+MANIFESTATION_EFFECTS = {"Depravity": 1, "Hospitality": -1}
+
+
+class ManifestationCheck(FrozenModel):
+    """One d6 per corruption just gained; a total at or under the new score manifests."""
+
+    dice: tuple[Annotated[int, Field(strict=True, ge=1, le=6)], ...] = Field(min_length=1)
+    score: Annotated[int, Field(strict=True, ge=1)]
+
+    @property
+    def total(self) -> int:
+        return sum(self.dice)
+
+    @property
+    def triggered(self) -> bool:
+        return self.total <= self.score
+
+
+def manifestation_check(amount: int, score: int, rng: Random) -> ManifestationCheck:
+    return ManifestationCheck(dice=tuple(roll_d6(rng) for _ in range(amount)), score=score)
+
+
 class RollRequest(FrozenModel):
     profile_id: Genre = Genre.CORE
     assisted: bool = False
@@ -79,9 +104,17 @@ class RollRequest(FrozenModel):
     power: PowerMode = PowerMode.NONE
     # A +1d6 bought with a full pool of Resources (This Isn't Happening).
     resource_die: bool = False
+    # Oldheart manifestations the character had when rolling; they change some pools.
+    manifestations: Annotated[int, Field(strict=True, ge=0, le=MANIFESTATION_LIMIT)] = 0
+
+    @property
+    def manifestation_dice(self) -> int:
+        return MANIFESTATION_EFFECTS.get(self.attribute, 0) * self.manifestations
 
     def pool_size(self) -> int:
-        return 4 - self.fear_level + int(self.assisted) + self.power.cost + int(self.resource_die)
+        pool = 4 - self.fear_level + int(self.assisted) + self.power.cost + int(self.resource_die)
+        # Whatever takes dice away, a test always rolls at least one.
+        return max(1, pool + self.manifestation_dice)
 
     @property
     def hit_threshold(self) -> int:
@@ -92,6 +125,8 @@ class RollRequest(FrozenModel):
         self.validate_power()
         if self.resource_die and not PROFILES[self.profile_id].has_resources:
             raise ValueError(f"{PROFILES[self.profile_id].name} has no Resources")
+        if self.manifestations and not PROFILES[self.profile_id].has_rerolls:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no manifestations")
         return self
 
     def validate_power(self) -> None:
@@ -135,6 +170,8 @@ class RollResult(FrozenModel):
     applied_items: frozenset[BonusKind] = frozenset()
     # Slots of the Tech pieces used on this test; each piece alters one die per test.
     applied_tech: frozenset[Index] = frozenset()
+    # The check made for the corruption a reroll inflicted.
+    manifestation_check: ManifestationCheck | None = None
 
     @model_validator(mode="after")
     def validate_pool(self) -> Self:
@@ -346,6 +383,8 @@ class RollSession(BaseModel):
     resource_die: bool = False
     # Whether the third item, bought with Resources, has been crafted.
     item_crafted: bool = False
+    # Oldheart: one optional name per manifestation, oldest first.
+    manifestations: tuple[str, ...] = Field(default=(), max_length=MANIFESTATION_LIMIT)
     # Results before each bonus, newest last, with the Tech slot the bonus spent, if any.
     # Not saved; cleared by a roll and by anything else that changes the Tech.
     _before_bonus: list[tuple[RollResult, int | None]] = PrivateAttr(default_factory=list)
@@ -513,6 +552,45 @@ class RollSession(BaseModel):
         self.strain = recovered
         return ResourceSpend(effect=ResourceEffect.RECOVER_STRAIN, die=die, recovered=cleared)
 
+    def _check_corruption_kit(self) -> None:
+        if not PROFILES[self.profile_id].has_rerolls:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Corruption")
+
+    def add_corruption(self, amount: int, *, rng: Random) -> ManifestationCheck:
+        """Gain corruption in one go and make the manifestation check it calls for."""
+        self._check_corruption_kit()
+        amount = TypeAdapter(Annotated[int, Field(strict=True, ge=1)]).validate_python(amount)
+        check = manifestation_check(amount, self.total_corruption + amount, rng)
+        self.total_corruption += amount
+        if check.triggered and not self.succumbed:
+            self.manifestations = (*self.manifestations, "")
+        return check
+
+    @property
+    def succumbed(self) -> bool:
+        return len(self.manifestations) >= MANIFESTATION_LIMIT
+
+    def add_manifestation(self) -> None:
+        """A manifestation from outside a check, such as delivering an undesirable quarry."""
+        self._check_corruption_kit()
+        if self.succumbed:
+            raise ValueError("The character has already succumbed to corruption")
+        self.manifestations = (*self.manifestations, "")
+
+    def remove_manifestation(self) -> None:
+        """Correct a manifestation added by mistake; the newest goes first."""
+        if not self.manifestations:
+            raise ValueError("There is no manifestation to remove")
+        self.manifestations = self.manifestations[:-1]
+
+    def set_manifestation_name(self, index: int, name: str) -> None:
+        index = TypeAdapter(Index).validate_python(index)
+        if index >= len(self.manifestations):
+            raise ValueError("No such manifestation")
+        names = list(self.manifestations)
+        names[index] = name
+        self.manifestations = tuple(names)
+
     def lose_crafted_item(self) -> None:
         """Drop the crafted item, which frees its slot for another one."""
         if not self.item_crafted:
@@ -586,6 +664,8 @@ class RollSession(BaseModel):
             raise ValueError("Tested rank must match the assigned attribute value")
         if request.resource_die and not self.resource_die:
             raise ValueError("No Resources die is waiting; spend a full pool first")
+        if request.manifestations != len(self.manifestations):
+            raise ValueError("Tested manifestations must match the character's")
 
     def reroll(self, indices: set[int], *, rng: Random) -> RollResult:
         indices = TypeAdapter(set[Index]).validate_python(indices)
@@ -596,17 +676,18 @@ class RollSession(BaseModel):
             raise ValueError("Roll an Oldheart test before rerolling")
         if not indices or any(index >= len(previous.dice) for index in indices):
             raise ValueError("Select at least one valid die from the current test")
+        dice = tuple(
+            DieResult(raw=roll_d6(rng), bonus=die.bonus) if index in indices else die
+            for index, die in enumerate(previous.dice)
+        )
         candidate = RollResult(
             request=previous.request,
-            dice=tuple(
-                DieResult(raw=roll_d6(rng), bonus=die.bonus) if index in indices else die
-                for index, die in enumerate(previous.dice)
-            ),
+            dice=dice,
             corruption_delta=len(indices),
             applied_items=previous.applied_items,
             applied_tech=previous.applied_tech,
+            manifestation_check=self.add_corruption(len(indices), rng=rng),
         )
-        self.total_corruption += candidate.corruption_delta
         self._before_bonus.clear()
         self.current_result = candidate
         return candidate

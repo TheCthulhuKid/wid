@@ -23,6 +23,8 @@ from textual.widgets.tabbed_content import ContentTabs
 
 from wid.formatting import (
     attribute_label,
+    check_summary,
+    manifestation_note,
     resources_line,
     resources_reminder,
     spend_summary,
@@ -31,6 +33,7 @@ from wid.formatting import (
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
+    MANIFESTATION_LIMIT,
     RESOURCES_MAX,
     RESOURCES_MIN,
     BonusKind,
@@ -58,6 +61,7 @@ from wid.ui.widgets import (
     GameRow,
     ItemsGroup,
     KitControls,
+    ManifestationName,
     NotesGroup,
     PowerName,
     PowerToggle,
@@ -326,6 +330,8 @@ class RollerApp(SessionActions, App):
         self.query_one("#tech-controls").display = profile.has_tech
         self.query_one("#standing-field").display = profile.has_standing
         self.query_one("#resource-field").display = profile.has_resources
+        self.query_one("#corruption-field").display = profile.has_rerolls
+        self.update_corruption_controls()
         self.query_one("#crafted-row").display = profile.has_resources
         self.update_resource_controls()
         self.query_one(StandingTrack).standing = self.session.standing
@@ -373,6 +379,21 @@ class RollerApp(SessionActions, App):
             not enabled or result is None or not self.selected_dice()
         )
 
+    def update_corruption_controls(self) -> None:
+        session = self.session
+        count = len(session.manifestations)
+        status = (
+            f"Corruption {session.total_corruption} — {count} of {MANIFESTATION_LIMIT} "
+            "manifestations"
+        )
+        if session.succumbed:
+            status += ". Succumbed: the character becomes a Brute Danger for the GM"
+        self.query_one("#corruption-status", Label).update(status)
+        for field in self.query(ManifestationName):
+            field.disabled = field.index >= count
+        self.query_one("#add-manifestation", Button).disabled = session.succumbed
+        self.query_one("#remove-manifestation", Button).disabled = not count
+
     def update_resource_controls(self) -> None:
         pool = self.session.resources
         self.query_one("#resource-count", Static).update(
@@ -409,6 +430,7 @@ class RollerApp(SessionActions, App):
             or self.session.total_corruption
             or any(self.session.strain.boxes)
             or any(self.session.strain.names)
+            or self.session.manifestations
         )
 
     def request_genre(self, genre: Genre) -> None:
@@ -466,6 +488,7 @@ class RollerApp(SessionActions, App):
                 else PowerMode.NONE
             ),
             resource_die=self.session.resource_die,
+            manifestations=len(self.session.manifestations),
         )
 
     def chosen_power(self) -> PowerMode:
@@ -484,6 +507,9 @@ class RollerApp(SessionActions, App):
         pool = f"Pool: {size}d6 — hits on {request.hit_threshold}+"
         if request.resource_die:
             pool += " (includes the Resources die)"
+        attributes = PROFILES[self.session.profile_id].attributes
+        if note := manifestation_note(attributes, request.manifestations):
+            pool += f" ({note}; never below 1d6)"
         self.query_one("#pool", Static).update(pool)
 
     def on_select_changed(self, event: Select.Changed) -> None:
@@ -516,6 +542,8 @@ class RollerApp(SessionActions, App):
             self.update_strain_status()
         elif isinstance(event.input, PowerName):
             self.session.set_power_name(event.input.index, event.value)
+        elif isinstance(event.input, ManifestationName):
+            self.session.set_manifestation_name(event.input.index, event.value)
         elif isinstance(event.input, TechName):
             self.session.set_tech_name(event.input.index, event.value)
             self.update_tech_controls()
@@ -562,6 +590,9 @@ class RollerApp(SessionActions, App):
             "spend-resources": lambda: self.push_screen(SpendResources(), self.spend_resources),
             "lose-crafted-item": self.lose_crafted_item,
             "roll-d6": self.roll_one_die,
+            "gain-corruption": self.gain_corruption,
+            "add-manifestation": self.add_manifestation,
+            "remove-manifestation": self.remove_manifestation,
         }.get(event.button.id)
         if action is not None:
             action()
@@ -640,6 +671,42 @@ class RollerApp(SessionActions, App):
         self.update_resource_controls()
         self.update_bonus_controls()
         message = "Lost the crafted item; its slot is free again."
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def gain_corruption(self) -> None:
+        amount = self.query_one("#corruption-amount", Select).value
+        try:
+            check = self.session.add_corruption(amount, rng=self.rng)
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        message = f"Gained {amount} Corruption. {check_summary(check)}"
+        self.after_corruption_change(message)
+
+    def add_manifestation(self) -> None:
+        try:
+            self.session.add_manifestation()
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.after_corruption_change("Manifestation added by hand.")
+
+    def remove_manifestation(self) -> None:
+        try:
+            self.session.remove_manifestation()
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        with self.prevent(Input.Changed):
+            field = self.query_one(f"#manifestation-name-{len(self.session.manifestations)}")
+            field.value = ""
+        self.after_corruption_change("Manifestation removed by hand.")
+
+    def after_corruption_change(self, message: str) -> None:
+        """Refresh what corruption and manifestations change, then report and log it."""
+        self.update_corruption_controls()
+        self.update_preview()
         self.feedback(message)
         self.record(HistoryEntry(notice=message))
 
@@ -764,6 +831,8 @@ class RollerApp(SessionActions, App):
         except ValueError as error:
             self.feedback(str(error))
             return
-        self.feedback("")
+        self.feedback(check_summary(result.manifestation_check))
         self.show_result(result)
         self.log_result(result, f"Reroll dice {', '.join(str(i + 1) for i in sorted(indices))}")
+        self.update_corruption_controls()
+        self.update_preview()

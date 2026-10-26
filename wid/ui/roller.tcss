@@ -58,6 +58,8 @@ Checkbox { width: 1fr; height: auto; }
 #items, #item-rows, #powers, #tech-controls, #reroll-controls, #attribute-setup { height: auto; }
 #tech-scenario-row, #standing-field, #resource-field, #resource-row { height: auto; }
 #resource-row Button { min-width: 5; width: auto; }
+#corruption-field, #corruption-row { height: auto; }
+#corruption-amount { width: 10; }
 #resource-count { width: 7; padding: 1 1; }
 #crafted-row #lose-crafted-item { width: 8; }
 #standing { height: 1; }

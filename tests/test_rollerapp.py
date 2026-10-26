@@ -108,7 +108,7 @@ def test_tech_is_named_when_used_after_a_roll():
 
 def test_oldheart_rerolls_selected_dice_for_corruption():
     async def scenario():
-        app = RollerApp(rng=ScriptedRandom([1, 2, 3, 4, 6]))
+        app = RollerApp(rng=ScriptedRandom([1, 2, 3, 4, 6, 1]))
         async with app.run_test(size=(120, 50)) as pilot:
             assert not app.query_one("#reroll-controls").display
             await change_genre(app, pilot, Genre.OLDHEART)
@@ -120,6 +120,8 @@ def test_oldheart_rerolls_selected_dice_for_corruption():
             assert "1: 6+0=6 hit" in text(app, "#dice")
             assert "Corruption: +1 (session 1)" in text(app, "#resources")
             assert "Reroll dice 1" in str(app.history[-1])
+            assert "1 = 1 against Corruption 1, a manifestation!" in str(app.history[-1])
+            assert app.session.manifestations == ("",)
 
     asyncio.run(scenario())
 

@@ -96,7 +96,7 @@ on the models, not the interface. Package initializers do not import the applica
 **Session files** (JSON, chosen by the player). **Save session** is explicit, never automatic.
 A file holds the session name, character details, notes, genre, attribute ranks, the roll
 options, item and expertise names, the Heckboy power names and the power chosen for the next
-roll, the Tech slots and their names, the Ball Season Standing, the This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their names, cumulative
+roll, the Tech slots and their names, the Oldheart manifestations, the Ball Season Standing, the This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their names, cumulative
 power strain, Corruption, the current dice and result, selected reroll dice, and the full
 history. Loading never rolls dice, charges resources or refills Tech. Window layout, the
 Edit/Preview choice and the random generator's state are not saved, and the theme lives in the

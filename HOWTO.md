@@ -55,7 +55,7 @@ Every kit has the same screen. Each adds at most one thing:
 | **Core WiD** | Athleticism, Composure, Reasoning | None |
 | **Heckboy** | Aberrance, Ferocity, Savvy | Two powers (below) |
 | **Second Contact** | Science, Culture, Muscle | **Tech** slots instead of **Items** (below) |
-| **Oldheart** | Depravity, Hospitality, Fitness | Tick dice in the result, then **Reroll selected**. A running Corruption total is shown. |
+| **Oldheart** | Depravity, Hospitality, Fitness | **Reroll selected**, Corruption and manifestations (below) |
 | **Ball Season** | Propriety, Stoutness, Yearning | A **Standing** track (below) |
 | **This Isn't Happening** | Instincts, Endurance, Charity | **Resources** and a **Crafted item** (below) |
 
@@ -81,6 +81,17 @@ scenario, press **New scenario** to empty every slot again.
 right, and **Reputable** for the three dots in between. You start on the centre dot. Click a dot,
 or click the track and press ← and →, to move. Standing never changes your dice; the GM uses it
 to set how many hits a test needs.
+
+**Corruption (Oldheart).** Tick dice in the result, then press **Reroll selected**: each rerolled
+die costs 1 Corruption. For Corruption from anything else, such as a Danger or strain you chose
+to avoid, choose how much in the box beside **Gain corruption** and press it. Corruption never
+goes down during a scenario. Every gain makes a manifestation check for you: one die per point
+just gained, and a total at or under your new Corruption means a manifestation. The dice and the
+outcome go to the history. Name each manifestation in its box. Use **Add manifestation** for one
+from elsewhere (such as delivering an undesirable quarry) and **Remove manifestation** to undo a
+mistake. Each manifestation adds 1d6 to Depravity tests and takes 1d6 from Hospitality tests, as
+the pool line shows; a test always rolls at least 1d6. At the third manifestation the character
+succumbs and becomes a Brute Danger for the GM.
 
 **Resources (This Isn't Happening).** Your pool starts at your Charity rank when the game starts
 and stays between 1 and 6. Press **−** or **+** when a task taxes it, a Danger depletes it, or

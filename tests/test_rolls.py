@@ -117,10 +117,11 @@ def test_oldheart_rerolls_keep_bonuses_and_add_corruption():
     session.set_bonus_name("appropriate_item", "Sword")
     initial = session.roll(request, rng=ScriptedRandom([1, 2, 3, 4]))
     session.apply_item("appropriate_item", 0)
-    result = session.reroll({0, 2}, rng=ScriptedRandom([6, 1]))
+    result = session.reroll({0, 2}, rng=ScriptedRandom([6, 1, 5, 6]))
     assert [die.raw for die in result.dice] == [6, 2, 1, 4]
     assert [die.bonus for die in result.dice] == [1, 0, 0, 0]
     assert result.corruption_delta == session.total_corruption == 2
+    assert result.manifestation_check.dice == (5, 6)
     assert initial.dice[0].raw == 1
     with pytest.raises(ValueError, match="Only Oldheart"):
         configured_session().reroll({0}, rng=Random(0))

@@ -2,8 +2,10 @@
 
 from wid.profiles import PROFILES
 from wid.rolls import (
+    MANIFESTATION_EFFECTS,
     RESOURCES_MAX,
     STRAIN_ENDINGS,
+    ManifestationCheck,
     Outcome,
     ResourceEffect,
     ResourceSpend,
@@ -90,6 +92,25 @@ def tech_strengths(pieces: tuple[TechPiece, ...]) -> str:
     return ", ".join(
         f"{piece.label(index)} at {piece.strength}" for index, piece in enumerate(pieces)
     )
+
+
+def check_summary(check: ManifestationCheck) -> str:
+    """The dice of a manifestation check and what they mean."""
+    outcome = "a manifestation!" if check.triggered else "no manifestation"
+    dice = " + ".join(str(die) for die in check.dice)
+    return (
+        f"Manifestation check: {dice} = {check.total} against Corruption {check.score}, {outcome}"
+    )
+
+
+def manifestation_note(attributes: tuple[str, ...], manifestations: int) -> str:
+    """How manifestations change the pools of a kit's attributes, such as ``Depravity +1d6``."""
+    effects = [
+        f"{attribute} {MANIFESTATION_EFFECTS[attribute] * manifestations:+d}d6"
+        for attribute in attributes
+        if attribute in MANIFESTATION_EFFECTS and manifestations
+    ]
+    return f"manifestations: {', '.join(effects)}" if effects else ""
 
 
 def resources_reminder(result: RollResult) -> str:

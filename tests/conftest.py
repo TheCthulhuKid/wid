@@ -44,7 +44,8 @@ def saved_session_factory(session_factory):
         return SavedSession(
             name="Friday's danger 🎲",
             session=session,
-            draft=request,
+            # The reroll's manifestation check may have changed the pool for the next test.
+            draft=request.model_copy(update={"manifestations": len(session.manifestations)}),
             history=(HistoryEntry(notice="First roll"), HistoryEntry(notice="Second action")),
             reroll_indices=(0,) if genre == Genre.OLDHEART else (),
         )
