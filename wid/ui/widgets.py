@@ -18,6 +18,7 @@ from textual.widgets import (
     TextArea,
 )
 
+from wid.formatting import BONUS_LABELS
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     MANIFESTATION_LIMIT,
@@ -30,12 +31,6 @@ from wid.rolls import (
     standing_label,
 )
 
-BONUS_LABELS = {
-    BonusKind.EXPERTISE: "Expertise",
-    BonusKind.APPROPRIATE_ITEM: "Appropriate Item",
-    BonusKind.INAPPROPRIATE_ITEM: "Inappropriate Item",
-    BonusKind.CRAFTED_ITEM: "Crafted item",
-}
 CHARACTER_LABELS = {"name": "Name", "looks": "Looks", "nature": "Nature"}
 
 

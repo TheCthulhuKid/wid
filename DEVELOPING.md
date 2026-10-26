@@ -25,6 +25,7 @@ checkout: after updating, rebuild it with `uv tool install --force --reinstall .
 ```sh
 uv sync --locked --group dev
 uv run wid                 # or .venv/bin/python -m wid
+uv run wid --web           # the browser version: 127.0.0.1:8765 or a free port
 uv run pytest              # 4 workers, about 80 seconds; -m "not ui" for the quick domain tests
 uv run pytest --cov        # as CI runs it: fails below 80% coverage of wid/
 uv run ruff check .
@@ -48,7 +49,9 @@ On Windows:
 powershell -ExecutionPolicy Bypass -File release\build_release.ps1 -Smoke
 ```
 
-It installs the pinned environment, builds, runs `wid.exe --self-test`, and (with `-Smoke`)
+It installs the pinned environment, builds, runs `wid.exe --self-test` (which also serves the
+browser version once through uvicorn, proving its by-name imports, templates and static files
+were bundled), and (with `-Smoke`)
 presses real keys in a Windows pseudo console, then writes the zip and its checksum to `dist\`.
 Add `-Python 3.13` to choose the interpreter.
 
@@ -72,10 +75,11 @@ Both workflows check out the full history (`fetch-depth: 0`) so the tag is visib
 wid/
 ├── __init__.py         # Lightweight package marker
 ├── __main__.py         # python -m wid
-├── cli.py              # Installed wid command (--version, --help, --self-test)
+├── cli.py              # Installed wid command (--version, --help, --self-test, --web)
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
-├── formatting.py       # Plain-text roll, dice, and resource renderings
+├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
+├── game.py             # One sitting: the state and actions every front end drives
 ├── export.py           # Markdown text of the action history
 ├── history.py          # Structured action history entries and their text rendering
 ├── sessions.py         # Versioned JSON snapshots and atomic local storage
@@ -83,12 +87,19 @@ wid/
 ├── selftest.py         # `wid --self-test`: the app checked headless, for release builds
 ├── settings.py         # Remembered preferences in a small JSON file
 └── ui/
-    ├── app.py          # Textual application coordination and event handling
-    ├── sessions.py     # Save/load handling mixed into the application
+    ├── app.py          # Textual front end: shows the game, passes actions to it
+    ├── sessions.py     # Save, load, export and new-character dialogs
     ├── widgets.py      # Character, options, session, and result widgets
     ├── dialogs.py      # Confirmation screens
     ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
     └── roller.tcss     # Bundled interface styles
+└── web/
+    ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser with a token
+    ├── app.py          # FastAPI app: the page, POST /actions/<name>, and the safety checks
+    ├── forms.py        # The posted sheet fields copied into the game, and the action table
+    ├── view.py         # Colours (light and dark), the notes preview, the template context
+    ├── templates/      # Jinja2 page and sheet: one form, each button posts to its action
+    └── static/         # sheet.css, and sheet.js: posts the form and swaps the reply in
 .github/workflows/      # ci.yml: tests, ruff; release.yml: Windows build, draft release
 release/                # PyInstaller spec, Windows build script, smoke test, icon
 tests/                  # Domain, persistence, headless UI, and launch tests
@@ -96,12 +107,21 @@ HOWTO.md                # How to use the program (for players)
 README.md               # Short overview for players, linking to the how-to
 ```
 
-The UI calls the domain models; game rules remain independent of Textual. Persistence depends
-on the models, not the interface. Package initializers do not import the application.
+Front ends call `Game` (`wid/game.py`), which owns the session, history, roll options,
+character, notes and file path, records history and words the feedback; game rules stay in
+the domain models, independent of Textual. The terminal app copies what the player typed into
+the game before each action (`collect`), then redraws from it (`refresh_sheet`), so a second
+front end only needs the same two steps; the browser version does them per request (each action
+posts the whole sheet, `collect` copies it in, the action runs, the sheet comes back). Every web
+request must come from `127.0.0.1` or `localhost`, carry the per-launch token cookie, and, for
+actions, htmx's `HX-Request` header (see `wid/web/app.py` for why each check is needed).
+Persistence depends on the models, not the interface.
+Package initializers do not import the application.
 
 ## Files the program writes
 
 **Session files** (JSON, chosen by the player). **Save session** is explicit, never automatic.
+The terminal and the browser version read and write the same files.
 A file holds the session name, character details, notes, genre, attribute ranks, the roll
 options, item and expertise names, the Heckboy power names and the power chosen for the next
 roll, the Tech slots and their names, the Oldheart manifestations, the Ball Season Standing, the This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their names, cumulative

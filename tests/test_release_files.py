@@ -118,6 +118,7 @@ def test_the_spec_bundles_the_data_textual_and_wid_need(monkeypatch, tmp_path):
     datas = [name for name, _ in namespace["datas"]]
     assert {"wid.data", "textual.data", "wid.dist-info", "textual.dist-info"} <= set(datas)
     assert "textual.sub" in namespace["hiddenimports"]
+    assert "uvicorn.sub" in namespace["hiddenimports"]
 
 
 @pytest.mark.parametrize(

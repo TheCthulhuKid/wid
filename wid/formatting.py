@@ -1,18 +1,30 @@
-"""Plain-text renderings of a roll, shared by the result panel and the history log."""
+"""Plain-text renderings of the game, shared by every front end and the history log."""
 
 from wid.profiles import PROFILES
 from wid.rolls import (
     MANIFESTATION_EFFECTS,
+    MANIFESTATION_LIMIT,
     RESOURCES_MAX,
     STRAIN_ENDINGS,
+    BonusKind,
     ManifestationCheck,
     Outcome,
     ResourceEffect,
     ResourceSpend,
+    RollRequest,
     RollResult,
+    RollSession,
     StrainTracker,
     TechPiece,
+    TechState,
 )
+
+BONUS_LABELS = {
+    BonusKind.EXPERTISE: "Expertise",
+    BonusKind.APPROPRIATE_ITEM: "Appropriate Item",
+    BonusKind.INAPPROPRIATE_ITEM: "Inappropriate Item",
+    BonusKind.CRAFTED_ITEM: "Crafted item",
+}
 
 # A piece of text and the outcome it should be coloured as, if any.
 Part = tuple[str, Outcome | None]
@@ -136,6 +148,26 @@ def spend_summary(spend: ResourceSpend, pool: int) -> str:
     return f"{text}. Resources reset to {pool}."
 
 
+# What the front ends ask before replacing something.
+NEW_GAME_QUESTION = (
+    "A genre kit lasts the whole game, so changing it starts a new game: the character, "
+    "history, notes and file path are cleared. Unsaved changes will be lost."
+)
+NEW_CHARACTER_QUESTION = (
+    "Start a new character? This clears the character, ranks, items, strain and the current "
+    "roll. The history, notes and file path stay."
+)
+
+
+def replace_question(kind: str, path: object) -> str:
+    """Asked before writing over a file: ``kind`` is "save" or "file"."""
+    return f"Replace the existing {kind} at {path}?"
+
+
+def load_question(name: str) -> str:
+    return f"Load {name}? This replaces the current game and history. Unsaved changes will be lost."
+
+
 def strain_counts(tracker: StrainTracker) -> str:
     """Marked strain and wounds, such as ``3 strain, 1 wound``; Defeat is added when marked."""
     wounds = sum(tracker.boxes[ending] for ending in STRAIN_ENDINGS[:-1])
@@ -147,3 +179,41 @@ def strain_counts(tracker: StrainTracker) -> str:
 def strain_summary(tracker: StrainTracker) -> str:
     """Title of the collapsible strain section, so the state shows while it is folded away."""
     return f"Strain tracker: {strain_counts(tracker)}"
+
+
+def strain_status(tracker: StrainTracker) -> str:
+    """The hint under the strain boxes, or Defeat with its name once it is marked."""
+    if not tracker.defeated:
+        return "Mark strain as it is taken. A wound needs the strain before it marked first."
+    return f"Defeat — character ended. {tracker.names[2]}".rstrip()
+
+
+def corruption_status(session: RollSession) -> str:
+    """Oldheart's Corruption and manifestation count, and whether the character succumbed."""
+    status = (
+        f"Corruption {session.total_corruption} — {len(session.manifestations)} of "
+        f"{MANIFESTATION_LIMIT} manifestations"
+    )
+    if session.succumbed:
+        status += ". Succumbed: the character becomes a Brute Danger for the GM"
+    return status
+
+
+def pool_line(request: RollRequest) -> str:
+    """The dice the next test rolls and why, such as ``Pool: 4d6 — hits on 5+``."""
+    text = f"Pool: {request.pool_size()}d6 — hits on {request.hit_threshold}+"
+    if request.resource_die:
+        text += " (includes the Resources die)"
+    attributes = PROFILES[request.profile_id].attributes
+    if note := manifestation_note(attributes, request.manifestations):
+        text += f" ({note}; never below 1d6)"
+    return text
+
+
+def tech_starting_line(tech: TechState | None) -> str:
+    if tech is None:
+        return "Start the game to get your Tech slots."
+    return (
+        f"Each piece starts at Science {tech.science} + Culture {tech.culture} = "
+        f"{tech.starting_strength}."
+    )

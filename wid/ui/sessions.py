@@ -1,144 +1,77 @@
 from pathlib import Path
 
-from textual.widgets import Checkbox, Input, RichLog, Select, TextArea
+from textual.widgets import Input, Select
 
-from wid.export import history_markdown
-from wid.history import HistoryEntry
-from wid.profiles import PROFILES, Genre
-from wid.rolls import STANDING_START, RollSession
-from wid.sessions import CharacterDetails, SavedSession, session_file_path
-from wid.storage import write_text
+from wid.formatting import NEW_CHARACTER_QUESTION, load_question, replace_question
+from wid.game import Game
+from wid.profiles import Genre
+from wid.sessions import SavedSession
 from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
-from wid.ui.widgets import (
-    CHARACTER_LABELS,
-    BonusName,
-    ManifestationName,
-    PowerName,
-    RerollDie,
-    TechName,
-)
 
 
 class SessionActions:
-    """Save, load, export and character-detail handling mixed into ``RollerApp``."""
+    """The save, load, export and new-character dialogs mixed into ``RollerApp``.
 
-    session: RollSession
-    history: list[HistoryEntry]
-    tested_attribute: str
+    The game does the work; these methods only ask the player to confirm and show the outcome.
+    """
+
+    game: Game
     pending_genre: Genre | None
 
-    def session_path(self) -> Path:
-        return session_file_path(self.query_one("#session-path", Input).value)
-
-    def character_details(self) -> CharacterDetails:
-        return CharacterDetails.model_validate(
-            {
-                field: self.query_one(f"#character-{field}", Input).value
-                for field in CHARACTER_LABELS
-            }
-        )
-
-    def action_save_session(self) -> None:
-        if self.pending_genre is not None:
-            return
+    def action_save_session(self, overwrite: bool = False) -> None:
         try:
-            path = self.session_path()
-            saved = SavedSession(
-                name=self.query_one("#session-name", Input).value,
-                session=self.session.model_copy(deep=True),
-                draft=self.draft_request(),
-                notes=self.query_one("#session-notes", TextArea).text,
-                character=self.character_details(),
-                history=tuple(self.history),
-                reroll_indices=tuple(sorted(self.selected_dice())),
-                item_target=(
-                    self.query_one("#item-target", Select).value
-                    if self.session.current_result is not None
-                    else None
-                ),
-            )
-            self.write_session(saved, path)
-        except (OSError, ValueError) as error:
-            self.feedback(f"Could not save session: {error}")
-
-    def write_session(self, saved: SavedSession, path: Path, *, overwrite: bool = False) -> None:
-        try:
-            saved.save(path, overwrite=overwrite)
-        except FileExistsError:
+            done = self.act(lambda: self.game.save(overwrite=overwrite))
+        except FileExistsError as error:
             self.push_screen(
-                ConfirmSessionAction(f"Replace the existing save at {path}?"),
-                lambda confirmed: self.finish_save(saved, path, confirmed),
+                ConfirmSessionAction(replace_question("save", error.filename)),
+                self.finish_save,
             )
             return
-        except (OSError, ValueError) as error:
-            self.feedback(f"Could not save session: {error}")
-            return
-        self.query_one("#session-name", Input).value = saved.name
-        self.sub_title = saved.name
-        self.feedback(f"Saved {saved.name} to {path}.")
+        if done:
+            self.query_one("#session-name", Input).value = self.game.name
+            self.sub_title = self.game.name
 
-    def finish_save(self, saved: SavedSession, path: Path, confirmed: bool) -> None:
+    def finish_save(self, confirmed: bool) -> None:
         if confirmed:
-            self.write_session(saved, path, overwrite=True)
+            self.action_save_session(overwrite=True)
         else:
             self.feedback("Save canceled; existing file unchanged.")
 
     def action_export_history(self) -> None:
         if self.pending_genre is not None:
             return
-        if not self.history:
-            self.feedback("There is no history to export yet.")
+        self.collect()
+        try:
+            self.game.require_history()
+        except ValueError as error:
+            self.feedback(str(error))
             return
-        self.push_screen(ExportHistory(self.default_export_path()), self.export_history_path)
+        self.push_screen(ExportHistory(self.game.default_export_path()), self.export_history_path)
 
-    def default_export_path(self) -> str:
-        """The session file's path with a .md ending, or a plain name when none is set."""
-        path = Path(self.query_one("#session-path", Input).value.strip())
-        if not path.name or path.name == "..":
-            return "history.md"
-        return str(path.with_suffix(".md"))
-
-    def export_history_path(self, value: str | None) -> None:
+    def export_history_path(self, value: str | None, overwrite: bool = False) -> None:
         if value is None:
             return
         try:
-            path = session_file_path(value, label="history file")
-        except ValueError as error:
-            self.feedback(f"Could not export history: {error}")
-            return
-        name = self.query_one("#session-name", Input).value
-        text = history_markdown(name, self.character_details(), self.history)
-        self.write_export(text, path, len(self.history))
-
-    def write_export(self, text: str, path: Path, count: int, *, overwrite: bool = False) -> None:
-        try:
-            write_text(path, text, overwrite=overwrite)
-        except FileExistsError:
+            self.act(lambda: self.game.export_history(value, overwrite=overwrite))
+        except FileExistsError as error:
             self.push_screen(
-                ConfirmSessionAction(f"Replace the existing file at {path}?"),
-                lambda confirmed: self.finish_export(text, path, count, confirmed),
+                ConfirmSessionAction(replace_question("file", error.filename)),
+                lambda confirmed: self.finish_export(value, confirmed),
             )
-            return
-        except OSError as error:
-            self.feedback(f"Could not export history: {error}")
-            return
-        self.feedback(f"Exported {count} history entries to {path}.")
 
-    def finish_export(self, text: str, path: Path, count: int, confirmed: bool) -> None:
+    def finish_export(self, value: str, confirmed: bool) -> None:
         if confirmed:
-            self.write_export(text, path, count, overwrite=True)
+            self.export_history_path(value, overwrite=True)
         else:
             self.feedback("Export canceled; existing file unchanged.")
 
     def action_new_character(self) -> None:
         if self.pending_genre is not None:
             return
-        if self.has_unsaved_state():
+        self.collect()
+        if self.game.has_unsaved_state():
             self.push_screen(
-                ConfirmSessionAction(
-                    "Start a new character? This clears the character, ranks, items, strain and "
-                    "the current roll. The history, notes and file path stay."
-                ),
+                ConfirmSessionAction(NEW_CHARACTER_QUESTION),
                 self.finish_new_character,
             )
         else:
@@ -148,119 +81,39 @@ class SessionActions:
         if not confirmed:
             self.feedback("New character canceled; current character unchanged.")
             return
-        self.clear_sheet(self.session.profile_id)
-        message = "New character started."
+        message = self.game.new_character()
+        self.show_game()
         self.feedback(message)
-        self.record(HistoryEntry(notice=message))
-
-    def start_new_game(self, genre: Genre) -> None:
-        """A genre kit lasts a whole game, so changing it starts over: sheet, history and file."""
-        self.clear_sheet(genre)
-        self.history.clear()
-        self.query_one("#log", RichLog).clear()
-        self.query_one("#session-name", Input).value = ""
-        self.query_one("#session-path", Input).value = ""
-        self.query_one("#session-notes", TextArea).load_text("")
-        self.sub_title = ""
-        self.feedback(f"New {PROFILES[genre].name} game started.")
-
-    def clear_sheet(self, genre: Genre) -> None:
-        """Blank the character and every name on the sheet, then start a fresh session."""
-        with self.prevent(Input.Changed, Select.Changed):
-            for field in CHARACTER_LABELS:
-                self.query_one(f"#character-{field}", Input).value = ""
-            for field in self.query("BonusName, PowerName, TechName, ManifestationName"):
-                field.value = ""
-            self.query_one("#fear", Select).value = 0
-        self.start_fresh_session(RollSession(profile_id=genre))
 
     def action_load_session(self) -> None:
         if self.pending_genre is not None:
             return
-        self.push_screen(
-            LoadGame(self.query_one("#session-path", Input).value), self.load_session_path
-        )
+        self.collect()
+        self.push_screen(LoadGame(self.game.path), self.load_session_path)
 
     def load_session_path(self, value: str | None) -> None:
         if value is None:
             return
         try:
-            path = session_file_path(value)
-            saved = SavedSession.load(path)
-        except (OSError, ValueError) as error:
-            self.feedback(f"Could not load session: {error}")
+            saved, path = self.game.read_save(value)
+        except ValueError as error:
+            self.feedback(str(error))
             return
-        if self.has_unsaved_state():
+        if self.game.has_unsaved_state():
             self.push_screen(
-                ConfirmSessionAction(
-                    f"Load {saved.name}? This replaces the current game and history. "
-                    "Unsaved changes will be lost."
-                ),
+                ConfirmSessionAction(load_question(saved.name)),
                 lambda confirmed: self.finish_load(saved, path, confirmed),
             )
         else:
             self.finish_load(saved, path, True)
 
-    def has_unsaved_state(self) -> bool:
-        return bool(
-            self.session.attributes is not None
-            or self.history
-            or self.query_one("#session-notes", TextArea).text
-            or any(self.character_details().model_dump().values())
-            or any(self.session.bonuses.model_dump().values())
-            or any(self.session.power_names)
-            or self.session.standing != STANDING_START
-            or self.has_resources()
-        )
-
     def finish_load(self, saved: SavedSession, path: Path, confirmed: bool) -> None:
         if not confirmed:
             self.feedback("Load canceled; current game unchanged.")
             return
-        self.session = saved.session.model_copy(deep=True)
-        self.history = list(saved.history)
-        draft = saved.draft
-        with self.prevent(Select.Changed, Checkbox.Changed, Input.Changed):
-            for field in CHARACTER_LABELS:
-                self.query_one(f"#character-{field}", Input).value = getattr(saved.character, field)
-            self.query_one("#genre", Select).value = self.session.profile_id
-            self.tested_attribute = draft.attribute
-            self.query_one("#fear", Select).value = draft.fear_level
-            self.set_power(draft.power)
-            self.query_one("#assisted", Checkbox).value = draft.assisted
-            self.query_one("#expertise", Checkbox).value = draft.expertise
-            self.update_attribute_controls()
-            self.update_preview()
-            for field in self.query(BonusName):
-                field.value = getattr(self.session.bonuses, field.kind)
-            for field in self.query(PowerName):
-                field.value = self.session.power_names[field.index]
-            names = self.session.manifestations
-            for field in self.query(ManifestationName):
-                field.value = names[field.index] if field.index < len(names) else ""
-            tech = self.session.tech
-            for field in self.query(TechName):
-                owned = tech is not None and field.index < len(tech.pieces)
-                field.value = tech.pieces[field.index].name if owned else ""
-            self.update_kit_controls()
-            if self.session.current_result is not None:
-                self.show_result(self.session.current_result)
-            else:
-                self.clear_result_display()
-            for box in self.query(RerollDie):
-                box.value = box.index in saved.reroll_indices
-            self.update_reroll_controls()
-            self.update_strain_controls()
-            self.update_bonus_controls()
-            if saved.item_target is not None:
+        message = self.game.load(saved, path)
+        self.show_game()
+        if saved.item_target is not None:
+            with self.prevent(Select.Changed):
                 self.query_one("#item-target", Select).value = saved.item_target
-        log = self.query_one("#log", RichLog)
-        log.clear()
-        for entry in self.history:
-            log.write(str(entry))
-        self.query_one("#session-name", Input).value = saved.name
-        self.query_one("#session-path", Input).value = str(path)
-        self.query_one("#session-notes", TextArea).load_text(saved.notes)
-        self.sub_title = saved.name
-        message = f"Loaded {saved.name} from {path}."
         self.feedback(message)

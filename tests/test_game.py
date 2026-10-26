@@ -1,0 +1,91 @@
+import pytest
+from test_rolls import ScriptedRandom
+
+from wid.game import Game
+from wid.profiles import Genre
+from wid.rolls import BonusKind, PowerMode
+from wid.sessions import CharacterDetails
+
+
+def started(genre=Genre.CORE, faces=(4,) * 40):
+    game = Game(rng=ScriptedRandom(faces))
+    if genre != Genre.CORE:
+        game.change_kit(genre)
+    game.start_game((1, 2, 3))
+    return game
+
+
+def test_a_roll_is_logged_and_clears_the_one_test_options():
+    game = started(Genre.HECKBOY)
+    game.assisted = True
+    game.power = PowerMode.RELIABLE
+    game.fear_level = 1
+    assert game.roll("Ferocity") == ""
+    request = game.session.current_result.request
+    assert (request.attribute, request.assisted, request.power) == ("Ferocity", True, "reliable")
+    assert str(game.history[-1]).startswith("Roll: heckboy, Ferocity rank 2")
+    assert (game.assisted, game.power, game.fear_level) == (False, PowerMode.NONE, 1)
+
+
+def test_bonuses_are_offered_once_named_and_logged_without_a_cost():
+    game = started()
+    game.session.set_bonus_name(BonusKind.APPROPRIATE_ITEM, "Sword")
+    assert not game.bonus_available(BonusKind.APPROPRIATE_ITEM)
+    game.roll()
+    assert game.bonus_available(BonusKind.APPROPRIATE_ITEM)
+    game.apply_bonus(BonusKind.APPROPRIATE_ITEM, 1)
+    assert not game.bonus_available(BonusKind.APPROPRIATE_ITEM)
+    assert "Appropriate Item Sword: +1 to die 2" in str(game.history[-1])
+
+
+def test_new_character_keeps_history_and_file_but_a_new_kit_starts_over():
+    game = started()
+    game.notes = "Keep the map"
+    game.path = "game.json"
+    game.character = CharacterDetails(name="Ada")
+    game.roll()
+    assert game.has_unsaved_state()
+    assert game.new_character() == "New character started."
+    assert game.session.attributes is None
+    assert (game.notes, game.path, game.character.name) == ("Keep the map", "game.json", "")
+    assert len(game.history) == 2
+    assert game.change_kit(Genre.OLDHEART) == "New Oldheart game started."
+    assert (game.history, game.notes, game.path) == ([], "", "")
+    assert not game.has_unsaved_state()
+    # Review issue 5: a typed session name would be lost too.
+    game.name = "Friday"
+    assert game.has_unsaved_state()
+
+
+def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
+    game = started(Genre.OLDHEART)
+    game.roll("Depravity")
+    game.fear_level = 2
+    game.reroll_selection = (1,)
+    game.name = "Friday"
+    game.path = str(tmp_path / "game.json")
+    assert game.save() == f"Saved Friday to {game.path}."
+    with pytest.raises(FileExistsError) as error:
+        game.save()
+    assert error.value.filename == game.path
+    game.save(overwrite=True)
+
+    loaded = Game()
+    saved, path = loaded.read_save(game.path)
+    assert loaded.load(saved, path) == f"Loaded Friday from {game.path}."
+    assert loaded.session.model_dump() == game.session.model_dump()
+    assert (loaded.fear_level, loaded.reroll_selection) == (2, (1,))
+    assert loaded.history == game.history
+    with pytest.raises(ValueError, match="Could not load session"):
+        loaded.read_save(str(tmp_path / "missing.json"))
+
+
+def test_export_writes_markdown_beside_the_session_file(tmp_path):
+    game = started()
+    game.roll()
+    game.path = str(tmp_path / "campaign.json")
+    target = game.default_export_path()
+    assert target == str(tmp_path / "campaign.md")
+    assert game.export_history(target) == f"Exported 1 history entries to {target}."
+    with pytest.raises(FileExistsError):
+        game.export_history(target)

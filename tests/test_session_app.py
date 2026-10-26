@@ -3,7 +3,7 @@ from random import Random
 
 from helpers import change_genre, click
 from test_rollerapp import start_game, text
-from textual.widgets import Button, Checkbox, Input, Select, TextArea
+from textual.widgets import Button, Checkbox, Input, Select
 
 from wid.profiles import Genre
 from wid.sessions import SavedSession
@@ -75,7 +75,7 @@ def test_heckboy_power_names_are_saved_and_loaded(tmp_path):
     asyncio.run(scenario())
 
 
-def test_load_and_save_ask_before_replacing_and_report_errors(tmp_path, saved_session_factory):
+def test_load_and_save_ask_before_replacing(tmp_path, saved_session_factory):
     path = tmp_path / "session.json"
     saved_session_factory().save(path)
     original_file = path.read_bytes()
@@ -99,17 +99,10 @@ def test_load_and_save_ask_before_replacing_and_report_errors(tmp_path, saved_se
             await pilot.click("#confirm-session")
             assert SavedSession.load(path).name == "Replacement"
 
-            app.query_one("#session-path", Input).value = str(tmp_path / "missing.json")
-            await load_game(app, pilot)
-            assert "Could not load session" in text(app, "#feedback")
-            app.query_one("#session-path", Input).value = str(tmp_path / "missing" / "s.json")
-            await click(app, pilot, "#save-session")
-            assert "Could not save session" in text(app, "#feedback")
-
     asyncio.run(scenario())
 
 
-def test_new_character_clears_the_sheet_but_keeps_history_and_file_path():
+def test_new_character_and_a_new_kit_clear_the_screen():
     async def scenario():
         app = RollerApp(rng=Random(1))
         async with app.run_test(size=(100, 40)) as pilot:
@@ -121,33 +114,15 @@ def test_new_character_clears_the_sheet_but_keeps_history_and_file_path():
             await pilot.click("#confirm-session")
             await pilot.pause()
             assert app.query_one("#character-name", Input).value == ""
-            assert app.session.attributes is None
             assert app.query_one("#start-game", Button).display
             assert app.query_one("#session-path", Input).value == "game.json"
-            assert str(app.history[-1]) == "New character started."
-
-    asyncio.run(scenario())
-
-
-def test_changing_genre_kit_asks_then_starts_a_new_game():
-    async def scenario():
-        app = RollerApp(rng=Random(1))
-        async with app.run_test(size=(100, 40)) as pilot:
-            await start_game(app, pilot)
-            app.query_one("#character-name", Input).value = "Ada"
-            app.query_one("#session-notes", TextArea).load_text("Notes")
-            await pilot.press("ctrl+r")
             app.query_one("#genre", Select).value = Genre.HECKBOY
             await pilot.pause()
             await pilot.click("#cancel-reset")
             await pilot.pause()
-            assert app.session.profile_id == Genre.CORE
             assert app.query_one("#genre", Select).value == Genre.CORE
             await change_genre(app, pilot, Genre.HECKBOY)
-            assert app.session.attributes is None
-            assert app.history == []
-            assert app.query_one("#character-name", Input).value == ""
-            assert app.query_one("#session-notes", TextArea).text == ""
+            assert app.query_one("#session-path", Input).value == ""
             assert text(app, "#feedback") == "New Heckboy game started."
 
     asyncio.run(scenario())

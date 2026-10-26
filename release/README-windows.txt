@@ -9,6 +9,11 @@ HOW TO RUN
   The program is not code-signed, so Windows SmartScreen may warn the first time.
   Choose "More info", then "Run anyway".
 
+PLAY IN YOUR BROWSER
+  In the folder, run:   .\wid.exe --web
+  Your browser opens the character sheet. Keep the window open while you play;
+  press Ctrl+C in it to stop. Only this computer can reach the game.
+
 HOW TO USE IT
   HOWTO.md in this folder explains the screen, the genre kits, saving and the keys.
 
@@ -18,7 +23,7 @@ CHECK THE DOWNLOAD
 
 CHECK THAT IT WORKS
   .\wid.exe --version
-  .\wid.exe --self-test      (runs the program without a terminal and reports ok or FAIL)
+  .\wid.exe --self-test      (runs the program, browser version included, and reports ok or FAIL)
 
 YOUR SETTINGS
   Theme, last tab and collapsed sections are kept in %APPDATA%\wid\settings.json.

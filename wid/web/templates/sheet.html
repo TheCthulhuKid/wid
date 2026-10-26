@@ -1,0 +1,317 @@
+{#- The whole sheet is one form: every button posts it to its own action (formaction), the
+    server copies the fields into the game, runs the action and sends this form back. -#}
+<form id="sheet" class="sheet" method="post" action="/actions/update" autocomplete="off">
+  <input type="hidden" name="sheet" value="1">
+
+  <header class="band">
+    <h1>We're in Danger</h1>
+    <label class="kit-picker">
+      <span class="visually-hidden">Genre kit</span>
+      <select name="genre" data-action="change-kit">
+        {% for genre, profile in kits.items() %}
+        <option value="{{ genre }}" {% if genre == session.profile_id %}selected{% endif %}>{{ profile.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </header>
+
+  <div class="columns">
+  <div class="main">
+
+    <section class="block character" aria-labelledby="character-title">
+      <h2 id="character-title">Character</h2>
+      <div class="row details">
+        {% for field, label in (("name", "Name"), ("looks", "Looks"), ("nature", "Nature")) %}
+        <label class="field">{{ label }}
+          <input name="character-{{ field }}" value="{{ game.character[field] }}">
+        </label>
+        {% endfor %}
+      </div>
+
+      <div class="attributes">
+        {% for attribute in kit.attributes %}
+        <div class="attribute">
+          <span class="attribute-name">{{ attribute }}</span>
+          {% if session.attributes %}
+          <span class="rank" aria-label="Rank">{{ session.attribute_rank(attribute) }}</span>
+          {% else %}
+          {% set default_rank = loop.index %}
+          <label><span class="visually-hidden">{{ attribute }} rank</span>
+            <select name="rank">
+              {% for rank in (1, 2, 3) %}<option {% if rank == default_rank %}selected{% endif %}>{{ rank }}</option>{% endfor %}
+            </select>
+          </label>
+          {% endif %}
+          <button class="roll" formaction="/actions/roll" name="attribute" value="{{ attribute }}"
+                  {% if not session.attributes %}disabled{% endif %}>Roll</button>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="row actions">
+        {% if not session.attributes %}
+        <p class="hint">Give each attribute a different rank (1–3), then start.</p>
+        <button class="primary" formaction="/actions/start-game">Start game</button>
+        {% endif %}
+        <button formaction="/actions/new-character">New character</button>
+      </div>
+    </section>
+
+    <section class="block options" aria-labelledby="options-title">
+      <h2 id="options-title">Next test</h2>
+      <div class="row">
+        <label class="field narrow">Scared
+          <select name="fear" data-action="update">
+            {% for level in range(4) %}<option {% if level == game.fear_level %}selected{% endif %}>{{ level }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="tick"><input type="checkbox" name="assisted" data-action="update" {% if game.assisted %}checked{% endif %}> Assisted</label>
+        <label class="tick"><input type="checkbox" name="expertise" data-action="update" {% if game.expertise %}checked{% endif %}> Expertise</label>
+      </div>
+      <div class="row named">
+        <label class="field grow">Expertise
+          <input name="name-expertise" value="{{ session.bonuses.expertise }}" placeholder="Describe expertise">
+        </label>
+        <button formaction="/actions/apply-bonus" name="kind" value="expertise"
+                {% if not game.bonus_available(BonusKind.EXPERTISE) %}disabled{% endif %}>+1 hit</button>
+      </div>
+
+      {% if kit.has_powers %}
+      <div class="kit-controls powers">
+        <label class="tick"><input type="radio" name="power" value="none" data-action="update" {% if game.power == PowerMode.NONE %}checked{% endif %}> No power</label>
+        {% for mode, label in ((PowerMode.RELIABLE, "Reliable power (+1 die, +1 strain)"), (PowerMode.ERRATIC, "Erratic power (+2 dice, +2 strain)")) %}
+        <div class="row named">
+          <label class="field grow">{{ label }}
+            <input name="power-name-{{ loop.index0 }}" value="{{ session.power_names[loop.index0] }}">
+          </label>
+          <label class="tick"><input type="radio" name="power" value="{{ mode }}" data-action="update" {% if game.power == mode %}checked{% endif %}> Use</label>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if kit.has_rerolls %}
+      <div class="kit-controls corruption">
+        <p class="status">{{ corruption_status }}</p>
+        <div class="row">
+          <label class="field narrow">Gain
+            <select name="corruption-amount">{% for amount in range(1, 7) %}<option>{{ amount }}</option>{% endfor %}</select>
+          </label>
+          <button formaction="/actions/gain-corruption">Gain corruption</button>
+        </div>
+        {% for name in session.manifestations %}
+        <label class="field">Manifestation {{ loop.index }}
+          <input name="manifestation-name-{{ loop.index0 }}" value="{{ name }}">
+        </label>
+        {% endfor %}
+        <div class="row">
+          <button formaction="/actions/add-manifestation" {% if session.succumbed %}disabled{% endif %}>Add manifestation</button>
+          <button formaction="/actions/remove-manifestation" {% if not session.manifestations %}disabled{% endif %}>Remove manifestation</button>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if kit.has_standing %}
+      <div class="kit-controls standing" role="group" aria-label="Standing">
+        <span class="field-label">Standing: {{ standing_labels[session.standing] }}</span>
+        <div class="dots">
+          {% for label in standing_labels %}
+          <button class="dot" formaction="/actions/standing" name="standing" value="{{ loop.index0 }}"
+                  aria-pressed="{{ 'true' if loop.index0 == session.standing else 'false' }}"
+                  title="{{ label }}"><span class="visually-hidden">{{ label }}</span></button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if kit.has_resources %}
+      <div class="kit-controls resources">
+        <div class="row">
+          <span class="field-label">Resources</span>
+          <button formaction="/actions/resources" name="amount" value="-1" aria-label="Lose 1 Resource"
+                  {% if session.resources is none or session.resources <= resources_min %}disabled{% endif %}>−</button>
+          <span class="count">{{ session.resources if session.resources is not none else "—" }} / {{ resources_max }}</span>
+          <button formaction="/actions/resources" name="amount" value="1" aria-label="Gain 1 Resource"
+                  {% if session.resources is none or session.resources >= resources_max %}disabled{% endif %}>+</button>
+        </div>
+        <div class="row">
+          <label class="field grow">Spend {{ resources_max }} Resources on
+            <select name="effect">
+              <option value="{{ ResourceEffect.EXTRA_DIE }}">+1d6 on the next test</option>
+              <option value="{{ ResourceEffect.AUTO_PASS }}">Automatically pass an obstacle</option>
+              <option value="{{ ResourceEffect.CRAFT_ITEM }}">Craft an item</option>
+              <option value="{{ ResourceEffect.RECOVER_STRAIN }}">Recover 1d6 strain</option>
+            </select>
+          </label>
+          <button formaction="/actions/spend-resources" {% if session.resources != resources_max %}disabled{% endif %}>Spend</button>
+        </div>
+      </div>
+      {% endif %}
+
+      <p class="pool">{{ pool }}</p>
+    </section>
+
+    <section class="block items" aria-labelledby="items-title">
+      <h2 id="items-title">{{ "Tech" if kit.has_tech else "Items" }}</h2>
+      <div class="row">
+        <label class="field narrow">Apply to die
+          <select name="die" {% if not result %}disabled{% endif %}>
+            {% if result %}
+            {% for die in result.dice %}<option value="{{ loop.index0 }}" {% if loop.index0 == game.item_target %}selected{% endif %}>Die {{ loop.index }}</option>{% endfor %}
+            {% else %}<option>Roll first</option>{% endif %}
+          </select>
+        </label>
+        <button formaction="/actions/undo-bonus" {% if not session.can_undo_bonus %}disabled{% endif %}>Undo</button>
+      </div>
+
+      {% if kit.uses_items %}
+      {% for kind in item_kinds %}
+      <div class="row named">
+        <label class="field grow">{{ bonus_labels[kind] }}
+          <input name="name-{{ kind }}" value="{{ session.bonuses[kind.value] }}">
+        </label>
+        <button formaction="/actions/apply-bonus" name="kind" value="{{ kind }}"
+                {% if not game.bonus_available(kind) %}disabled{% endif %}>+1 value</button>
+      </div>
+      {% endfor %}
+      {% if kit.has_resources %}
+      <div class="row named">
+        <label class="field grow">{{ bonus_labels[BonusKind.CRAFTED_ITEM] }}
+          <input name="name-crafted_item" value="{{ session.bonuses.crafted_item }}"
+                 placeholder="Spend {{ resources_max }} Resources to craft" {% if not session.item_crafted %}disabled{% endif %}>
+        </label>
+        <button formaction="/actions/apply-bonus" name="kind" value="crafted_item"
+                {% if not game.bonus_available(BonusKind.CRAFTED_ITEM) %}disabled{% endif %}>+1 value</button>
+        <button formaction="/actions/lose-crafted-item" {% if not session.item_crafted %}disabled{% endif %}>Lose</button>
+      </div>
+      {% endif %}
+      {% endif %}
+
+      {% if kit.has_tech %}
+      <p class="hint">{{ tech_line }}</p>
+      {% for piece in (session.tech.pieces if session.tech else ()) %}
+      <div class="row named">
+        <label class="field grow">Tech {{ loop.index }}, strength {{ piece.strength }}
+          <input name="tech-name-{{ loop.index0 }}" value="{{ piece.name }}" placeholder="Empty: name it when you use it">
+        </label>
+        <button class="primary" formaction="/actions/apply-tech" name="index" value="{{ loop.index0 }}"
+                {% if not game.tech_usable(loop.index0) %}disabled{% endif %}>Use</button>
+        <button formaction="/actions/sacrifice-tech" name="index" value="{{ loop.index0 }}"
+                {% if not piece.working %}disabled{% endif %}>Sacrifice</button>
+      </div>
+      {% endfor %}
+      <button formaction="/actions/new-scenario" {% if not session.attributes %}disabled{% endif %}>New scenario</button>
+      {% endif %}
+    </section>
+
+    <section class="block strain" aria-labelledby="strain-title">
+      <h2 id="strain-title">{{ strain_title }}</h2>
+      <div class="row">
+        <button class="primary" formaction="/actions/take-strain">Take 1 strain</button>
+        <button class="primary" formaction="/actions/take-wound">Take 1 wound</button>
+      </div>
+      {% for ending in strain_endings %}
+      {% set row = loop.index0 %}
+      <div class="strain-row">
+        <span class="boxes">
+          {% for index in range(ending - 3, ending + 1) %}
+          <label class="box {% if index == ending %}ending{% endif %}">
+            <span class="visually-hidden">{{ "Defeat" if index == 11 else ("Wound" if index == ending else "Strain") }} box {{ index + 1 }}</span>
+            <input type="checkbox" data-action="strain-box" data-index="{{ index }}"
+                   {% if session.strain.boxes[index] %}checked{% endif %}
+                   {% if index in session.strain.locked_boxes or (not session.strain.boxes[index] and not session.strain.markable(index)) %}disabled{% endif %}>
+          </label>
+          {% endfor %}
+        </span>
+        <label class="field grow"><span class="visually-hidden">Name of the {{ "Defeat" if row == 2 else "wound" }}</span>
+          <input name="strain-name-{{ row }}" value="{{ session.strain.names[row] }}" placeholder="{{ 'Defeat' if row == 2 else 'Wound' }}">
+        </label>
+      </div>
+      {% endfor %}
+      <p class="status">{{ strain_status }}</p>
+    </section>
+
+    <section class="block session-notes" aria-labelledby="session-title">
+      <h2 id="session-title">Session</h2>
+      <label class="field">Session name
+        <input name="session-name" value="{{ game.name }}">
+      </label>
+      <div class="row notes-tools">
+        <button type="button" data-format="bold" {% if preview %}disabled{% endif %}>Bold</button>
+        <button type="button" data-format="italic" {% if preview %}disabled{% endif %}>Italic</button>
+        <button type="button" data-format="heading" {% if preview %}disabled{% endif %}>Heading</button>
+        <label class="tick"><input type="checkbox" name="notes-preview" data-action="update" {% if preview %}checked{% endif %}> Preview</label>
+      </div>
+      <label class="field {% if preview %}visually-hidden{% endif %}">Notes
+        <textarea name="notes" rows="8">{{ game.notes }}</textarea>
+      </label>
+      {% if preview %}<div class="notes-preview">{{ notes_html | safe }}</div>{% endif %}
+
+      <div class="row named">
+        <label class="field grow">Session file
+          <input name="session-path" value="{{ game.path }}" placeholder="/path/to/session.json">
+        </label>
+        <button class="primary" formaction="/actions/save">Save session</button>
+        <button formaction="/actions/load">Load game</button>
+      </div>
+      <div class="row named">
+        <label class="field grow">History file
+          <input name="export-path" value="{{ export_path }}">
+        </label>
+        <button formaction="/actions/export" {% if not history %}disabled{% endif %}>Export history</button>
+        {% if history %}<a class="button" href="/history.md" download>Download history</a>{% endif %}
+      </div>
+    </section>
+  </div>
+
+  <aside class="table" aria-label="Result and history">
+    <p class="feedback" role="status">{{ message }}</p>
+    {% if result %}
+    <h2 class="tested">{{ result.request.attribute }} (rank {{ result.request.attribute_rank }})</h2>
+    <ol class="dice">
+      {% for die in result.dice %}
+      {% set outcome = die.classify(result.request).value %}
+      <li class="die {{ outcome }}">
+        <span class="face">{{ die.effective }}</span>
+        <span class="detail">{% if die.bonus %}{{ die.raw }}+{{ die.bonus }}{% else %}&nbsp;{% endif %}</span>
+        <span class="outcome">{{ outcome }}</span>
+        {% if kit.has_rerolls %}
+        <label class="reroll"><input type="checkbox" name="reroll" value="{{ loop.index0 }}" {% if loop.index0 in game.reroll_selection %}checked{% endif %}> Reroll</label>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    {% set totals = result.totals() %}
+    <p class="totals"><span class="hit">Hits {{ totals.hits }}</span>{% if totals.expertise_hits %} (expertise {{ totals.expertise_hits }}){% endif %}
+      <span class="miss">Misses {{ totals.misses }}</span> <span class="fumble">Fumbles {{ totals.fumbles }}</span></p>
+    <p class="resources">{{ resources }}</p>
+    {% if reminder %}<p class="hint">{{ reminder }}</p>{% endif %}
+    {% if kit.has_rerolls %}<button formaction="/actions/reroll">Reroll selected</button>{% endif %}
+    {% else %}
+    <p class="empty">Roll an attribute to see the dice here.</p>
+    {% endif %}
+    <div class="row">
+      <button formaction="/actions/roll" title="Roll the last attribute again (Ctrl+R)" {% if not session.attributes %}disabled{% endif %}>Repeat roll</button>
+      <button formaction="/actions/roll-d6">Roll 1d6</button>
+    </div>
+    <h2>History</h2>
+    {% if history %}
+    <ol class="history" reversed>
+      {% for entry in history %}<li><pre>{{ entry }}</pre></li>{% endfor %}
+    </ol>
+    {% else %}
+    <p class="empty">Nothing has happened yet.</p>
+    {% endif %}
+  </aside>
+  </div>
+
+  {% if ask %}
+  {#- Shown as a modal by sheet.js; Replace sends the action again with its flag set. -#}
+  <dialog class="ask" data-ask aria-labelledby="ask-question">
+    <p id="ask-question">{{ ask.question }}</p>
+    <div class="row">
+      <button class="primary" formaction="/actions/{{ ask.action }}" name="{{ ask.flag }}" value="{{ ask.value }}">Replace</button>
+      <button type="button" data-close>Cancel</button>
+    </div>
+  </dialog>
+  {% endif %}
+</form>

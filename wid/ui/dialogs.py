@@ -5,17 +5,14 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Static
 
-from wid.formatting import SPEND_EFFECTS
+from wid.formatting import NEW_GAME_QUESTION, SPEND_EFFECTS
 from wid.rolls import RESOURCES_MAX, ResourceEffect
 
 
 class ConfirmReset(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
         with Vertical(id="confirmation"):
-            yield Static(
-                "A genre kit lasts the whole game, so changing it starts a new game: the "
-                "character, history, notes and file path are cleared. Unsaved changes will be lost."
-            )
+            yield Static(NEW_GAME_QUESTION)
             yield Button("Start new game", id="confirm-reset", variant="warning")
             yield Button("Keep current game", id="cancel-reset")
 
