@@ -75,7 +75,8 @@ wid/
 ├── cli.py              # Installed wid command (--version, --help, --self-test)
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
-├── formatting.py       # Plain-text roll, dice, and resource renderings
+├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
+├── game.py             # One sitting: the state and actions every front end drives
 ├── export.py           # Markdown text of the action history
 ├── history.py          # Structured action history entries and their text rendering
 ├── sessions.py         # Versioned JSON snapshots and atomic local storage
@@ -83,8 +84,8 @@ wid/
 ├── selftest.py         # `wid --self-test`: the app checked headless, for release builds
 ├── settings.py         # Remembered preferences in a small JSON file
 └── ui/
-    ├── app.py          # Textual application coordination and event handling
-    ├── sessions.py     # Save/load handling mixed into the application
+    ├── app.py          # Textual front end: shows the game, passes actions to it
+    ├── sessions.py     # Save, load, export and new-character dialogs
     ├── widgets.py      # Character, options, session, and result widgets
     ├── dialogs.py      # Confirmation screens
     ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
@@ -96,8 +97,12 @@ HOWTO.md                # How to use the program (for players)
 README.md               # Short overview for players, linking to the how-to
 ```
 
-The UI calls the domain models; game rules remain independent of Textual. Persistence depends
-on the models, not the interface. Package initializers do not import the application.
+Front ends call `Game` (`wid/game.py`), which owns the session, history, roll options,
+character, notes and file path, records history and words the feedback; game rules stay in
+the domain models, independent of Textual. The terminal app copies what the player typed into
+the game before each action (`collect`), then redraws from it (`refresh_sheet`), so a second
+front end only needs the same two steps. Persistence depends on the models, not the interface.
+Package initializers do not import the application.
 
 ## Files the program writes
 
