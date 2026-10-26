@@ -12,7 +12,10 @@ uv tool install .
 wid
 ```
 
-`wid --version` shows the installed version. If your shell cannot find `wid`, run
+`wid --version` shows the installed version. It comes from the latest git tag: `v0.2.0`
+gives `0.2.0`, and commits after a tag give a dev version such as `0.2.1.dev3+gabc1234`
+(with a date added while there are uncommitted changes). Nobody edits a version by hand.
+If your shell cannot find `wid`, run
 `uv tool update-shell` and restart it. The installed command is a separate copy of the
 checkout: after updating, rebuild it with `uv tool install --force --reinstall .`
 (`--reinstall` avoids a cached build; add `--offline` when everything is cached).
@@ -51,12 +54,17 @@ Add `-Python 3.13` to choose the interpreter.
 
 GitHub Actions:
 
-- `.github/workflows/ci.yml` runs the tests, `ruff check` and `ruff format --check` on Linux
-  for every pull request and push to `main`.
+- `.github/workflows/ci.yml` runs two jobs on Linux for every push: the tests (8 workers,
+  with coverage) and the quality checks (`ruff check` and `ruff format --check`).
 - `.github/workflows/release.yml` builds and smoke-tests the Windows zip on every push to
-  `main` and uploads it as a build artifact. Pushing a tag such as `v0.1.0` (it must match the
-  version in `pyproject.toml`) also attaches the zip and checksum to a draft GitHub release,
-  which you publish yourself. Without a tag, the `publish` job is skipped.
+  `main` and uploads it as a build artifact. Pushing a tag such as `v0.2.0` also attaches the
+  zip and checksum to a draft GitHub release, which you publish yourself; the zip, `wid.exe
+  --version` and the Windows file properties all take their version from that tag. Without a
+  tag, the `publish` job is skipped.
+
+To release, tag the commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
+Both workflows check out the full history (`fetch-depth: 0`) so the tag is visible to
+`hatch-vcs`.
 
 ## Project structure
 

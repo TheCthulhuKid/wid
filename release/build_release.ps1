@@ -31,7 +31,8 @@ $groups = @("--group", "release")
 if ($Smoke) { $groups += @("--group", "smoke") }
 Invoke-Checked { uv sync --locked --no-dev @groups --no-editable @pythonArgs }
 
-$version = (uv run --no-sync @pythonArgs python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])").Trim()
+# The installed version, which hatch-vcs took from the git tag (a dev version between tags).
+$version = (uv run --no-sync @pythonArgs python -c "from importlib.metadata import version; print(version('wid'))").Trim()
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x86_64" }
 $name = "wid-$version-windows-$arch"
 Write-Host "==> Building $name"

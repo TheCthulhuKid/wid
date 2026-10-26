@@ -12,7 +12,7 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy
 ROOT = Path(SPECPATH).parent
 sys.path.insert(0, str(Path(SPECPATH)))  # for versioninfo.py next to this file
 
-from versioninfo import project_version, version_file_text  # noqa: E402
+from versioninfo import installed_version, version_file_text  # noqa: E402
 ONEDIR = os.environ.get("WID_ONEDIR", "1" if sys.platform == "win32" else "0") == "1"
 ICON = ROOT / "release" / "wid.ico"
 
@@ -41,14 +41,12 @@ analysis = Analysis(
 )
 archive = PYZ(analysis.pure)
 
-# The file properties Windows shows (product name, description, version), from pyproject.toml.
+# The file properties Windows shows (product name, description, version), from the git tag.
 version_file = None
 if sys.platform == "win32":
     version_file = Path(workpath) / "wid_version_info.txt"
     version_file.parent.mkdir(parents=True, exist_ok=True)
-    version_file.write_text(
-        version_file_text(project_version(ROOT / "pyproject.toml")), encoding="utf-8"
-    )
+    version_file.write_text(version_file_text(installed_version()), encoding="utf-8")
 
 exe_options = dict(
     name="wid",
