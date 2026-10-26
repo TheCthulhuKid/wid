@@ -29,6 +29,8 @@ from wid.web.view import COLOURS, css_variables, sheet_context
 HOSTS = ["127.0.0.1", "localhost"]
 TOKEN_COOKIE = "wid_token"
 HERE = Path(__file__).parent
+# The page's colours as CSS variables, worked out once (only page.html uses them).
+COLOUR_VARIABLES = {scheme: css_variables(colours) for scheme, colours in COLOURS.items()}
 TEMPLATES = Jinja2Templates(directory=HERE / "templates")
 
 
@@ -38,8 +40,9 @@ def matches(offered: str, token: str) -> bool:
 
 
 def download_name(game: Game) -> str:
-    # The name goes into a response header, so only plain filename characters are kept.
-    return re.sub(r"[^\w.-]", "_", Path(game.default_export_path()).name)
+    # The name goes into a response header, which only carries ASCII, so anything else
+    # (a quote, a line break, a letter like 日) becomes "_".
+    return re.sub(r"[^A-Za-z0-9._-]", "_", Path(game.default_export_path()).name)
 
 
 def render(
@@ -50,10 +53,10 @@ def render(
     *,
     preview: bool = False,
     ask: NeedsConfirmation | None = None,
+    export_path: str = "",
 ) -> Response:
-    context = sheet_context(game, message, preview=preview, ask=ask)
-    context |= {"light": css_variables(COLOURS["light"]), "dark": css_variables(COLOURS["dark"])}
-    return TEMPLATES.TemplateResponse(request, template, context)
+    context = sheet_context(game, message, preview=preview, ask=ask, export_path=export_path)
+    return TEMPLATES.TemplateResponse(request, template, context | COLOUR_VARIABLES)
 
 
 def create_app(game: Game, token: str) -> FastAPI:
@@ -92,17 +95,26 @@ def create_app(game: Game, token: str) -> FastAPI:
             raise HTTPException(404, "No such action")
         body = await request.body()
         async with lock:
-            preview, ask = False, None
+            preview, ask, export_path = False, None, ""
             try:
                 form = SheetForm(body)
                 preview = form.ticked("notes-preview")
+                export_path = form.text("export-path")
                 collect(game, form)
                 message = action(game, form)
             except NeedsConfirmation as question:
                 message, ask = "", question
             except ValueError as error:
                 message = str(error)
-            return render(request, "sheet.html", game, message, preview=preview, ask=ask)
+            return render(
+                request,
+                "sheet.html",
+                game,
+                message,
+                preview=preview,
+                ask=ask,
+                export_path=export_path,
+            )
 
     @app.get("/history.md")
     async def download_history() -> Response:

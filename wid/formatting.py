@@ -148,6 +148,26 @@ def spend_summary(spend: ResourceSpend, pool: int) -> str:
     return f"{text}. Resources reset to {pool}."
 
 
+# What the front ends ask before replacing something.
+NEW_GAME_QUESTION = (
+    "A genre kit lasts the whole game, so changing it starts a new game: the character, "
+    "history, notes and file path are cleared. Unsaved changes will be lost."
+)
+NEW_CHARACTER_QUESTION = (
+    "Start a new character? This clears the character, ranks, items, strain and the current "
+    "roll. The history, notes and file path stay."
+)
+
+
+def replace_question(kind: str, path: object) -> str:
+    """Asked before writing over a file: ``kind`` is "save" or "file"."""
+    return f"Replace the existing {kind} at {path}?"
+
+
+def load_question(name: str) -> str:
+    return f"Load {name}? This replaces the current game and history. Unsaved changes will be lost."
+
+
 def strain_counts(tracker: StrainTracker) -> str:
     """Marked strain and wounds, such as ``3 strain, 1 wound``; Defeat is added when marked."""
     wounds = sum(tracker.boxes[ending] for ending in STRAIN_ENDINGS[:-1])

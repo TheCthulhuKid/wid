@@ -52,6 +52,9 @@ def test_new_character_keeps_history_and_file_but_a_new_kit_starts_over():
     assert game.change_kit(Genre.OLDHEART) == "New Oldheart game started."
     assert (game.history, game.notes, game.path) == ([], "", "")
     assert not game.has_unsaved_state()
+    # Review issue 5: a typed session name would be lost too.
+    game.name = "Friday"
+    assert game.has_unsaved_state()
 
 
 def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):

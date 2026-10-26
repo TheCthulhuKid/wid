@@ -16,7 +16,6 @@ from wid.formatting import BONUS_LABELS, check_summary, spend_summary
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre, WiDProfile
 from wid.rolls import (
-    STANDING_START,
     BonusKind,
     PowerMode,
     ResourceEffect,
@@ -228,21 +227,23 @@ class Game:
 
     def has_unsaved_state(self) -> bool:
         """Whether anything would be lost by replacing this game."""
+        return bool(self.history) or self.wrote_anything() or self.session.in_play
+
+    def wrote_anything(self) -> bool:
+        """Whether the player typed anything: the session name, notes, details or names.
+
+        The file path is left out: it is where a load reads from, so it would always count.
+        """
         session = self.session
-        return bool(
-            session.attributes is not None
-            or self.history
-            or self.notes
-            or any(self.character.model_dump().values())
-            or any(session.bonuses.model_dump().values())
-            or any(session.power_names)
-            or session.standing != STANDING_START
-            or session.total_strain
-            or session.total_corruption
-            or any(session.strain.boxes)
-            or any(session.strain.names)
-            or session.manifestations
+        written = (
+            self.name,
+            self.notes,
+            *self.character.model_dump().values(),
+            *session.bonuses.model_dump().values(),
+            *session.power_names,
+            *session.strain.names,
         )
+        return any(written)
 
     def save(self, *, overwrite: bool = False) -> str:
         session = self.session

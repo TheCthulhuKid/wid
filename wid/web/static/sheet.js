@@ -38,24 +38,10 @@ function swap(html) {
   if (again) again.focus({ preventScroll: true });
 }
 
-function confirmed(element) {
-  return !element.dataset.confirm || window.confirm(element.dataset.confirm);
-}
-
-// Put back only the control that changed, so a cancelled kit change keeps what was typed.
-function revert(control) {
-  if (control.type === "checkbox" || control.type === "radio") {
-    control.checked = control.defaultChecked;
-    return;
-  }
-  for (const option of control.options || []) option.selected = option.defaultSelected;
-}
-
 document.addEventListener("submit", (event) => {
   if (event.target !== sheet()) return;
   event.preventDefault();
   const button = event.submitter;
-  if (button && !confirmed(button)) return;
   send(button ? button.formAction : event.target.action, new FormData(event.target, button));
 });
 
@@ -63,10 +49,6 @@ document.addEventListener("submit", (event) => {
 document.addEventListener("change", (event) => {
   const control = event.target;
   if (!control.dataset.action || !sheet().contains(control)) return;
-  if (!confirmed(control)) {
-    revert(control);
-    return;
-  }
   const data = new FormData(sheet());
   if (control.dataset.index !== undefined) data.set("index", control.dataset.index);
   if (control.type === "checkbox" && control.checked) data.set("marked", "1");

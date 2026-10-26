@@ -68,17 +68,21 @@ def test_the_history_exports_to_a_file_and_downloads(tmp_path):
     # B4, B5
     game = started()
     game.name = "Friday"
-    game.path = str(tmp_path / "campaign.json")
+    # A non-ASCII letter: the download name must still fit in a header (review issue 3).
+    game.path = str(tmp_path / "kämpaign.json")
     client = browser(game)
-    target = str(tmp_path / "campaign.md")
+    target = str(tmp_path / "notes.md")
     assert (
         f"Exported 1 history entries to {target}."
         in act(client, "export", **{"export-path": target}).text
     )
-    assert "Replace the existing file at" in act(client, "export", **{"export-path": target}).text
+    asked = act(client, "export", **{"export-path": target}).text
+    assert "Replace the existing file at" in asked
+    # Replace must write the file the question names (review issue 1).
+    assert f'name="export-path" value="{target}"' in asked
 
     download = client.get("/history.md")
     assert download.status_code == 200
-    assert download.headers["content-disposition"] == 'attachment; filename="campaign.md"'
+    assert download.headers["content-disposition"] == 'attachment; filename="k_mpaign.md"'
     assert download.text == game.history_text()
     assert download.text.startswith("# Friday")

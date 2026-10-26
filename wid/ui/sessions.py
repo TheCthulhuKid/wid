@@ -2,6 +2,7 @@ from pathlib import Path
 
 from textual.widgets import Input, Select
 
+from wid.formatting import NEW_CHARACTER_QUESTION, load_question, replace_question
 from wid.game import Game
 from wid.profiles import Genre
 from wid.sessions import SavedSession
@@ -22,7 +23,7 @@ class SessionActions:
             done = self.act(lambda: self.game.save(overwrite=overwrite))
         except FileExistsError as error:
             self.push_screen(
-                ConfirmSessionAction(f"Replace the existing save at {error.filename}?"),
+                ConfirmSessionAction(replace_question("save", error.filename)),
                 self.finish_save,
             )
             return
@@ -54,7 +55,7 @@ class SessionActions:
             self.act(lambda: self.game.export_history(value, overwrite=overwrite))
         except FileExistsError as error:
             self.push_screen(
-                ConfirmSessionAction(f"Replace the existing file at {error.filename}?"),
+                ConfirmSessionAction(replace_question("file", error.filename)),
                 lambda confirmed: self.finish_export(value, confirmed),
             )
 
@@ -70,10 +71,7 @@ class SessionActions:
         self.collect()
         if self.game.has_unsaved_state():
             self.push_screen(
-                ConfirmSessionAction(
-                    "Start a new character? This clears the character, ranks, items, strain and "
-                    "the current roll. The history, notes and file path stay."
-                ),
+                ConfirmSessionAction(NEW_CHARACTER_QUESTION),
                 self.finish_new_character,
             )
         else:
@@ -103,10 +101,7 @@ class SessionActions:
             return
         if self.game.has_unsaved_state():
             self.push_screen(
-                ConfirmSessionAction(
-                    f"Load {saved.name}? This replaces the current game and history. "
-                    "Unsaved changes will be lost."
-                ),
+                ConfirmSessionAction(load_question(saved.name)),
                 lambda confirmed: self.finish_load(saved, path, confirmed),
             )
         else:

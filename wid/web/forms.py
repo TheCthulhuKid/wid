@@ -7,21 +7,28 @@ terminal's ``collect`` does) and the action then runs on an up-to-date game.
 from collections.abc import Callable
 from urllib.parse import parse_qs
 
+from wid.formatting import (
+    NEW_CHARACTER_QUESTION,
+    NEW_GAME_QUESTION,
+    load_question,
+    replace_question,
+)
 from wid.game import Game
 from wid.profiles import Genre
-from wid.rolls import BonusKind, PowerMode, ResourceEffect
+from wid.rolls import SCARED_MAX, BonusKind, PowerMode, ResourceEffect
 from wid.sessions import CharacterDetails
 
 
 class NeedsConfirmation(Exception):
     """An action that would replace something; the sheet asks, then sends ``action`` again
-    with ``flag`` set (the browser's version of the terminal's confirmation screens)."""
+    with ``flag`` set to ``value`` (the browser's version of the terminal's confirmations)."""
 
-    def __init__(self, question: str, action: str, flag: str):
+    def __init__(self, question: str, action: str, flag: str, value: str = "1"):
         super().__init__(question)
         self.question = question
         self.action = action
         self.flag = flag
+        self.value = value
 
 
 class SheetForm:
@@ -66,7 +73,11 @@ def take_numbered(
 
 
 def collect(game: Game, form: SheetForm) -> None:
-    """Copy the sheet's fields into the game; fields the request did not send are left alone."""
+    """Copy the sheet's fields into the game; fields the request did not send are left alone.
+
+    The typed text goes in first, then the choices are all checked before any is applied, so a
+    bad choice (one the page never offers) is refused without losing what the player wrote.
+    """
     if not form.has_sheet:
         return
 
@@ -82,12 +93,6 @@ def collect(game: Game, form: SheetForm) -> None:
     take("session-name", lambda value: setattr(game, "name", value))
     take("session-path", lambda value: setattr(game, "path", value))
     take("notes", lambda value: setattr(game, "notes", value))
-    take("fear", lambda value: setattr(game, "fear_level", int(value)))
-    take("power", lambda value: setattr(game, "power", PowerMode(value)))
-    game.assisted = form.ticked("assisted")
-    game.expertise = form.ticked("expertise")
-    game.reroll_selection = tuple(form.numbers("reroll"))
-    take("die", lambda value: setattr(game, "item_target", int(value)))
     for kind in BonusKind:
         take(f"name-{kind}", lambda value, kind=kind: session.set_bonus_name(kind, value))
     # The counts come from the character, so a kit's slots exist only where it has them (Tech in
@@ -99,23 +104,50 @@ def collect(game: Game, form: SheetForm) -> None:
     take_numbered(form, "tech-name", tech_slots, session.set_tech_name)
     take_numbered(form, "strain-name", len(session.strain.names), session.set_strain_name)
 
+    fear = int(form.get("fear") or game.fear_level)
+    if not 0 <= fear <= SCARED_MAX:
+        raise ValueError(f"Scared runs from 0 to {SCARED_MAX}")
+    power = PowerMode(form.get("power") or game.power)
+    die = form.get("die")
+    item_target = int(die) if die is not None else game.item_target
+    reroll = tuple(form.numbers("reroll"))
+    if any(index < 0 for index in (*reroll, item_target or 0)):
+        raise ValueError("That die is outside the dice pool")
+    game.fear_level, game.power = fear, power
+    game.item_target, game.reroll_selection = item_target, reroll
+    game.assisted = form.ticked("assisted")
+    game.expertise = form.ticked("expertise")
+
+
+def change_kit(game: Game, form: SheetForm) -> str:
+    """The sheet still shows the old kit while asking, so Replace carries the new one."""
+    confirmed = form.get("confirm-genre")
+    genre = Genre(confirmed or form.text("genre"))
+    if genre == game.session.profile_id:
+        return ""
+    if confirmed is None and game.has_unsaved_state():
+        raise NeedsConfirmation(NEW_GAME_QUESTION, "change-kit", "confirm-genre", genre)
+    return game.change_kit(genre)
+
+
+def new_character(game: Game, form: SheetForm) -> str:
+    if not form.ticked("confirm") and game.has_unsaved_state():
+        raise NeedsConfirmation(NEW_CHARACTER_QUESTION, "new-character", "confirm")
+    return game.new_character()
+
 
 def save(game: Game, form: SheetForm) -> str:
     try:
         return game.save(overwrite=form.ticked("overwrite"))
     except FileExistsError as error:
-        question = f"Replace the existing save at {error.filename}?"
+        question = replace_question("save", error.filename)
         raise NeedsConfirmation(question, "save", "overwrite") from error
 
 
 def load(game: Game, form: SheetForm) -> str:
     saved, path = game.read_save(form.text("session-path"))
     if game.has_unsaved_state() and not form.ticked("confirm"):
-        question = (
-            f"Load {saved.name}? This replaces the current game and history. "
-            "Unsaved changes will be lost."
-        )
-        raise NeedsConfirmation(question, "load", "confirm")
+        raise NeedsConfirmation(load_question(saved.name), "load", "confirm")
     return game.load(saved, path)
 
 
@@ -123,7 +155,7 @@ def export(game: Game, form: SheetForm) -> str:
     try:
         return game.export_history(form.text("export-path"), overwrite=form.ticked("overwrite"))
     except FileExistsError as error:
-        question = f"Replace the existing file at {error.filename}?"
+        question = replace_question("file", error.filename)
         raise NeedsConfirmation(question, "export", "overwrite") from error
 
 
@@ -152,8 +184,8 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     "remove-manifestation": lambda game, form: game.remove_manifestation(),
     "standing": lambda game, form: game.set_standing(form.number("standing")),
     "roll-d6": lambda game, form: game.roll_one_die(),
-    "new-character": lambda game, form: game.new_character(),
-    "change-kit": lambda game, form: game.change_kit(Genre(form.text("genre"))),
+    "new-character": new_character,
+    "change-kit": change_kit,
     # Shows the sheet again with the fields taken in, for changes such as Scared or the notes
     # preview that alter what the sheet shows without being a game action.
     "update": lambda game, form: "",

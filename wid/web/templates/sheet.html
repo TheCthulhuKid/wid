@@ -7,8 +7,7 @@
     <h1>We're in Danger</h1>
     <label class="kit-picker">
       <span class="visually-hidden">Genre kit</span>
-      <select name="genre" data-action="change-kit"
-              {% if confirm %}data-confirm="Change kit and start a new game? The character, history, notes and session name are cleared."{% endif %}>
+      <select name="genre" data-action="change-kit">
         {% for genre, profile in kits.items() %}
         <option value="{{ genre }}" {% if genre == session.profile_id %}selected{% endif %}>{{ profile.name }}</option>
         {% endfor %}
@@ -53,8 +52,7 @@
         <p class="hint">Give each attribute a different rank (1–3), then start.</p>
         <button class="primary" formaction="/actions/start-game">Start game</button>
         {% endif %}
-        <button formaction="/actions/new-character"
-                {% if confirm %}data-confirm="Start a new character? This clears the character, ranks, items, strain and the current roll. The history and notes stay."{% endif %}>New character</button>
+        <button formaction="/actions/new-character">New character</button>
       </div>
     </section>
 
@@ -307,11 +305,11 @@
   </div>
 
   {% if ask %}
-  {#- Shown as a modal by sheet.js; Replace sends the same action again with its flag set. -#}
+  {#- Shown as a modal by sheet.js; Replace sends the action again with its flag set. -#}
   <dialog class="ask" data-ask aria-labelledby="ask-question">
     <p id="ask-question">{{ ask.question }}</p>
     <div class="row">
-      <button class="primary" formaction="/actions/{{ ask.action }}" name="{{ ask.flag }}" value="1">Replace</button>
+      <button class="primary" formaction="/actions/{{ ask.action }}" name="{{ ask.flag }}" value="{{ ask.value }}">Replace</button>
       <button type="button" data-close>Cancel</button>
     </div>
   </dialog>

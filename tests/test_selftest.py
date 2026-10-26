@@ -32,7 +32,7 @@ def test_a_failing_check_is_reported(capsys):
 
 def test_the_command_line_flag_runs_it_instead_of_the_app():
     with (
-        patch("wid.cli.RollerApp") as app,
+        patch("wid.ui.app.RollerApp") as app,
         patch.object(selftest, "run_self_test", return_value=0) as run,
         pytest.raises(SystemExit) as stop,
     ):

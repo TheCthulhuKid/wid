@@ -2,14 +2,19 @@ import argparse
 from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
 
-from wid.ui.app import RollerApp
-
 
 def package_version() -> str:
     try:
         return version("wid")
     except PackageNotFoundError:
         return "unknown"
+
+
+def port_number(text: str) -> int:
+    port = int(text)
+    if not 0 <= port <= 65535:
+        raise argparse.ArgumentTypeError(f"{port} is not a port (use 0 to 65535)")
+    return port
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -28,7 +33,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="play in a web browser on this computer instead of the terminal",
     )
     parser.add_argument(
-        "--port", type=int, help="with --web: the port to use (default 8765, or any free one)"
+        "--port", type=port_number, help="with --web: the port (default 8765, or any free one)"
     )
     parser.add_argument(
         "--no-browser", action="store_true", help="with --web: only print the address to open"
@@ -44,4 +49,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         from wid.web.server import serve
 
         raise SystemExit(serve(port=arguments.port, open_browser=not arguments.no_browser))
+    # Imported here so --web and --self-test do not load the terminal interface first.
+    from wid.ui.app import RollerApp
+
     RollerApp().run()

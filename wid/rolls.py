@@ -61,6 +61,7 @@ class NamedBonuses(FrozenModel):
 
 Index = Annotated[int, Field(strict=True, ge=0)]
 Rank = Annotated[int, Field(strict=True, ge=1, le=3)]
+SCARED_MAX = 3
 RESOURCES_MIN = 1
 RESOURCES_MAX = 6
 
@@ -97,7 +98,7 @@ def manifestation_check(amount: int, score: int, rng: Random) -> ManifestationCh
 class RollRequest(FrozenModel):
     profile_id: Genre = Genre.CORE
     assisted: bool = False
-    fear_level: Annotated[int, Field(strict=True, ge=0, le=3)] = 0
+    fear_level: Annotated[int, Field(strict=True, ge=0, le=SCARED_MAX)] = 0
     attribute_rank: Rank = 1
     attribute: str = "Athleticism"
     expertise: bool = False
@@ -570,6 +571,19 @@ class RollSession(BaseModel):
         if check.triggered and not self.succumbed:
             self.manifestations = (*self.manifestations, "")
         return check
+
+    @property
+    def in_play(self) -> bool:
+        """Whether play has changed anything: ranks, strain, Corruption or Standing."""
+        changes = (
+            self.attributes is not None,
+            self.total_strain,
+            self.total_corruption,
+            any(self.strain.boxes),
+            self.manifestations,
+            self.standing != STANDING_START,
+        )
+        return any(changes)
 
     @property
     def succumbed(self) -> bool:

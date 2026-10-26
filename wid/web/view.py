@@ -81,7 +81,12 @@ def notes_html(text: str) -> str:
 
 
 def sheet_context(
-    game: Game, message: str, *, preview: bool, ask: NeedsConfirmation | None = None
+    game: Game,
+    message: str,
+    *,
+    preview: bool,
+    ask: NeedsConfirmation | None = None,
+    export_path: str = "",
 ) -> dict[str, object]:
     """Everything the sheet template reads, worded by the same functions the terminal uses."""
     session = game.session
@@ -111,9 +116,9 @@ def sheet_context(
         "history": [str(entry) for entry in reversed(game.history)],
         "preview": preview,
         "ask": ask,
-        "export_path": game.default_export_path(),
+        # What the player typed stays; the suggestion only fills an empty box.
+        "export_path": export_path or game.default_export_path(),
         "notes_html": notes_html(game.notes) if preview else "",
-        "confirm": game.has_unsaved_state(),
         "bonus_labels": BONUS_LABELS,
         "item_kinds": (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM),
         "BonusKind": BonusKind,
