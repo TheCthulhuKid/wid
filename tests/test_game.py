@@ -67,6 +67,7 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
         game.save()
     game.name = "Friday"
     assert game.save() == f"Saved Friday to {game.path}."
+    assert not game.has_unsaved_state()
     with pytest.raises(FileExistsError) as error:
         game.save()
     assert error.value.filename == game.path
@@ -78,6 +79,9 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     assert loaded.session.model_dump() == game.session.model_dump()
     assert (loaded.fear_level, loaded.reroll_selection) == (2, (1,))
     assert loaded.history == game.history
+    assert not loaded.has_unsaved_state()
+    loaded.roll()
+    assert loaded.has_unsaved_state()
     with pytest.raises(ValueError, match="Could not load session"):
         loaded.read_save(str(tmp_path / "missing.json"))
 

@@ -148,7 +148,7 @@ def spend_summary(spend: ResourceSpend, pool: int) -> str:
     return f"{text}. Resources reset to {pool}."
 
 
-# What the front ends ask before replacing something.
+# What the front ends ask before replacing or losing something.
 NEW_GAME_QUESTION = (
     "A genre kit lasts the whole game, so changing it starts a new game: the character, "
     "history, notes and file path are cleared. Unsaved changes will be lost."
@@ -157,6 +157,7 @@ NEW_CHARACTER_QUESTION = (
     "Start a new character? This clears the character, ranks, items, strain and the current "
     "roll. The history, notes and file path stay."
 )
+QUIT_QUESTION = "Quit? Unsaved changes will be lost."
 
 
 def replace_question(kind: str, path: object) -> str:

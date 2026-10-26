@@ -5,6 +5,7 @@ from helpers import change_genre, click
 from test_rollerapp import start_game, text
 from textual.widgets import Button, Checkbox, Input, Select
 
+from wid.formatting import QUIT_QUESTION
 from wid.profiles import Genre
 from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
@@ -98,6 +99,11 @@ def test_load_and_save_ask_before_replacing(tmp_path, saved_session_factory):
             await click(app, pilot, "#save-session")
             await pilot.click("#confirm-session")
             assert SavedSession.load(path).name == "Replacement"
+            await pilot.press("ctrl+r")
+            await pilot.press("ctrl+q")
+            assert app.screen.message == QUIT_QUESTION
+            await pilot.click("#cancel-session")
+            assert app.is_running
 
     asyncio.run(scenario())
 

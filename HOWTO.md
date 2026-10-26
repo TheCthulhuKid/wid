@@ -9,7 +9,8 @@ wid is a dice roller and tracker for **We're in Danger**.
 3. Press **Start game**. The ranks are locked until you change kit.
 4. Press **Roll** beside an attribute. The result appears on the right.
 
-**Load game** (next to Start game) opens a saved game instead. **Ctrl+Q** quits.
+**Load game** (next to Start game) opens a saved game instead. **Ctrl+Q** quits, asking first if
+anything is unsaved.
 
 ## Rolling
 
@@ -162,6 +163,7 @@ differences:
 - **Save session** and **Load game** use the **Session file** box. **Export history** writes the
   Markdown to the **History file** box; **Download history** saves it through the browser.
 - When something would be replaced or lost, a small box asks first, as in the terminal.
+  Closing or reloading the page with unsaved changes asks too.
 - The colours follow your browser's light or dark setting.
 
 Games saved in the browser open in the terminal, and the other way round. If the page says to
@@ -178,7 +180,7 @@ changes every time wid starts.
 | **D** | Pick a colour theme (it is remembered; the default is "danger", cream with red highlights) |
 | **Ctrl+L** | Show or hide the history log |
 | **Tab** / **Shift+Tab** | Move between controls |
-| **Ctrl+Q** | Quit |
+| **Ctrl+Q** | Quit (asks first if anything is unsaved) |
 
 The letter keys work when you are not typing in a text box. The bar at the bottom shows the
 keys that work at that moment.

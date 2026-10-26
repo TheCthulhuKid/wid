@@ -5,6 +5,9 @@
 
 const sheet = () => document.getElementById("sheet");
 
+// Whether the player typed since the last reply: the game has not seen that text yet.
+let typed = false;
+
 async function send(url, data) {
   const response = await fetch(url, {
     method: "POST",
@@ -26,6 +29,7 @@ function swap(html) {
   const name = active && active.getAttribute("name");
   const value = active && active.getAttribute("value");
   sheet().outerHTML = html;
+  typed = false;
   // A question from the game (replace a file, discard a game) opens as a modal dialog.
   const ask = sheet().querySelector("dialog[data-ask]");
   if (ask) {
@@ -53,6 +57,18 @@ document.addEventListener("change", (event) => {
   if (control.dataset.index !== undefined) data.set("index", control.dataset.index);
   if (control.type === "checkbox" && control.checked) data.set("marked", "1");
   send(`/actions/${control.dataset.action}`, data);
+});
+
+document.addEventListener("input", (event) => {
+  if (sheet().contains(event.target)) typed = true;
+});
+
+// Closing or reloading the page asks first while something would be lost, as Ctrl+Q does in
+// the terminal.
+window.addEventListener("beforeunload", (event) => {
+  if (sheet().dataset.unsaved === undefined && !typed) return;
+  event.preventDefault();
+  event.returnValue = "";
 });
 
 document.addEventListener("keydown", (event) => {

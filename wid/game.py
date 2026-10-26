@@ -8,8 +8,10 @@ front end can ask before calling again with ``overwrite=True``.
 """
 
 import errno
+from collections.abc import Callable
 from pathlib import Path
 from random import Random
+from typing import Any, Literal
 
 from pydantic import ValidationError
 
@@ -35,6 +37,19 @@ def file_exists(path: Path) -> FileExistsError:
     return FileExistsError(errno.EEXIST, "File exists", str(path))
 
 
+type NameField = Literal["bonus", "power", "manifestation", "tech", "strain"]
+
+# The session setter for each name the player types; the slot is the bonus kind for bonuses
+# and the row or index for the others.
+RENAMERS: dict[NameField, Callable[[RollSession, Any, str], object]] = {
+    "bonus": RollSession.set_bonus_name,
+    "power": RollSession.set_power_name,
+    "manifestation": RollSession.set_manifestation_name,
+    "tech": RollSession.set_tech_name,
+    "strain": RollSession.set_strain_name,
+}
+
+
 def player_message(error: Exception) -> str:
     """The reason to show the player: pydantic's first message, without its prefix."""
     if isinstance(error, ValidationError):
@@ -49,6 +64,8 @@ class Game:
         self.name = ""
         self.path = ""
         self.notes = ""
+        # What the last save or load held, to tell whether anything has changed since.
+        self.saved_snapshot: dict[str, object] | None = None
         self.reset_sheet(Genre.CORE)
 
     def reset_sheet(self, genre: Genre) -> None:
@@ -89,6 +106,10 @@ class Game:
             )
         )
         self.reroll_selection = ()
+
+    def rename(self, field: NameField, slot: int | BonusKind, name: str) -> None:
+        """Name a bonus, power, manifestation, Tech piece or strain row; nothing is logged."""
+        RENAMERS[field](self.session, slot, name)
 
     def draft_request(self, *, preview: bool = False) -> RollRequest:
         """The next test as the options stand; ``preview`` skips the rank, which needs setup."""
@@ -235,11 +256,37 @@ class Game:
         self.reset_sheet(genre)
         self.history.clear()
         self.name = self.path = self.notes = ""
+        self.saved_snapshot = None
         return f"New {PROFILES[genre].name} game started."
 
     def has_unsaved_state(self) -> bool:
-        """Whether anything would be lost by replacing this game."""
+        """Whether anything would be lost by replacing this game.
+
+        After a save or load, that is any change since; before one, anything at all.
+        """
+        if self.saved_snapshot is not None:
+            return self.snapshot() != self.saved_snapshot
         return bool(self.history) or self.wrote_anything() or self.session.in_play
+
+    def snapshot(self) -> dict[str, object]:
+        """What a save keeps, apart from the file path, which only says where it goes.
+
+        The dice picked for a reroll or an item are left out: they are not worth a question.
+        """
+        return {
+            "session": self.session.model_dump(),
+            "history": tuple(self.history),
+            "name": self.name,
+            "notes": self.notes,
+            "character": self.character,
+            "draft": (
+                self.tested_attribute,
+                self.fear_level,
+                self.assisted,
+                self.expertise,
+                self.power,
+            ),
+        }
 
     def wrote_anything(self) -> bool:
         """Whether the player typed anything: the session name, notes, details or names.
@@ -279,6 +326,7 @@ class Game:
         except (OSError, ValueError) as error:
             raise ValueError(f"Could not save session: {player_message(error)}") from error
         self.name = saved.name
+        self.saved_snapshot = self.snapshot()
         return f"Saved {saved.name} to {path}."
 
     def read_save(self, text: str) -> tuple[SavedSession, Path]:
@@ -304,6 +352,7 @@ class Game:
         self.power = draft.power
         self.reroll_selection = saved.reroll_indices
         self.item_target = saved.item_target
+        self.saved_snapshot = self.snapshot()
         return f"Loaded {saved.name} from {path}."
 
     def default_export_path(self) -> str:

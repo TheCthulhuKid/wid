@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from operator import attrgetter
 from pathlib import Path
 from random import Random
 from typing import ClassVar
@@ -33,7 +34,7 @@ from wid.formatting import (
     strain_summary,
     tech_starting_line,
 )
-from wid.game import Game, player_message
+from wid.game import Game, NameField, player_message
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
@@ -86,6 +87,20 @@ SHORT_HEIGHT = 30
 SMALL_WIDTH = 100
 TAB_NAMES = ("character", "session")
 SECTION_NAMES = ("strain", "items")
+
+# Buttons that run one game action and show what it says.
+GAME_BUTTONS: dict[str, Callable[[Game], str]] = {
+    "take-strain": Game.take_strain,
+    "take-wound": Game.take_wound,
+    "undo-bonus": Game.undo_bonus,
+    "new-scenario": Game.start_scenario,
+    "resources-down": lambda game: game.adjust_resources(-1),
+    "resources-up": lambda game: game.adjust_resources(1),
+    "lose-crafted-item": Game.lose_crafted_item,
+    "roll-d6": Game.roll_one_die,
+    "add-manifestation": Game.add_manifestation,
+    "remove-manifestation": Game.remove_manifestation,
+}
 
 
 class RollerApp(SessionActions, App):
@@ -546,78 +561,47 @@ class RollerApp(SessionActions, App):
             self.options_changed()
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
-        if event.value != event.checkbox.value:
+        checkbox = event.checkbox
+        if event.value != checkbox.value:
             return
-        if isinstance(event.checkbox, StrainBox):
-            index, marked = event.checkbox.index, event.value
-            self.act(lambda: self.game.set_strain_box(index, marked))
-        elif isinstance(event.checkbox, PowerToggle):
-            if event.value:
-                self.set_power(event.checkbox.mode)
-            self.options_changed()
-        elif event.checkbox.id == "assisted":
-            self.options_changed()
-        elif isinstance(event.checkbox, RerollDie):
-            self.update_reroll_controls()
+        handler = CHECKBOXES.get(checkbox.id) or CHECKBOXES.get(type(checkbox))
+        if handler is not None:
+            handler(self, checkbox)
+
+    def mark_strain_box(self, box: StrainBox) -> None:
+        index, marked = box.index, box.value
+        self.act(lambda: self.game.set_strain_box(index, marked))
+
+    def use_power(self, toggle: PowerToggle) -> None:
+        if toggle.value:
+            self.set_power(toggle.mode)
+        self.options_changed()
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.value != event.input.value:
             return
-        if isinstance(event.input, StrainName):
-            self.session.set_strain_name(event.input.row, event.value)
-            self.update_strain_status()
-        elif isinstance(event.input, PowerName):
-            self.session.set_power_name(event.input.index, event.value)
-        elif isinstance(event.input, ManifestationName):
-            self.session.set_manifestation_name(event.input.index, event.value)
-        elif isinstance(event.input, TechName):
-            self.session.set_tech_name(event.input.index, event.value)
-            self.update_tech_controls()
-        elif isinstance(event.input, BonusName):
-            self.session.set_bonus_name(event.input.kind, event.value)
-            self.update_bonus_controls()
+        name_field = NAME_FIELDS.get(type(event.input))
+        if name_field is None:
+            return
+        field, slot, refresh = name_field
+        self.game.rename(field, slot(event.input), event.value)
+        if refresh is not None:
+            refresh(self)
 
     def on_standing_track_moved(self, event: StandingTrack.Moved) -> None:
         self.act(lambda: self.game.set_standing(event.standing))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if isinstance(event.button, AttributeRollButton):
-            self.action_roll_attribute(event.button.index)
-            return
-        if isinstance(event.button, BonusButton):
-            self.apply_bonus(event.button.kind)
-            return
-        if isinstance(event.button, TechUseButton):
-            self.apply_tech(event.button.index)
-            return
-        if isinstance(event.button, SacrificeButton):
-            index = event.button.index
-            self.act(lambda: self.game.sacrifice_tech(index))
-            return
-        game = self.game
-        action = {
-            "save-session": self.action_save_session,
-            "export-history": self.action_export_history,
-            "new-character": self.action_new_character,
-            "load-session": self.action_load_session,
-            "take-strain": lambda: self.act(game.take_strain),
-            "take-wound": lambda: self.act(game.take_wound),
-            "undo-bonus": lambda: self.act(game.undo_bonus),
-            "toggle-history": self.action_toggle_history,
-            "start-game": self.start_game,
-            "reroll_button": self.action_reroll,
-            "new-scenario": lambda: self.act(game.start_scenario),
-            "resources-down": lambda: self.act(lambda: game.adjust_resources(-1)),
-            "resources-up": lambda: self.act(lambda: game.adjust_resources(1)),
-            "spend-resources": lambda: self.push_screen(SpendResources(), self.spend_resources),
-            "lose-crafted-item": lambda: self.act(game.lose_crafted_item),
-            "roll-d6": lambda: self.act(game.roll_one_die),
-            "gain-corruption": self.gain_corruption,
-            "add-manifestation": lambda: self.act(game.add_manifestation),
-            "remove-manifestation": lambda: self.act(game.remove_manifestation),
-        }.get(event.button.id)
-        if action is not None:
-            action()
+        button = event.button
+        if (typed := TYPED_BUTTONS.get(type(button))) is not None:
+            typed(self, button)
+        elif (action := GAME_BUTTONS.get(button.id)) is not None:
+            self.act(lambda: action(self.game))
+        elif (handler := APP_BUTTONS.get(button.id)) is not None:
+            handler(self)
+
+    def ask_spend_resources(self) -> None:
+        self.push_screen(SpendResources(), self.spend_resources)
 
     def apply_tech(self, index: int) -> None:
         die = self.query_one("#item-target", Select).value
@@ -666,3 +650,46 @@ class RollerApp(SessionActions, App):
     def action_reroll(self) -> None:
         indices = self.selected_dice()
         self.act(lambda: self.game.reroll(indices))
+
+
+# The tables below name RollerApp's methods, so they follow the class.
+
+# Checkboxes by id, or else by type, and what changing one does.
+CHECKBOXES: dict[str | type[Checkbox], Callable[[RollerApp, Checkbox], None]] = {
+    StrainBox: RollerApp.mark_strain_box,
+    PowerToggle: RollerApp.use_power,
+    "assisted": lambda app, checkbox: app.options_changed(),
+    RerollDie: lambda app, checkbox: app.update_reroll_controls(),
+}
+
+# Each name field: the game name it changes, its slot there, and the controls that show it.
+NAME_FIELDS: dict[
+    type[Input], tuple[NameField, Callable[[Input], object], Callable[[RollerApp], None] | None]
+] = {
+    BonusName: ("bonus", attrgetter("kind"), RollerApp.update_bonus_controls),
+    PowerName: ("power", attrgetter("index"), None),
+    ManifestationName: ("manifestation", attrgetter("index"), None),
+    TechName: ("tech", attrgetter("index"), RollerApp.update_tech_controls),
+    StrainName: ("strain", attrgetter("row"), RollerApp.update_strain_status),
+}
+
+# Buttons that stand for one slot of the sheet, by type.
+TYPED_BUTTONS: dict[type[Button], Callable[[RollerApp, Button], None]] = {
+    AttributeRollButton: lambda app, button: app.action_roll_attribute(button.index),
+    BonusButton: lambda app, button: app.apply_bonus(button.kind),
+    TechUseButton: lambda app, button: app.apply_tech(button.index),
+    SacrificeButton: lambda app, button: app.act(lambda: app.game.sacrifice_tech(button.index)),
+}
+
+# The other buttons, by id, that open a dialog or need more than one game call.
+APP_BUTTONS: dict[str, Callable[[RollerApp], None]] = {
+    "save-session": RollerApp.action_save_session,
+    "export-history": RollerApp.action_export_history,
+    "new-character": RollerApp.action_new_character,
+    "load-session": RollerApp.action_load_session,
+    "toggle-history": RollerApp.action_toggle_history,
+    "start-game": RollerApp.start_game,
+    "reroll_button": RollerApp.action_reroll,
+    "spend-resources": RollerApp.ask_spend_resources,
+    "gain-corruption": RollerApp.gain_corruption,
+}

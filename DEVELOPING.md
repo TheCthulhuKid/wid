@@ -141,8 +141,9 @@ options, item and expertise names, the Heckboy power names and the power chosen 
 roll, the Tech slots and their names, the Oldheart manifestations, the Ball Season Standing, the This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their names, cumulative
 power strain, Corruption, the current dice and result, selected reroll dice, and the full
 history. Loading never rolls dice, charges resources or refills Tech. Window layout, the
-Edit/Preview choice and the random generator's state are not saved, and the theme lives in the
-settings file instead.
+Edit/Preview choice, the undo history for bonuses and the random generator's state are not
+saved, and the theme lives in the settings file instead. So **Undo** is unavailable right after a
+load, until the next bonus.
 
 - The format is versioned (`version: 1`); files from an unknown version, a marked wound with an
   unmarked box before it, or invalid values are rejected without replacing the current game.

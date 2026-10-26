@@ -13,7 +13,7 @@ from wid.formatting import (
     load_question,
     replace_question,
 )
-from wid.game import Game
+from wid.game import Game, NameField
 from wid.profiles import Genre
 from wid.rolls import SCARED_MAX, BonusKind, PowerMode, ResourceEffect
 from wid.sessions import CharacterDetails
@@ -101,15 +101,22 @@ def collect(game: Game, form: SheetForm) -> None:
     take("session-path", lambda value: setattr(game, "path", value))
     take("notes", lambda value: setattr(game, "notes", value))
     for kind in BonusKind:
-        take(f"name-{kind}", lambda value, kind=kind: session.set_bonus_name(kind, value))
+        take(f"name-{kind}", lambda value, kind=kind: game.rename("bonus", kind, value))
     # The counts come from the character, so a kit's slots exist only where it has them (Tech in
     # Second Contact, manifestations in Oldheart), and the page sends only its kit's fields.
-    take_numbered(form, "power-name", len(session.power_names), session.set_power_name)
-    manifestations = len(session.manifestations)
-    take_numbered(form, "manifestation-name", manifestations, session.set_manifestation_name)
-    tech_slots = len(session.tech.pieces) if session.tech else 0
-    take_numbered(form, "tech-name", tech_slots, session.set_tech_name)
-    take_numbered(form, "strain-name", len(session.strain.names), session.set_strain_name)
+    slots: dict[NameField, int] = {
+        "power": len(session.power_names),
+        "manifestation": len(session.manifestations),
+        "tech": len(session.tech.pieces) if session.tech else 0,
+        "strain": len(session.strain.names),
+    }
+    for field, count in slots.items():
+        take_numbered(
+            form,
+            f"{field}-name",
+            count,
+            lambda index, value, field=field: game.rename(field, index, value),
+        )
 
     fear = form.number("fear") if form.get("fear") else game.fear_level
     if not 0 <= fear <= SCARED_MAX:

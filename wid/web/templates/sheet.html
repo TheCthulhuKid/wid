@@ -1,6 +1,7 @@
 {#- The whole sheet is one form: every button posts it to its own action (formaction), the
     server copies the fields into the game, runs the action and sends this form back. -#}
-<form id="sheet" class="sheet" method="post" action="/actions/update" autocomplete="off">
+<form id="sheet" class="sheet" method="post" action="/actions/update" autocomplete="off"
+      {%- if game.has_unsaved_state() %} data-unsaved{% endif %}>
   <input type="hidden" name="sheet" value="1">
 
   <header class="band">
