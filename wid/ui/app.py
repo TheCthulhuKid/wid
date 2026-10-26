@@ -21,7 +21,7 @@ from textual.widgets import (
 )
 from textual.widgets.tabbed_content import ContentTabs
 
-from wid.formatting import attribute_label, resources_line, strain_summary
+from wid.formatting import attribute_label, resources_line, strain_summary, tech_strengths
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
@@ -347,20 +347,35 @@ class RollerApp(SessionActions, App):
 
     def update_tech_controls(self) -> None:
         tech = self.session.tech
-        strength = tech.remaining_bonus if tech is not None else 0
         self.query_one("#tech-strength", Static).update(
-            f"Tech strength: {strength}" if tech is not None else "Tech: not initialized"
+            f"Tech strength: {tech_strengths(tech.pieces)}"
+            if tech is not None
+            else "Tech: not initialized"
         )
-        selector = self.query_one("#tech-target", Select)
-        selector.disabled = strength == 0
-        if strength == 0:
-            selector.value = -1
+        pieces = self.query_one("#tech-piece", Select)
+        previous = pieces.value
+        available = [
+            (piece.label(index), index)
+            for index, piece in enumerate(tech.pieces if tech is not None else ())
+            if piece.strength
+        ]
+        pieces.set_options(available or [("No Tech", -1)])
+        indices = [index for _, index in available]
+        pieces.value = previous if previous in indices else (indices[0] if indices else -1)
+        pieces.disabled = not available
+        target = self.query_one("#tech-target", Select)
+        target.disabled = not available
+        if not available:
+            target.value = -1
 
     def has_resources(self) -> bool:
         return bool(
             self.session.total_strain
             or self.session.total_corruption
-            or (self.session.tech is not None and self.session.tech.remaining_bonus)
+            or (
+                self.session.tech is not None
+                and any(piece.strength for piece in self.session.tech.pieces)
+            )
             or any(self.session.strain.boxes)
             or any(self.session.strain.names)
         )
@@ -420,14 +435,15 @@ class RollerApp(SessionActions, App):
                 if PROFILES[self.session.profile_id].has_powers
                 else PowerMode.NONE
             ),
-            tech_target=(
-                self.query_one("#tech-target", Select).value
-                if not preview
-                and PROFILES[self.session.profile_id].has_tech
-                and self.query_one("#tech-target", Select).value != -1
-                else None
-            ),
+            **(self.chosen_tech() if not preview else {}),
         )
+
+    def chosen_tech(self) -> dict[str, int]:
+        """The Tech target die and piece for the draft, or nothing when Tech is not used."""
+        target = self.query_one("#tech-target", Select).value
+        if not PROFILES[self.session.profile_id].has_tech or target == -1:
+            return {}
+        return {"tech_target": target, "tech_piece": self.query_one("#tech-piece", Select).value}
 
     def chosen_power(self) -> PowerMode:
         return next(
@@ -515,8 +531,8 @@ class RollerApp(SessionActions, App):
             return
         self.update_tech_controls()
         message = (
-            f"Tech explicitly initialized/replaced: Science {tech.science} + "
-            f"Culture {tech.culture} = {tech.remaining_bonus}."
+            f"Tech explicitly initialized/replaced: {len(tech.pieces)} piece(s) at Science "
+            f"{tech.science} + Culture {tech.culture} = {tech.starting_strength}."
         )
         self.feedback(message)
         self.record(HistoryEntry(notice=message))
@@ -571,7 +587,7 @@ class RollerApp(SessionActions, App):
                 result,
                 total_strain=self.session.total_strain,
                 total_corruption=self.session.total_corruption,
-                tech_remaining=tech.remaining_bonus if tech else None,
+                tech_pieces=tech.pieces if tech else None,
             )
         )
         for box in self.query(RerollDie):
@@ -594,7 +610,7 @@ class RollerApp(SessionActions, App):
                 charged=resource_cost,
                 total_strain=self.session.total_strain,
                 total_corruption=self.session.total_corruption,
-                tech_remaining=tech.remaining_bonus if tech else None,
+                tech_pieces=tech.pieces if tech else None,
                 expertise_name=self.session.bonuses.expertise,
             )
         )
@@ -619,9 +635,12 @@ class RollerApp(SessionActions, App):
         self.log_result(result)
         self.clear_roll_bonuses()
         self.update_tech_controls()
-        if result.request.tech_target is not None and self.session.tech.remaining_bonus == 0:
+        piece = result.request.tech_piece
+        if piece is not None and self.session.tech.pieces[piece].strength == 0:
+            self.query_one("#tech-target", Select).value = -1
             self.feedback(
-                "Tech depleted: target cleared; initialize/replace explicitly to use again."
+                f"{self.session.tech.pieces[piece].label(piece)} depleted: target cleared; "
+                "initialize/replace explicitly to use it again."
             )
 
     def clear_roll_bonuses(self) -> None:

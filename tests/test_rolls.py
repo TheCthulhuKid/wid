@@ -11,6 +11,7 @@ from wid.rolls import (
     RollRequest,
     RollResult,
     RollSession,
+    TechPiece,
 )
 
 
@@ -143,16 +144,17 @@ def test_tech_consumption_and_depletion():
         attribute="Science",
         attribute_rank=2,
         tech_target=1,
+        tech_piece=0,
     )
     with pytest.raises(ValueError):
         session.roll(request, rng=Random(0))
     tech = session.initialize_tech()
-    assert tech.remaining_bonus == 5
+    assert tech.pieces == (TechPiece(strength=5),)
     for strength in range(5, 0, -1):
         result = session.roll(request, rng=ScriptedRandom([1, 2, 3, 4]))
         assert [die.bonus for die in result.dice] == [0, strength, 0, 0]
         assert result.dice[1].effective == 2 + strength
-        assert session.tech.remaining_bonus == strength - 1
+        assert session.tech.pieces[0].strength == strength - 1
     before = session.model_dump()
     with pytest.raises(ValueError):
         session.roll(request, rng=Random(0))
@@ -161,23 +163,54 @@ def test_tech_consumption_and_depletion():
         RollRequest(profile_id=Genre.SECOND_CONTACT, attribute="Science", attribute_rank=2),
         rng=Random(0),
     )
-    assert session.tech.remaining_bonus == 0
+    assert session.tech.pieces[0].strength == 0
     session.initialize_tech()
-    assert session.tech.remaining_bonus == 5
+    assert session.tech.pieces[0].strength == 5
+
+
+def test_tech_slots_follow_muscle_and_spend_per_piece():
+    session = configured_session(Genre.SECOND_CONTACT, (1, 2, 3))
+    session.initialize_tech()
+    session.set_tech_name(1, "Drone")
+
+    def use(piece):
+        request = RollRequest(
+            profile_id=Genre.SECOND_CONTACT,
+            attribute="Muscle",
+            attribute_rank=3,
+            tech_target=0,
+            tech_piece=piece,
+        )
+        return session.roll(request, rng=Random(0))
+
+    for _ in range(3):
+        use(1)
+    with pytest.raises(ValueError, match="Drone is depleted"):
+        use(1)
+    with pytest.raises(ValueError, match="No such Tech piece"):
+        use(3)
+    assert use(2).dice[0].bonus == 3
+    assert [piece.strength for piece in session.tech.pieces] == [3, 0, 2]
+    assert [piece.name for piece in session.initialize_tech().pieces] == ["", "Drone", ""]
+    assert [piece.strength for piece in session.tech.pieces] == [3, 3, 3]
 
 
 def test_invalid_tech_actions_are_atomic():
     session = configured_session(Genre.SECOND_CONTACT)
     session.initialize_tech()
     before = session.model_dump()
-    request = RollRequest(profile_id=Genre.SECOND_CONTACT, attribute="Science", tech_target=0)
+    request = RollRequest(
+        profile_id=Genre.SECOND_CONTACT, attribute="Science", tech_target=0, tech_piece=0
+    )
     with pytest.raises(ValidationError):
         session.roll(request, rng=ScriptedRandom([6, 6, 9]))
     assert session.model_dump() == before
+    with pytest.raises(ValidationError, match="both a Tech piece and a die"):
+        RollRequest(profile_id=Genre.SECOND_CONTACT, tech_target=0)
     with pytest.raises(ValidationError):
-        RollRequest(profile_id=Genre.SECOND_CONTACT, tech_target=4)
+        RollRequest(profile_id=Genre.SECOND_CONTACT, tech_target=4, tech_piece=0)
     with pytest.raises(ValidationError):
-        RollRequest(profile_id=Genre.SECOND_CONTACT, fear_level=3, tech_target=1)
+        RollRequest(profile_id=Genre.SECOND_CONTACT, fear_level=3, tech_target=1, tech_piece=0)
     for genre in Genre:
         if genre == Genre.SECOND_CONTACT:
             continue
@@ -186,7 +219,7 @@ def test_invalid_tech_actions_are_atomic():
             other.initialize_tech()
         assert other.tech is None
         with pytest.raises(ValidationError):
-            RollRequest(profile_id=genre, tech_target=0)
+            RollRequest(profile_id=genre, tech_target=0, tech_piece=0)
 
 
 def test_oldheart_subset_repeated_rerolls_and_immutable_snapshots():

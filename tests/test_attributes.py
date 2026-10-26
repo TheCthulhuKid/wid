@@ -47,15 +47,15 @@ def test_setup_required_for_rolls_and_tech():
     with pytest.raises(ValueError, match="attributes"):
         session.initialize_tech()
     session.configure_attributes((3, 1, 2))
-    assert session.initialize_tech().remaining_bonus == 4
+    assert [piece.strength for piece in session.initialize_tech().pieces] == [4, 4]
     session.roll(
-        RollRequest(profile_id=Genre.SECOND_CONTACT, attribute="Culture", tech_target=0),
+        RollRequest(
+            profile_id=Genre.SECOND_CONTACT, attribute="Culture", tech_target=0, tech_piece=1
+        ),
         rng=Random(1),
     )
-    assert session.tech.remaining_bonus == 3
-    assert session.attribute_rank("Science") == 3
-    assert session.tech.remaining_bonus == 3
-    assert session.initialize_tech().remaining_bonus == 4
+    assert [piece.strength for piece in session.tech.pieces] == [4, 3]
+    assert [piece.strength for piece in session.initialize_tech().pieces] == [4, 4]
 
 
 def test_unknown_attribute_and_cross_kit_setup_are_rejected():

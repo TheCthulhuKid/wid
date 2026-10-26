@@ -31,12 +31,22 @@ def test_summary_and_attribute(saved_session_factory):
 def test_resources_line_by_kit(saved_session_factory):
     heckboy = saved_session_factory(Genre.HECKBOY).session
     line = resources_line(
-        heckboy.current_result, total_strain=1, total_corruption=0, tech_remaining=None
+        heckboy.current_result, total_strain=1, total_corruption=0, tech_pieces=None
     )
     assert line == "Strain: +1 (session 1)"
 
     oldheart = saved_session_factory(Genre.OLDHEART).session
     line = resources_line(
-        oldheart.current_result, total_strain=0, total_corruption=1, tech_remaining=3
+        oldheart.current_result, total_strain=0, total_corruption=1, tech_pieces=None
     )
-    assert line == "Strain: +0 (session 0) | Corruption: +1 (session 1) | Tech remaining: 3"
+    assert line == "Strain: +0 (session 0) | Corruption: +1 (session 1)"
+
+    second_contact = saved_session_factory(Genre.SECOND_CONTACT).session
+    second_contact.set_tech_name(1, "Drone")
+    line = resources_line(
+        second_contact.current_result,
+        total_strain=0,
+        total_corruption=0,
+        tech_pieces=second_contact.tech.pieces,
+    )
+    assert line.endswith("| Tech remaining: Tech 1 at 2, Drone at 3, Tech 3 at 3")

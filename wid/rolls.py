@@ -59,7 +59,9 @@ class RollRequest(FrozenModel):
     attribute: str = "Athleticism"
     expertise: bool = False
     power: PowerMode = PowerMode.NONE
+    # The die that gets the Tech bonus, and the piece of Tech that gives it.
     tech_target: Index | None = None
+    tech_piece: Index | None = None
 
     def pool_size(self) -> int:
         return 4 - self.fear_level + int(self.assisted) + self.power.cost
@@ -79,6 +81,8 @@ class RollRequest(FrozenModel):
             raise ValueError("Only Heckboy can use powers")
 
     def validate_tech_target(self) -> None:
+        if (self.tech_target is None) != (self.tech_piece is None):
+            raise ValueError("Choose both a Tech piece and a die for it")
         if self.tech_target is None:
             return
         if self.profile_id != Genre.SECOND_CONTACT:
@@ -138,10 +142,41 @@ class RollResult(FrozenModel):
         )
 
 
+class TechPiece(FrozenModel):
+    name: str = ""
+    strength: Annotated[int, Field(strict=True, ge=0)] = 0
+
+    def label(self, index: int) -> str:
+        return self.name.strip() or f"Tech {index + 1}"
+
+
 class TechState(FrozenModel):
+    """The character's pieces of Tech: one slot per Muscle rank, each with its own strength."""
+
     science: Rank
     culture: Rank
-    remaining_bonus: Annotated[int, Field(strict=True, ge=0)] = 0
+    pieces: tuple[TechPiece, ...] = Field(min_length=1, max_length=3)
+
+    @property
+    def starting_strength(self) -> int:
+        return self.science + self.culture
+
+    @model_validator(mode="after")
+    def validate_strengths(self) -> Self:
+        if any(piece.strength > self.starting_strength for piece in self.pieces):
+            raise ValueError("Tech strength exceeds its starting bonus")
+        return self
+
+    def piece(self, index: int) -> TechPiece:
+        index = TypeAdapter(Index).validate_python(index)
+        if index >= len(self.pieces):
+            raise ValueError("No such Tech piece")
+        return self.pieces[index]
+
+    def with_piece(self, index: int, piece: TechPiece) -> Self:
+        pieces = list(self.pieces)
+        pieces[index] = piece
+        return self.model_copy(update={"pieces": tuple(pieces)})
 
 
 class AttributeSetup(FrozenModel):
@@ -328,15 +363,29 @@ class RollSession(BaseModel):
         return self.attributes.rank(attribute)
 
     def initialize_tech(self) -> TechState:
+        """Give every Tech slot (one per Muscle rank) full strength, keeping the piece names."""
         if self.profile_id != Genre.SECOND_CONTACT:
             raise ValueError("Only Second Contact can initialize Tech")
         science = self.attribute_rank("Science")
         culture = self.attribute_rank("Culture")
+        names = (
+            [piece.name for piece in self.tech.pieces]
+            if self.tech is not None
+            else [""] * self.attribute_rank("Muscle")
+        )
         candidate = TechState(
             science=science,
             culture=culture,
-            remaining_bonus=science + culture,
+            pieces=tuple(TechPiece(name=name, strength=science + culture) for name in names),
         )
+        self.tech = candidate
+        return candidate
+
+    def set_tech_name(self, index: int, name: str) -> TechState:
+        if self.tech is None:
+            raise ValueError("Initialize Tech before naming it")
+        piece = self.tech.piece(index)
+        candidate = self.tech.with_piece(index, TechPiece(name=name, strength=piece.strength))
         self.tech = candidate
         return candidate
 
@@ -368,13 +417,14 @@ class RollSession(BaseModel):
         tech = self.tech
         if request.tech_target is None:
             return bonuses, tech
-        if tech is None or tech.remaining_bonus == 0:
-            raise ValueError("Tech is unavailable or depleted; explicitly initialize it first")
-        bonuses[request.tech_target] += tech.remaining_bonus
-        spent = TechState(
-            science=tech.science, culture=tech.culture, remaining_bonus=tech.remaining_bonus - 1
-        )
-        return bonuses, spent
+        if tech is None:
+            raise ValueError("Tech is unavailable; explicitly initialize it first")
+        piece = tech.piece(request.tech_piece)
+        if piece.strength == 0:
+            raise ValueError(f"{piece.label(request.tech_piece)} is depleted; choose another piece")
+        bonuses[request.tech_target] += piece.strength
+        spent = piece.model_copy(update={"strength": piece.strength - 1})
+        return bonuses, tech.with_piece(request.tech_piece, spent)
 
     def reroll(self, indices: set[int], *, rng: Random) -> RollResult:
         indices = TypeAdapter(set[Index]).validate_python(indices)

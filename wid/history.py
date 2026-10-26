@@ -4,9 +4,9 @@ from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
-from wid.formatting import describe_dice, summarize
+from wid.formatting import describe_dice, summarize, tech_strengths
 from wid.profiles import PROFILES
-from wid.rolls import FrozenModel, RollResult
+from wid.rolls import FrozenModel, RollResult, TechPiece
 
 Count = Annotated[int, Field(strict=True, ge=0)]
 
@@ -23,7 +23,7 @@ class HistoryEntry(FrozenModel):
     charged: bool = True  # False for items, which cost no resources
     total_strain: Count = 0
     total_corruption: Count = 0
-    tech_remaining: Count | None = None
+    tech_pieces: tuple[TechPiece, ...] | None = None
     expertise_name: str = ""
 
     @model_validator(mode="after")
@@ -48,7 +48,11 @@ class HistoryEntry(FrozenModel):
         request = result.request
         strain = result.strain_delta if self.charged else 0
         corruption = result.corruption_delta if self.charged else 0
-        target = request.tech_target + 1 if request.tech_target is not None else "none"
+        target = (
+            f"piece {request.tech_piece + 1} on die {request.tech_target + 1}"
+            if request.tech_target is not None
+            else "none"
+        )
         text = (
             f"{self.action}: {request.profile_id.value}, {request.attribute} "
             f"rank {request.attribute_rank}; assisted={request.assisted}, "
@@ -63,6 +67,6 @@ class HistoryEntry(FrozenModel):
         )
         if PROFILES[request.profile_id].has_rerolls:
             text += f"; Corruption +{corruption} (session {self.total_corruption})"
-        if self.tech_remaining is not None:
-            text += f"; Tech remaining {self.tech_remaining}"
+        if self.tech_pieces is not None:
+            text += f"; Tech remaining {tech_strengths(self.tech_pieces)}"
         return text

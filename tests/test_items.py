@@ -89,7 +89,7 @@ def test_modifiers_preserve_resources_and_result_costs(session_factory, genre):
         options["power"] = PowerMode.ERRATIC
     if genre == Genre.SECOND_CONTACT:
         session.initialize_tech()
-        options["tech_target"] = 0
+        options.update(tech_target=0, tech_piece=0)
     initial = roll_test(session, **options)
     if genre == Genre.OLDHEART:
         initial = session.reroll({0, 1}, rng=Random(1))

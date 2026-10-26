@@ -28,6 +28,7 @@ SCREEN_LABELS = [
     "Reliable power",
     "Erratic power",
     "Use",
+    "Tech piece",
     "Tech target",
     "Initialize / replace Tech",
     "Reroll selected",

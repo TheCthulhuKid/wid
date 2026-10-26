@@ -78,23 +78,24 @@ class SavedSession(FrozenModel):
 
     def validate_tech(self) -> None:
         tech = self.session.tech
+        piece = self.draft.tech_piece
         if tech is None:
-            if self.draft.tech_target is not None:
+            if piece is not None:
                 raise ValueError("Draft Tech target requires available Tech")
             return
-        self.validate_tech_strength(tech)
-        if self.draft.tech_target is not None and tech.remaining_bonus == 0:
+        self.validate_tech_slots(tech)
+        if piece is not None and tech.piece(piece).strength == 0:
             raise ValueError("Draft Tech target requires available Tech")
 
-    def validate_tech_strength(self, tech: TechState) -> None:
+    def validate_tech_slots(self, tech: TechState) -> None:
         session = self.session
         if session.profile_id != Genre.SECOND_CONTACT:
             raise ValueError("Only Second Contact can have Tech")
         ranks = (session.attribute_rank("Science"), session.attribute_rank("Culture"))
         if (tech.science, tech.culture) != ranks:
             raise ValueError("Tech must use the assigned Science and Culture ranks")
-        if tech.remaining_bonus > tech.science + tech.culture:
-            raise ValueError("Tech strength exceeds its starting bonus")
+        if len(tech.pieces) != session.attribute_rank("Muscle"):
+            raise ValueError("Tech needs one slot per Muscle rank")
 
     def validate_item_target(self) -> None:
         if self.item_target is None:

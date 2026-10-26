@@ -35,6 +35,7 @@ def saved_session_factory(session_factory):
             expertise=True,
             power=PowerMode.RELIABLE if genre == Genre.HECKBOY else PowerMode.NONE,
             tech_target=0 if genre == Genre.SECOND_CONTACT else None,
+            tech_piece=0 if genre == Genre.SECOND_CONTACT else None,
         )
         if genre == Genre.SECOND_CONTACT:
             session.initialize_tech()

@@ -210,6 +210,10 @@ def test_genres_power_maximum_and_reset_confirmation():
 def test_tech_widgets_depletion_draft_edits_and_reset():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([1] * 12))
+
+        def strengths():
+            return [piece.strength for piece in app.session.tech.pieces]
+
         async with app.run_test(size=(120, 60)) as pilot:
             app.query_one("#genre", Select).value = Genre.SECOND_CONTACT
             await pilot.pause()
@@ -221,37 +225,39 @@ def test_tech_widgets_depletion_draft_edits_and_reset():
             button.scroll_visible()
             await pilot.pause()
             await pilot.click("#initialize-tech")
-            assert app.session.tech.remaining_bonus == 3
+            assert strengths() == [3, 3, 3]
             assert "Science 2 + Culture 1" in text(app, "#tech-attributes")
             assert not app.query_one("#tech-target", Select).disabled
+            assert app.query_one("#tech-piece", Select).value == 0
             app.query_one("#tech-target", Select).value = 0
             app.query_one("#roll-attribute-0").scroll_visible(animate=False)
             await pilot.pause()
             await pilot.click("#roll-attribute-0")
-            assert app.session.tech.remaining_bonus == 2
+            assert strengths() == [2, 3, 3]
             assert "1+3=4" in text(app, "#dice")
             snapshot = str(app.history[-1])
             app.tested_attribute = "Culture"
             await pilot.pause()
             assert app.tested_attribute == "Culture"
-            assert app.session.tech.remaining_bonus == 2
+            assert strengths() == [2, 3, 3]
             await pilot.click("#roll-attribute-1")
-            assert app.session.tech.remaining_bonus == 1
+            assert strengths() == [1, 3, 3]
             assert app.session.current_result.request.attribute_rank == 1
             await pilot.pause(0.4)
             await pilot.click("#roll-attribute-1")
-            assert app.session.tech.remaining_bonus == 0
+            assert strengths() == [0, 3, 3]
             assert "1+1=2" in text(app, "#dice")
-            assert app.query_one("#tech-target", Select).disabled
             assert app.query_one("#tech-target", Select).value == -1
-            assert "Tech strength: 0" in text(app, "#tech-strength")
-            assert "depleted" in text(app, "#feedback")
+            assert app.query_one("#tech-piece", Select).value == 1
+            assert "Tech 1 at 0, Tech 2 at 3" in text(app, "#tech-strength")
+            assert "Tech 1 depleted" in text(app, "#feedback")
             assert snapshot in [str(entry) for entry in app.history]
-            assert "Tech remaining 2" in snapshot
+            assert "Tech target=piece 1 on die 1" in snapshot
+            assert "Tech remaining Tech 1 at 2, Tech 2 at 3" in snapshot
             app.query_one("#initialize-tech").scroll_visible()
             await pilot.pause()
             await pilot.click("#initialize-tech")
-            assert app.session.tech.remaining_bonus == 3
+            assert strengths() == [3, 3, 3]
             app.query_one("#tech-target", Select).value = 3
             app.query_one("#fear", Select).value = 3
             await pilot.pause()
@@ -260,7 +266,7 @@ def test_tech_widgets_depletion_draft_edits_and_reset():
             app.query_one("#genre", Select).value = Genre.CORE
             await pilot.pause()
             await pilot.click("#cancel-reset")
-            assert app.session.tech.remaining_bonus == 3
+            assert strengths() == [3, 3, 3]
             assert app.session.attributes.ranks == (2, 1, 3)
             app.query_one("#genre", Select).value = Genre.CORE
             await pilot.pause()

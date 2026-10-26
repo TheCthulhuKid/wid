@@ -59,9 +59,11 @@ Every kit has the same screen. Each adds at most one thing:
 before rolling to use it: the pool grows and the strain is added to the tracker for you. Only one power
 can be used per roll, and **Use** unticks itself after the roll.
 
-**Tech.** Press **Initialize / replace Tech** to set it up. The current strength is shown next to
-it. Choose a die in **Tech target** before rolling to use it; at 0 the target list is disabled.
-Press the button again to start over.
+**Tech.** You have one piece of Tech for each rank of Muscle. Press **Initialize / replace Tech**
+to set them all up: each piece starts at Science + Culture. Each piece's strength is shown next to
+the button. To use one, choose it in **Tech piece** and a die in **Tech target** before rolling.
+The die gets that piece's strength as a bonus, and the piece loses 1. A piece at 0 drops out of the
+list, and when every piece is at 0 both lists are disabled. Press the button again to start over.
 
 **Changing kit.** A kit lasts the whole game, so picking another kit in **Genre kit** starts a
 new game: the character, names, strain, history, notes, session name and file path are all

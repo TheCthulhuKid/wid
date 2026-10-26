@@ -257,6 +257,8 @@ class KitControls(Vertical):
             yield Static("Tech: not initialized", id="tech-strength")
             yield Static(id="tech-attributes")
             yield Button("Initialize / replace Tech", id="initialize-tech")
+            yield Label("Tech piece")
+            yield Select([("No Tech", -1)], value=-1, allow_blank=False, id="tech-piece")
             yield Label("Tech target")
             yield Select([("No Tech", -1)], value=-1, allow_blank=False, id="tech-target")
 

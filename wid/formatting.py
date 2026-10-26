@@ -1,7 +1,7 @@
 """Plain-text renderings of a roll, shared by the result panel and the history log."""
 
 from wid.profiles import PROFILES
-from wid.rolls import STRAIN_ENDINGS, Outcome, RollResult, StrainTracker
+from wid.rolls import STRAIN_ENDINGS, Outcome, RollResult, StrainTracker, TechPiece
 
 # A piece of text and the outcome it should be coloured as, if any.
 Part = tuple[str, Outcome | None]
@@ -65,15 +65,22 @@ def resources_line(
     *,
     total_strain: int,
     total_corruption: int,
-    tech_remaining: int | None,
+    tech_pieces: tuple[TechPiece, ...] | None,
 ) -> str:
     """Action deltas with session totals; Corruption only for kits that reroll."""
     text = f"Strain: +{result.strain_delta} (session {total_strain})"
     if PROFILES[result.request.profile_id].has_rerolls:
         text += f" | Corruption: +{result.corruption_delta} (session {total_corruption})"
-    if tech_remaining is not None:
-        text += f" | Tech remaining: {tech_remaining}"
+    if tech_pieces is not None:
+        text += f" | Tech remaining: {tech_strengths(tech_pieces)}"
     return text
+
+
+def tech_strengths(pieces: tuple[TechPiece, ...]) -> str:
+    """Each piece with its strength, such as ``Tech 1 at 3, Drone at 0``."""
+    return ", ".join(
+        f"{piece.label(index)} at {piece.strength}" for index, piece in enumerate(pieces)
+    )
 
 
 def strain_counts(tracker: StrainTracker) -> str:

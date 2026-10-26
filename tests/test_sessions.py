@@ -183,6 +183,18 @@ def test_older_save_without_notes_loads_empty(tmp_path, saved_session_factory):
     assert SavedSession.load(path).notes == ""
 
 
+def test_tech_needs_one_slot_per_muscle_rank_and_a_charged_target(saved_session_factory):
+    data = saved_session_factory(Genre.SECOND_CONTACT).model_dump()
+    data["session"]["tech"]["pieces"] = data["session"]["tech"]["pieces"][:2]
+    with pytest.raises(ValueError, match="one slot per Muscle rank"):
+        SavedSession.model_validate(data)
+
+    data = saved_session_factory(Genre.SECOND_CONTACT).model_dump()
+    data["session"]["tech"]["pieces"][0]["strength"] = 0
+    with pytest.raises(ValueError, match="requires available Tech"):
+        SavedSession.model_validate(data)
+
+
 @pytest.mark.parametrize("notes", [None, 42, ["a note"], {"text": "a note"}])
 def test_invalid_notes_are_rejected(saved_session_factory, notes):
     data = saved_session_factory().model_dump()

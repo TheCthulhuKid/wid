@@ -231,6 +231,8 @@ class SessionActions:
                 draft.tech_target if draft.tech_target is not None else -1
             )
             self.update_kit_controls()
+            if draft.tech_piece is not None:
+                self.query_one("#tech-piece", Select).value = draft.tech_piece
             if self.session.current_result is not None:
                 self.show_result(self.session.current_result)
             else:

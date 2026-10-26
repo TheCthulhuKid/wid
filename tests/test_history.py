@@ -22,7 +22,7 @@ def test_entry_needs_exactly_one_kind(saved_session_factory):
 
 
 @pytest.mark.parametrize(
-    "extra", [{"action": "Roll"}, {"total_strain": 1}, {"tech_remaining": 2}, {"charged": False}]
+    "extra", [{"action": "Roll"}, {"total_strain": 1}, {"tech_pieces": ()}, {"charged": False}]
 )
 def test_notice_cannot_carry_action_fields(extra):
     with pytest.raises(ValidationError, match="cannot set"):
