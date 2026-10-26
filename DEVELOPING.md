@@ -49,7 +49,9 @@ On Windows:
 powershell -ExecutionPolicy Bypass -File release\build_release.ps1 -Smoke
 ```
 
-It installs the pinned environment, builds, runs `wid.exe --self-test`, and (with `-Smoke`)
+It installs the pinned environment, builds, runs `wid.exe --self-test` (which also serves the
+browser version once through uvicorn, proving its by-name imports, templates and static files
+were bundled), and (with `-Smoke`)
 presses real keys in a Windows pseudo console, then writes the zip and its checksum to `dist\`.
 Add `-Python 3.13` to choose the interpreter.
 

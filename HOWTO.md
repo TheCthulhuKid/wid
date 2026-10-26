@@ -146,6 +146,28 @@ folded away. A wound is not counted as strain.
 A save includes everything on screen: kit, ranks, options, items, Tech, strain, Corruption,
 notes, character details and the history.
 
+## Play in the browser
+
+Prefer a web browser to the terminal? Start wid with `wid --web` (on Windows, `.\wid.exe --web`
+in the program's folder). Your browser opens the sheet by itself. The window you started it from
+shows the address and must stay open while you play; press **Ctrl+C** there to stop. Only this
+computer can reach the game.
+
+The browser sheet has the same controls in the same order as the terminal, with a few
+differences:
+
+- **Character** and **Session** are sections on one page instead of tabs.
+- The dice appear on the right (on a phone, straight after the options for the next test).
+  **Repeat roll** or **Ctrl+R** rolls the last attribute again.
+- **Save session** and **Load game** use the **Session file** box. **Export history** writes the
+  Markdown to the **History file** box; **Download history** saves it through the browser.
+- When something would be replaced or lost, a small box asks first, as in the terminal.
+- The colours follow your browser's light or dark setting.
+
+Games saved in the browser open in the terminal, and the other way round. If the page says to
+open wid from the address it printed, use the address shown in the window: it carries a key that
+changes every time wid starts.
+
 ## Keys
 
 | Key | What it does |
@@ -167,4 +189,5 @@ keys that work at that moment.
 - A small terminal (80 by 24) works; the strain tracker and items start folded, so press **T** or
   **I** to open them.
 - Your theme, last tab and folded sections are remembered between runs.
-- `wid --self-test` checks the program and reports which part failed, if any.
+- `wid --self-test` checks the program, the browser version included, and reports which part
+  failed, if any.

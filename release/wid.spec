@@ -16,7 +16,8 @@ from versioninfo import installed_version, version_file_text  # noqa: E402
 ONEDIR = os.environ.get("WID_ONEDIR", "1" if sys.platform == "win32" else "0") == "1"
 ICON = ROOT / "release" / "wid.ico"
 
-# Data files read at run time: wid's stylesheet and Textual's own files. Package metadata
+# Data files read at run time: wid's stylesheets, the browser version's templates and static
+# files, and Textual's own files. Package metadata
 # is what makes `wid --version` and Textual's version lookup work in the frozen program.
 datas = [
     *collect_data_files("wid"),
@@ -30,6 +31,8 @@ datas = [
 hiddenimports = [
     *collect_submodules("textual"),
     *collect_submodules("rich._unicode_data"),
+    # `wid --web`: uvicorn chooses its event loop, HTTP protocol and lifespan modules by name.
+    *collect_submodules("uvicorn"),
 ]
 
 analysis = Analysis(

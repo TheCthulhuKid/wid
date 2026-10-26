@@ -10,10 +10,14 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from random import Random
 
+import uvicorn
 from textual.widgets import Markdown, TabbedContent, TextArea
 
+from wid.game import Game
 from wid.settings import load_settings
 from wid.ui.app import RollerApp
+from wid.web.app import TOKEN_COOKIE, create_app
+from wid.web.server import HOST, listening_socket
 
 Check = Callable[[RollerApp, object, Path], Awaitable[None]]
 
@@ -69,6 +73,54 @@ async def check_export(app: RollerApp, pilot, folder: Path) -> None:
     require("## 1." in target.read_text(encoding="utf-8"), "the exported history is empty")
 
 
+async def http_get(port: int, target: str, cookie: str = "") -> str:
+    """One plain HTTP request, so the check needs no HTTP client library."""
+    reader, writer = await asyncio.open_connection(HOST, port)
+    request = f"GET {target} HTTP/1.1\r\nHost: {HOST}\r\nConnection: close\r\n"
+    if cookie:
+        request += f"Cookie: {cookie}\r\n"
+    writer.write(f"{request}\r\n".encode())
+    await writer.drain()
+    response = await asyncio.wait_for(reader.read(), timeout=10)
+    writer.close()
+    await writer.wait_closed()
+    return response.decode("utf-8", "replace")
+
+
+async def check_browser(app: RollerApp, pilot, folder: Path) -> None:
+    """Serve the browser version for real, as ``wid --web`` does, and open its page.
+
+    In a frozen release this proves uvicorn's by-name imports and the page's templates and
+    static files were bundled.
+    """
+    token = "self-test"
+    sock = listening_socket(0)
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(create_app(Game(), token), log_level="warning"))
+    serving = asyncio.create_task(server.serve(sockets=[sock]))
+    try:
+        for _ in range(200):
+            if server.started or serving.done():
+                break
+            await asyncio.sleep(0.025)
+        # A server that crashed while starting (say, a module missing from a frozen build)
+        # reports its own error here; the socket would otherwise accept and never answer.
+        if serving.done():
+            serving.result()
+        require(server.started, "the web server did not start")
+        opened = await http_get(port, f"/?token={token}")
+        require(opened.startswith("HTTP/1.1 303"), "the address with the token was not accepted")
+        cookie = f"{TOKEN_COOKIE}={token}"
+        page = await http_get(port, "/", cookie)
+        require(page.startswith("HTTP/1.1 200") and "Roll" in page, "the page was not served")
+        style = await http_get(port, "/static/sheet.css", cookie)
+        require(style.startswith("HTTP/1.1 200"), "the page's stylesheet was not served")
+    finally:
+        server.should_exit = True
+        await serving
+        sock.close()
+
+
 CHECKS: tuple[tuple[str, Check], ...] = (
     ("start screen and stylesheet", check_screen),
     ("start a game and roll", check_roll),
@@ -76,6 +128,7 @@ CHECKS: tuple[tuple[str, Check], ...] = (
     ("theme saved to the settings file", check_theme),
     ("Markdown notes preview", check_notes_preview),
     ("history export", check_export),
+    ("browser version served", check_browser),
 )
 
 

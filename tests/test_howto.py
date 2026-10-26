@@ -3,7 +3,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HOWTO = (ROOT / "HOWTO.md").read_text(encoding="utf-8")
-SOURCE = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "wid").rglob("*.py"))
+# The program's own words: the terminal's code and the browser's templates.
+SOURCE = "\n".join(
+    path.read_text(encoding="utf-8")
+    for pattern in ("*.py", "*.html")
+    for path in (ROOT / "wid").rglob(pattern)
+)
 
 # Names the how-to uses for things on the screen. If one is renamed in the program, this
 # fails and the how-to has to be updated with it.
@@ -35,6 +40,8 @@ SCREEN_LABELS = [
     "Add manifestation",
     "Remove manifestation",
     "Roll 1d6",
+    "Repeat roll",
+    "Download history",
     "New scenario",
     "Reroll selected",
     "Take 1 strain",
