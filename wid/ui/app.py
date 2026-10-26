@@ -363,6 +363,7 @@ class RollerApp(SessionActions, App):
         indices = [index for _, index in available]
         pieces.value = previous if previous in indices else (indices[0] if indices else -1)
         pieces.disabled = not available
+        self.query_one("#sacrifice-tech", Button).disabled = not available
         target = self.query_one("#tech-target", Select)
         target.disabled = not available
         if not available:
@@ -519,6 +520,7 @@ class RollerApp(SessionActions, App):
             "start-game": self.start_game,
             "reroll_button": self.action_reroll,
             "initialize-tech": self.initialize_tech,
+            "sacrifice-tech": self.sacrifice_tech,
         }.get(event.button.id)
         if action is not None:
             action()
@@ -534,6 +536,20 @@ class RollerApp(SessionActions, App):
             f"Tech explicitly initialized/replaced: {len(tech.pieces)} piece(s) at Science "
             f"{tech.science} + Culture {tech.culture} = {tech.starting_strength}."
         )
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def sacrifice_tech(self) -> None:
+        index = self.query_one("#tech-piece", Select).value
+        try:
+            piece = self.session.sacrifice_tech(index)
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        # The die was chosen for the sacrificed piece; do not let it pass to the next one.
+        self.query_one("#tech-target", Select).value = -1
+        self.update_tech_controls()
+        message = f"Sacrificed {piece.label(index)}: strength {piece.strength} → 0."
         self.feedback(message)
         self.record(HistoryEntry(notice=message))
 

@@ -64,6 +64,8 @@ to set them all up: each piece starts at Science + Culture. Each piece's strengt
 the button. To use one, choose it in **Tech piece** and a die in **Tech target** before rolling.
 The die gets that piece's strength as a bonus, and the piece loses 1. A piece at 0 drops out of the
 list, and when every piece is at 0 both lists are disabled. Press the button again to start over.
+To stop a Danger's extermination, choose a piece in **Tech piece** and press **Sacrifice**: its
+strength drops to 0 and the history notes it.
 
 **Changing kit.** A kit lasts the whole game, so picking another kit in **Genre kit** starts a
 new game: the character, names, strain, history, notes, session name and file path are all

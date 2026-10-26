@@ -195,6 +195,20 @@ def test_tech_slots_follow_muscle_and_spend_per_piece():
     assert [piece.strength for piece in session.tech.pieces] == [3, 3, 3]
 
 
+def test_sacrifice_zeroes_only_that_piece():
+    session = configured_session(Genre.SECOND_CONTACT, (1, 2, 3))
+    with pytest.raises(ValueError, match="Initialize Tech"):
+        session.sacrifice_tech(0)
+    session.initialize_tech()
+    session.set_tech_name(1, "Drone")
+    assert session.sacrifice_tech(1) == TechPiece(name="Drone", strength=3)
+    assert [piece.strength for piece in session.tech.pieces] == [3, 0, 3]
+    with pytest.raises(ValueError, match="Drone is already at 0"):
+        session.sacrifice_tech(1)
+    with pytest.raises(ValueError, match="No such Tech piece"):
+        session.sacrifice_tech(3)
+
+
 def test_invalid_tech_actions_are_atomic():
     session = configured_session(Genre.SECOND_CONTACT)
     session.initialize_tech()

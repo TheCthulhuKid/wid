@@ -30,6 +30,7 @@ SCREEN_LABELS = [
     "Use",
     "Tech piece",
     "Tech target",
+    "Sacrifice",
     "Initialize / replace Tech",
     "Reroll selected",
     "Take 1 strain",

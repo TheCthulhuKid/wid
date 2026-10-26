@@ -389,6 +389,16 @@ class RollSession(BaseModel):
         self.tech = candidate
         return candidate
 
+    def sacrifice_tech(self, index: int) -> TechPiece:
+        """Drop a piece to 0 strength to stop a Danger's extermination; returns it as it was."""
+        if self.tech is None:
+            raise ValueError("Initialize Tech before sacrificing it")
+        piece = self.tech.piece(index)
+        if piece.strength == 0:
+            raise ValueError(f"{piece.label(index)} is already at 0")
+        self.tech = self.tech.with_piece(index, TechPiece(name=piece.name, strength=0))
+        return piece
+
     def roll(self, request: RollRequest, *, rng: Random) -> RollResult:
         self.validate_roll_request(request)
         bonuses, next_tech = self.dice_bonuses(request)

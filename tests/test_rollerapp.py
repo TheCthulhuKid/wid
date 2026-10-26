@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from helpers import change_genre
+from helpers import change_genre, reveal
 from test_rolls import ScriptedRandom
 from textual.command import CommandPalette
 from textual.widgets import Button, Checkbox, Input, RichLog, Select, Static
@@ -203,6 +203,28 @@ def test_genres_power_maximum_and_reset_confirmation():
                 for index, attribute in enumerate(profile.attributes):
                     assert text(app, f"#attribute-label-{index}") == attribute
                 assert app.query_one("#items").display == profile.uses_items
+
+    asyncio.run(scenario())
+
+
+def test_sacrifice_tech_button():
+    async def scenario():
+        app = RollerApp()
+        async with app.run_test(size=(120, 60)) as pilot:
+            app.query_one("#genre", Select).value = Genre.SECOND_CONTACT
+            await pilot.pause()
+            await start_game(app, pilot, (2, 1, 3))
+            assert app.query_one("#sacrifice-tech").disabled
+            await reveal(app, pilot, "#initialize-tech")
+            await pilot.click("#initialize-tech")
+            app.query_one("#tech-piece", Select).value = 1
+            app.query_one("#tech-target", Select).value = 0
+            await reveal(app, pilot, "#sacrifice-tech")
+            await pilot.click("#sacrifice-tech")
+            assert [piece.strength for piece in app.session.tech.pieces] == [3, 0, 3]
+            assert app.query_one("#tech-target", Select).value == -1
+            assert app.query_one("#tech-piece", Select).value == 0
+            assert str(app.history[-1]) == "Sacrificed Tech 2: strength 3 → 0."
 
     asyncio.run(scenario())
 

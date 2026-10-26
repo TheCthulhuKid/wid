@@ -259,6 +259,7 @@ class KitControls(Vertical):
             yield Button("Initialize / replace Tech", id="initialize-tech")
             yield Label("Tech piece")
             yield Select([("No Tech", -1)], value=-1, allow_blank=False, id="tech-piece")
+            yield Button("Sacrifice", id="sacrifice-tech", tooltip="Drop this piece to 0")
             yield Label("Tech target")
             yield Select([("No Tech", -1)], value=-1, allow_blank=False, id="tech-target")
 
