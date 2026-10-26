@@ -62,8 +62,10 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     game.roll("Depravity")
     game.fear_level = 2
     game.reroll_selection = (1,)
-    game.name = "Friday"
     game.path = str(tmp_path / "game.json")
+    with pytest.raises(ValueError, match="Name the session before saving."):
+        game.save()
+    game.name = "Friday"
     assert game.save() == f"Saved Friday to {game.path}."
     with pytest.raises(FileExistsError) as error:
         game.save()

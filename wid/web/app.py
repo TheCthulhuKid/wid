@@ -22,7 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.templating import Jinja2Templates
 
-from wid.game import Game
+from wid.game import Game, player_message
 from wid.web.forms import ACTIONS, NeedsConfirmation, SheetForm, collect
 from wid.web.view import COLOURS, css_variables, sheet_context
 
@@ -105,7 +105,7 @@ def create_app(game: Game, token: str) -> FastAPI:
             except NeedsConfirmation as question:
                 message, ask = "", question
             except ValueError as error:
-                message = str(error)
+                message = player_message(error)
             return render(
                 request,
                 "sheet.html",

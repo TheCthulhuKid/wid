@@ -9,6 +9,7 @@ from pydantic import (
     PrivateAttr,
     StrictBool,
     TypeAdapter,
+    ValidationError,
     model_validator,
 )
 
@@ -408,6 +409,9 @@ class RollSession(BaseModel):
         return candidate
 
     def set_power_name(self, index: int, name: str) -> None:
+        index = TypeAdapter(Index).validate_python(index)
+        if index >= len(self.power_names):
+            raise ValueError("No such power")
         names = list(self.power_names)
         names[index] = name
         self.power_names = tuple(names)
@@ -415,8 +419,10 @@ class RollSession(BaseModel):
     def set_standing(self, standing: int) -> int:
         if not PROFILES[self.profile_id].has_standing:
             raise ValueError(f"{PROFILES[self.profile_id].name} has no Standing")
-        if type(standing) is not int or not 0 <= standing < len(STANDING_LABELS):
-            raise ValueError("Standing runs from Esteemed (dot 1) to Scandalous (dot 5)")
+        try:
+            standing = TypeAdapter(Standing).validate_python(standing)
+        except ValidationError as error:
+            raise ValueError("Standing runs from Esteemed (dot 1) to Scandalous (dot 5)") from error
         self.standing = standing
         return standing
 

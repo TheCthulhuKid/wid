@@ -5,6 +5,7 @@ import pytest
 from helpers import click
 from test_rollerapp import start_game, text
 
+from wid.game import Game
 from wid.profiles import Genre
 from wid.rolls import PowerMode, RollRequest, StrainTracker
 from wid.sessions import SavedSession
@@ -32,6 +33,10 @@ def test_take_wound_fills_the_row():
     assert StrainTracker().take(1).take_wound().boxes == (True,) * 4 + (False,) * 8
     with pytest.raises(ValueError, match="Defeat is already marked"):
         StrainTracker().take(12).take_wound()
+    game = Game()
+    game.session.strain = StrainTracker().take(12)
+    with pytest.raises(ValueError, match="Defeat is already marked"):
+        game.take_strain()
 
 
 def test_powers_mark_strain(session_factory):

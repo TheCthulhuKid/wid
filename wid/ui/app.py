@@ -33,7 +33,7 @@ from wid.formatting import (
     strain_summary,
     tech_starting_line,
 )
-from wid.game import Game
+from wid.game import Game, player_message
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
@@ -294,7 +294,7 @@ class RollerApp(SessionActions, App):
         try:
             message = action()
         except ValueError as error:
-            self.feedback(str(error))
+            self.feedback(player_message(error))
             self.refresh_sheet()
             return False
         self.feedback(message)

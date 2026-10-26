@@ -184,7 +184,7 @@ def strain_summary(tracker: StrainTracker) -> str:
 def strain_status(tracker: StrainTracker) -> str:
     """The hint under the strain boxes, or Defeat with its name once it is marked."""
     if not tracker.defeated:
-        return "Mark strain as it is taken. A wound needs the strain before it marked first."
+        return "Mark strain as it is taken. Mark all the strain before a wound first."
     return f"Defeat — character ended. {tracker.names[2]}".rstrip()
 
 

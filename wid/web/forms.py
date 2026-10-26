@@ -31,6 +31,13 @@ class NeedsConfirmation(Exception):
         self.value = value
 
 
+def as_number(name: str, value: str) -> int:
+    try:
+        return int(value)
+    except ValueError:
+        raise ValueError(f"{name} must be a number") from None
+
+
 class SheetForm:
     """The URL-encoded fields of one request.
 
@@ -49,10 +56,10 @@ class SheetForm:
         return self.get(name) or ""
 
     def number(self, name: str) -> int:
-        return int(self.text(name))
+        return as_number(name, self.text(name))
 
     def numbers(self, name: str) -> list[int]:
-        return [int(value) for value in self.fields.get(name, [])]
+        return [as_number(name, value) for value in self.fields.get(name, [])]
 
     def ticked(self, name: str) -> bool:
         return name in self.fields
@@ -104,12 +111,11 @@ def collect(game: Game, form: SheetForm) -> None:
     take_numbered(form, "tech-name", tech_slots, session.set_tech_name)
     take_numbered(form, "strain-name", len(session.strain.names), session.set_strain_name)
 
-    fear = int(form.get("fear") or game.fear_level)
+    fear = form.number("fear") if form.get("fear") else game.fear_level
     if not 0 <= fear <= SCARED_MAX:
         raise ValueError(f"Scared runs from 0 to {SCARED_MAX}")
     power = PowerMode(form.get("power") or game.power)
-    die = form.get("die")
-    item_target = int(die) if die is not None else game.item_target
+    item_target = form.number("die") if form.get("die") is not None else game.item_target
     reroll = tuple(form.numbers("reroll"))
     if any(index < 0 for index in (*reroll, item_target or 0)):
         raise ValueError("That die is outside the dice pool")

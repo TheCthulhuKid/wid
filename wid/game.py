@@ -11,6 +11,8 @@ import errno
 from pathlib import Path
 from random import Random
 
+from pydantic import ValidationError
+
 from wid.export import history_markdown
 from wid.formatting import BONUS_LABELS, check_summary, spend_summary
 from wid.history import HistoryEntry
@@ -31,6 +33,13 @@ from wid.storage import write_text
 def file_exists(path: Path) -> FileExistsError:
     """The error naming ``path``: the one from storage names its temporary file instead."""
     return FileExistsError(errno.EEXIST, "File exists", str(path))
+
+
+def player_message(error: Exception) -> str:
+    """The reason to show the player: pydantic's first message, without its prefix."""
+    if isinstance(error, ValidationError):
+        return error.errors()[0]["msg"].removeprefix("Value error, ")
+    return str(error)
 
 
 class Game:
@@ -167,6 +176,9 @@ class Game:
         return ""
 
     def take_strain(self) -> str:
+        # Taking strain starts after the last marked wound, so after Defeat nothing is left.
+        if self.session.strain.defeated:
+            raise ValueError("Defeat is already marked")
         self.session.strain = self.session.strain.take(1)
         return ""
 
@@ -246,6 +258,8 @@ class Game:
         return any(written)
 
     def save(self, *, overwrite: bool = False) -> str:
+        if not self.name.strip():
+            raise ValueError("Name the session before saving.")
         session = self.session
         try:
             path = session_file_path(self.path)
@@ -263,7 +277,7 @@ class Game:
         except FileExistsError as error:
             raise file_exists(path) from error
         except (OSError, ValueError) as error:
-            raise ValueError(f"Could not save session: {error}") from error
+            raise ValueError(f"Could not save session: {player_message(error)}") from error
         self.name = saved.name
         return f"Saved {saved.name} to {path}."
 
@@ -273,7 +287,7 @@ class Game:
             path = session_file_path(text)
             return SavedSession.load(path), path
         except (OSError, ValueError) as error:
-            raise ValueError(f"Could not load session: {error}") from error
+            raise ValueError(f"Could not load session: {player_message(error)}") from error
 
     def load(self, saved: SavedSession, path: Path) -> str:
         self.session = saved.session.model_copy(deep=True)
@@ -316,5 +330,5 @@ class Game:
         except FileExistsError as error:
             raise file_exists(path) from error
         except (OSError, ValueError) as error:
-            raise ValueError(f"Could not export history: {error}") from error
+            raise ValueError(f"Could not export history: {player_message(error)}") from error
         return f"Exported {len(self.history)} history entries to {path}."
