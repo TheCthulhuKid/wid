@@ -1,12 +1,14 @@
 """``wid --web``: serve the game to a browser on this machine only."""
 
 import os
+import secrets
 import socket
 import sys
 import webbrowser
 
 import uvicorn
 
+from wid.game import Game
 from wid.web.app import create_app
 
 # The loopback address only, so nothing outside this machine can reach the game.
@@ -46,12 +48,14 @@ def serve(*, port: int | None = None, open_browser: bool = True) -> int:
     except OSError as error:
         print(f"Could not listen on {HOST}: {error}", file=sys.stderr)
         return 1
-    url = f"http://{HOST}:{sock.getsockname()[1]}/"
+    # A new token each launch: only the browser that opens this address can use the game.
+    token = secrets.token_urlsafe(16)
+    url = f"http://{HOST}:{sock.getsockname()[1]}/?token={token}"
     print(f"wid is running at {url} (press Ctrl+C to stop)", flush=True)
     # The socket already listens, so a browser that is quicker than the server just waits.
     if open_browser:
         webbrowser.open(url)
-    server = uvicorn.Server(uvicorn.Config(create_app(), log_level="warning"))
+    server = uvicorn.Server(uvicorn.Config(create_app(Game(), token), log_level="warning"))
     with sock:
         try:
             server.run(sockets=[sock])

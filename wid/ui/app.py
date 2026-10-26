@@ -564,7 +564,7 @@ class RollerApp(SessionActions, App):
         if event.value != event.input.value:
             return
         if isinstance(event.input, StrainName):
-            self.session.strain = self.session.strain.set_name(event.input.row, event.value)
+            self.session.set_strain_name(event.input.row, event.value)
             self.update_strain_status()
         elif isinstance(event.input, PowerName):
             self.session.set_power_name(event.input.index, event.value)

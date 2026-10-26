@@ -5,7 +5,6 @@ import pytest
 
 from wid.cli import main
 from wid.web import server
-from wid.web.app import PAGE, create_app
 
 
 def run_serve(**options):
@@ -31,9 +30,9 @@ def test_serves_on_the_loopback_address_and_opens_the_browser(capsys):
 
     assert code == 0
     ((host, port),) = addresses
-    url = f"http://127.0.0.1:{port}/"
+    (url,) = browser.call_args.args
     assert host == "127.0.0.1"
-    browser.assert_called_once_with(url)
+    assert url.startswith(f"http://127.0.0.1:{port}/?token=")
     assert f"wid is running at {url}" in capsys.readouterr().out
 
 
@@ -65,10 +64,3 @@ def test_the_command_line_flags_start_the_server_instead_of_the_terminal():
     with pytest.raises(SystemExit) as refused:
         main(["--port", "9000"])
     assert refused.value.code == 2
-
-
-def test_the_app_serves_its_page():
-    app = create_app()
-    (route,) = [route for route in app.routes if getattr(route, "path", None) == "/"]
-    assert route.endpoint() == PAGE
-    assert "We're in Danger" in PAGE

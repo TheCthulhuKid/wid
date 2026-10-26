@@ -588,6 +588,9 @@ class RollSession(BaseModel):
             raise ValueError("There is no manifestation to remove")
         self.manifestations = self.manifestations[:-1]
 
+    def set_strain_name(self, row: int, name: str) -> None:
+        self.strain = self.strain.set_name(row, name)
+
     def set_manifestation_name(self, index: int, name: str) -> None:
         index = TypeAdapter(Index).validate_python(index)
         if index >= len(self.manifestations):

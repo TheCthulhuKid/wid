@@ -1,0 +1,14 @@
+{# Each action sends this form back to replace the old one (PLAN.md step 4 fills it in). #}
+<form id="sheet">
+  <input type="hidden" name="sheet" value="1">
+  <p class="feedback">{{ message }}</p>
+  <p class="kit">{{ game.profile.name }}</p>
+  <p class="pool">{{ pool }}</p>
+  {% if dice %}
+  <pre class="dice">{{ dice }}</pre>
+  <p class="summary">{{ summary }}</p>
+  {% endif %}
+  <ol class="history">
+    {% for entry in history %}<li><pre>{{ entry }}</pre></li>{% endfor %}
+  </ol>
+</form>

@@ -92,8 +92,10 @@ wid/
     ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
     └── roller.tcss     # Bundled interface styles
 └── web/
-    ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser
-    └── app.py          # FastAPI application (the browser sheet is still being built)
+    ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser with a token
+    ├── app.py          # FastAPI app: the page, POST /actions/<name>, and the safety checks
+    ├── forms.py        # The posted sheet fields copied into the game, and the action table
+    └── templates/      # Jinja2 page and sheet (the full sheet arrives in PLAN.md step 4)
 .github/workflows/      # ci.yml: tests, ruff; release.yml: Windows build, draft release
 release/                # PyInstaller spec, Windows build script, smoke test, icon
 tests/                  # Domain, persistence, headless UI, and launch tests
@@ -105,7 +107,11 @@ Front ends call `Game` (`wid/game.py`), which owns the session, history, roll op
 character, notes and file path, records history and words the feedback; game rules stay in
 the domain models, independent of Textual. The terminal app copies what the player typed into
 the game before each action (`collect`), then redraws from it (`refresh_sheet`), so a second
-front end only needs the same two steps. Persistence depends on the models, not the interface.
+front end only needs the same two steps; the browser version does them per request (each action
+posts the whole sheet, `collect` copies it in, the action runs, the sheet comes back). Every web
+request must come from `127.0.0.1` or `localhost`, carry the per-launch token cookie, and, for
+actions, htmx's `HX-Request` header (see `wid/web/app.py` for why each check is needed).
+Persistence depends on the models, not the interface.
 Package initializers do not import the application.
 
 ## Files the program writes
