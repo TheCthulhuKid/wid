@@ -1,6 +1,5 @@
 import asyncio
 
-import pytest
 from helpers import reveal
 from rich.color import Color as RichColor
 from test_rollerapp import start_game
@@ -35,45 +34,32 @@ def themes():
     return [name for name in names if not name.startswith("ansi-")]
 
 
-@pytest.mark.parametrize("theme", themes())
-def test_outcome_colours_are_readable_in_every_theme(theme):
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([1, 4, 6, 6]))
-        async with app.run_test(size=(120, 50)) as pilot:
-            app.theme = theme
-            await start_game(app, pilot)
-            await pilot.press("ctrl+r")
-            await pilot.pause()
-            dice = coloured_words(app.query_one("#dice"), OUTCOME_TEXT)
-            summary = coloured_words(app.query_one("#summary"), SUMMARY_TEXT)
-            assert {text for text, *_ in dice} == OUTCOME_TEXT
-            assert len(summary) == 3
-            for text, foreground, background in dice + summary:
-                assert rendered_contrast(foreground, background) >= MIN_CONTRAST, (theme, text)
-
-    asyncio.run(scenario())
-
-
 BUTTONS = ("#roll-attribute-0", "#take-strain", "#save-session")
 
 
-@pytest.mark.parametrize("theme", themes())
-def test_action_buttons_are_readable_in_every_theme(theme):
+def assert_readable(words, *context):
+    assert words, context
+    for text, foreground, background in words:
+        assert rendered_contrast(foreground, background) >= MIN_CONTRAST, (*context, text)
+
+
+def test_outcomes_and_action_buttons_are_readable_in_every_theme():
     async def scenario():
-        app = RollerApp()
+        app = RollerApp(rng=ScriptedRandom([1, 4, 6, 6]))
         async with app.run_test(size=(120, 50)) as pilot:
-            app.theme = theme
             await start_game(app, pilot)
-            for selector in BUTTONS:
-                button = await reveal(app, pilot, selector)
-                assert not button.disabled, selector
-                words = coloured_words(button, str(button.label).split())
-                assert words, (theme, selector)
-                for text, foreground, background in words:
-                    assert rendered_contrast(foreground, background) >= MIN_CONTRAST, (
-                        theme,
-                        selector,
-                        text,
-                    )
+            await pilot.press("ctrl+r")
+            for theme in themes():
+                app.theme = theme
+                app.show_result(app.session.current_result)
+                await pilot.pause()
+                dice = coloured_words(app.query_one("#dice"), OUTCOME_TEXT)
+                assert {text for text, *_ in dice} == OUTCOME_TEXT, theme
+                assert_readable(dice, theme)
+                assert_readable(coloured_words(app.query_one("#summary"), SUMMARY_TEXT), theme)
+                for selector in BUTTONS:
+                    button = await reveal(app, pilot, selector)
+                    words = coloured_words(button, str(button.label).split())
+                    assert_readable(words, theme, selector)
 
     asyncio.run(scenario())

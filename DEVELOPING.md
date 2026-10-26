@@ -22,12 +22,16 @@ checkout: after updating, rebuild it with `uv tool install --force --reinstall .
 ```sh
 uv sync --locked --group dev
 uv run wid                 # or .venv/bin/python -m wid
-uv run pytest              # 4 workers, about 90 seconds; -m "not ui" for the quick domain tests
+uv run pytest              # 4 workers, about 80 seconds; -m "not ui" for the quick domain tests
+uv run pytest --cov        # as CI runs it: fails below 80% coverage of wid/
 uv run ruff check .
 uv run ruff format --check .
 ```
 
-Tests run offline and headless (Textual's test runner). Shared fixtures are in
+Tests run offline and headless (Textual's test runner). They cover the usual path of each
+feature, one domain test and, where there is a screen, one app test, rather than every edge
+case. UI tests click through `click` and `reveal` in `tests/helpers.py`, which wait until a
+widget has settled on screen. Shared fixtures are in
 `tests/conftest.py`; save tests use `tmp_path`, and an autouse fixture points
 `XDG_CONFIG_HOME` at a temporary directory so no test touches your real settings.
 

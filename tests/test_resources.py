@@ -2,7 +2,7 @@ import asyncio
 from random import Random
 
 import pytest
-from helpers import change_genre, reveal
+from helpers import change_genre, click
 from pydantic import ValidationError
 from test_rollerapp import start_game, text
 from test_rolls import ScriptedRandom
@@ -120,11 +120,6 @@ def test_resource_controls_spend_and_roll_one_die():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([4]))
 
-        async def click(selector):
-            await reveal(app, pilot, selector)
-            await pilot.click(selector)
-            await pilot.pause()
-
         async with app.run_test(size=(120, 50)) as pilot:
             await change_genre(app, pilot, KIT)
             await start_game(app, pilot, (1, 2, 3))
@@ -132,16 +127,16 @@ def test_resource_controls_spend_and_roll_one_die():
             assert app.query_one("#spend-resources").disabled
             assert app.query_one("#name-crafted_item").disabled
             for _ in range(3):
-                await click("#resources-up")
+                await click(app, pilot, "#resources-up")
             assert text(app, "#resource-count") == "6 / 6"
             assert app.query_one("#resources-up").disabled
-            await click("#spend-resources")
+            await click(app, pilot, "#spend-resources")
             await pilot.click("#spend-craft_item")
             await pilot.pause()
             assert text(app, "#resource-count") == "3 / 6"
             assert not app.query_one("#name-crafted_item").disabled
             assert str(app.history[-1]).startswith("Spent 6 Resources: craft an item")
-            await click("#roll-d6")
+            await click(app, pilot, "#roll-d6")
             assert str(app.history[-1]) == "Rolled 1d6: 4."
             await change_genre(app, pilot, Genre.CORE)
             assert not app.query_one("#resource-field").display

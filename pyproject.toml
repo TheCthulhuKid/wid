@@ -30,6 +30,7 @@ dev = [
     "ruff>=0.16.7",
     "textual-dev>=1.8.0",
     "pytest-xdist>=3.8.0",
+    "pytest-cov>=7.1.0",
 ]
 release = [
     "pyinstaller>=6.22.3",
@@ -43,6 +44,14 @@ pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-n 4"
 markers = ["ui: starts an application (slow); deselect with -m \"not ui\""]
+
+[tool.coverage.run]
+source = ["wid"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
 
 [tool.ruff]
 line-length = 100

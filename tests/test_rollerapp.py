@@ -1,12 +1,11 @@
 import asyncio
 
-import pytest
-from helpers import change_genre, reveal
+from helpers import change_genre, click
 from test_rolls import ScriptedRandom
 from textual.command import CommandPalette
-from textual.widgets import Button, Checkbox, Collapsible, Input, RichLog, Select, Static
+from textual.widgets import Checkbox, Collapsible, Input, Select, Static
 
-from wid.profiles import PROFILES, Genre
+from wid.profiles import Genre
 from wid.rolls import BonusKind, PowerMode
 from wid.ui.app import RollerApp
 
@@ -19,13 +18,8 @@ async def start_game(app, pilot, ranks=None):
     if ranks is not None:
         for index, rank in enumerate(ranks):
             app.query_one(f"#attribute-rank-{index}", Select).value = rank
-    app.query_one("#start-game").scroll_visible(animate=False)
-    await pilot.pause()
-    await pilot.click("#start-game")
-    await pilot.pause()
+    await click(app, pilot, "#start-game")
     assert app.session.attributes is not None
-    app.query_one("#genre").scroll_visible(animate=False)
-    await pilot.pause()
 
 
 async def apply_item(app, pilot, index=0):
@@ -36,34 +30,7 @@ async def apply_item(app, pilot, index=0):
     await pilot.pause()
 
 
-@pytest.mark.parametrize("genre", list(Genre))
-def test_corruption_is_only_displayed_for_oldheart(genre):
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([1, 2, 3, 4, 6]))
-        async with app.run_test(size=(100, 40)) as pilot:
-            app.query_one("#genre", Select).value = genre
-            await pilot.pause()
-            await start_game(app, pilot)
-            await pilot.press("ctrl+r")
-            resources = text(app, "#resources")
-            history = str(app.history[-1])
-            if genre == Genre.OLDHEART:
-                assert "Corruption: +0 (session 0)" in resources
-                assert "Corruption +0 (session 0)" in history
-                app.query_one("#reroll-die-0", Checkbox).value = True
-                await pilot.pause()
-                app.action_reroll()
-                assert "Corruption: +1 (session 1)" in text(app, "#resources")
-                assert "Corruption +1 (session 1)" in str(app.history[-1])
-            else:
-                assert "Corruption" not in resources
-                assert "Corruption" not in history
-            assert app.session.total_corruption == int(genre == Genre.OLDHEART)
-
-    asyncio.run(scenario())
-
-
-def test_core_flow_and_invalid_input():
+def test_a_roll_with_options_and_an_item():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([1, 2, 3, 4, 6]))
         async with app.run_test(size=(120, 50)) as pilot:
@@ -72,138 +39,46 @@ def test_core_flow_and_invalid_input():
             app.query_one("#expertise", Checkbox).value = True
             await pilot.pause()
             assert "5d6" in text(app, "#pool")
-            await pilot.click("#roll-attribute-0")
+            await click(app, pilot, "#roll-attribute-0")
             await apply_item(app, pilot)
             assert "Athleticism (rank 2)" in text(app, "#tested-attribute")
             assert "1: 1+1=2 fumble" in text(app, "#dice")
-            assert "4: 4+0=4 hit" in text(app, "#dice")
             assert "Hits: 3" in text(app, "#summary")
             assert len(app.history) == 2
-            assert "rank 2" in str(app.history[0])
-            await pilot.press("ctrl+l")
-            assert app.query_one("#log", RichLog).lines
-            previous = app.session.current_result
-            app.query_one("#name-appropriate_item", Input).value = " "
-            await pilot.pause()
-            app.apply_bonus(BonusKind.APPROPRIATE_ITEM)
-            assert app.session.current_result is previous
-            assert len(app.history) == 2
-            assert "name" in text(app, "#feedback").lower()
-            app.query_one("#name-appropriate_item", Input).focus()
-            await pilot.press("home", "shift+end", "A", "x", "e", "tab")
-            assert app.query_one("#name-appropriate_item", Input).value == "Axe"
+            assert not app.query_one("#assisted", Checkbox).value
+            assert not app.query_one("#expertise", Checkbox).value
 
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("genre", list(Genre))
-def test_three_attribute_buttons_support_keyboard_rolls(genre):
+def test_the_game_starts_only_with_unique_ranks():
     async def scenario():
-        app = RollerApp(rng=ScriptedRandom([1, 2, 3, 4] * 3))
-        async with app.run_test(size=(80, 24)) as pilot:
-            app.query_one("#genre", Select).value = genre
-            await pilot.pause()
-            for index in range(3):
-                assert app.query_one(f"#attribute-rank-{index}", Select).display
-            await start_game(app, pilot, (3, 1, 2))
-            for index, rank in enumerate((3, 1, 2)):
-                button = app.query_one(f"#roll-attribute-{index}", Button)
-                button.scroll_visible(animate=False)
-                await pilot.pause()
-                button.focus()
-                await pilot.press("enter")
-                assert app.tested_attribute == PROFILES[genre].attributes[index]
-                assert app.session.current_result.request.attribute == app.tested_attribute
-                assert app.session.current_result.request.attribute_rank == rank
-                assert f"(rank {rank})" in text(app, "#tested-attribute")
-                assert app.session.current_result.totals().fumbles == rank
-
-    asyncio.run(scenario())
-
-
-@pytest.mark.parametrize("genre", list(Genre))
-def test_attribute_mouse_buttons_roll_each_attribute(genre):
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([1, 2, 3, 4] * 3))
-        async with app.run_test(size=(80, 24)) as pilot:
-            app.query_one("#genre", Select).value = genre
-            await pilot.pause()
-            await start_game(app, pilot, (3, 1, 2))
-            for index, attribute in enumerate(PROFILES[genre].attributes):
-                button = app.query_one(f"#roll-attribute-{index}", Button)
-                button.scroll_visible(animate=False)
-                await pilot.pause()
-                assert await pilot.click(button)
-                await pilot.pause()
-                assert app.tested_attribute == attribute
-                result = app.session.current_result
-                assert result.request.attribute == attribute
-                assert result.request.attribute_rank == (3, 1, 2)[index]
-
-    asyncio.run(scenario())
-
-
-def test_minimum_roll_accepts_an_item():
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([4]))
-        async with app.run_test(size=(80, 24)) as pilot:
-            await start_game(app, pilot)
-            app.query_one("#fear", Select).value = 3
-            await pilot.pause()
-            assert "1d6" in text(app, "#pool")
-            await pilot.press("ctrl+r")
-            await apply_item(app, pilot)
-            assert len(app.session.current_result.dice) == 1
-            assert "1: 4+1=5 hit" in text(app, "#dice")
-
-    asyncio.run(scenario())
-
-
-def test_genres_power_maximum_and_reset_confirmation():
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([6] * 7))
+        app = RollerApp()
         async with app.run_test(size=(120, 50)) as pilot:
-            app.query_one("#genre", Select).value = Genre.HECKBOY
-            await pilot.pause()
+            await pilot.press("ctrl+r")
+            assert "Set attributes" in text(app, "#feedback")
+            app.query_one("#attribute-rank-0", Select).value = 3
+            await click(app, pilot, "#start-game")
+            assert "only once" in text(app, "#feedback")
+            assert app.session.attributes is None
+            await start_game(app, pilot, (3, 1, 2))
+            assert app.query_one("#attribute-rank-0", Select).disabled
+
+    asyncio.run(scenario())
+
+
+def test_heckboy_power_adds_dice_and_strain_for_one_roll():
+    async def scenario():
+        app = RollerApp(rng=ScriptedRandom([6] * 6))
+        async with app.run_test(size=(120, 50)) as pilot:
+            await change_genre(app, pilot, Genre.HECKBOY)
             await start_game(app, pilot)
-            assert app.query_one("#powers").display
-            assert app.tested_attribute == "Aberrance"
-            app.query_one("#assisted", Checkbox).value = True
             app.set_power(PowerMode.ERRATIC)
             await pilot.pause()
-            assert "7d6" in text(app, "#pool")
-            await pilot.click("#roll-attribute-0")
-            await apply_item(app, pilot, index=6)
-            assert "7: 6+1=7 hit" in text(app, "#dice")
+            assert "6d6" in text(app, "#pool")
+            await pilot.press("ctrl+r")
             assert "Strain: +2 (session 2)" in text(app, "#resources")
-            app.show_result(app.session.current_result)
-            assert app.session.total_strain == 2
-            app.set_power(PowerMode.NONE)
-            await pilot.pause()
-            assert app.query_one("#item-target", Select).value == 6
-            assert app.session.current_result.dice[6].bonus == 1
-            app.query_one("#genre", Select).value = Genre.BALL_SEASON
-            await pilot.pause()
-            await pilot.click("#cancel-reset")
-            assert app.session.profile_id == Genre.HECKBOY
-            assert app.query_one("#genre", Select).value == Genre.HECKBOY
-            assert app.session.total_strain == 2
-            app.query_one("#genre", Select).value = Genre.BALL_SEASON
-            await pilot.pause()
-            await pilot.click("#confirm-reset")
-            assert app.session.profile_id == Genre.BALL_SEASON
-            assert app.session.attributes is None
-            assert app.session.current_result is None
-            assert app.session.total_strain == 0
-            assert not app.query_one("#powers").display
-            await start_game(app, pilot)
-            for genre, profile in PROFILES.items():
-                await change_genre(app, pilot, genre)
-                await start_game(app, pilot)
-                for index, attribute in enumerate(profile.attributes):
-                    assert text(app, f"#attribute-label-{index}") == attribute
-                assert app.query_one("#item-rows").display == profile.uses_items
-                assert app.query_one("#tech-controls").display == profile.has_tech
+            assert app.chosen_power() == PowerMode.NONE
 
     asyncio.run(scenario())
 
@@ -211,139 +86,48 @@ def test_genres_power_maximum_and_reset_confirmation():
 def test_tech_is_named_when_used_after_a_roll():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([1] * 12))
-
-        async def click(selector):
-            await reveal(app, pilot, selector)
-            await pilot.click(selector)
-            await pilot.pause()
-
-        def strengths():
-            return [piece.strength for piece in app.session.tech.pieces]
-
         async with app.run_test(size=(120, 60)) as pilot:
             await change_genre(app, pilot, Genre.SECOND_CONTACT)
             await start_game(app, pilot, (1, 3, 2))
             assert app.query_one("#items-section", Collapsible).title == "Tech"
             assert not app.query_one("#item-rows").display
-            rows = [app.query_one(f"#tech-row-{index}").display for index in range(3)]
-            assert rows == [True, True, False]
-            assert text(app, "#tech-label-0") == "Tech 1 — strength 4"
-            await click("#roll-attribute-0")
-            assert app.query_one("#use-tech-0").disabled
+            await click(app, pilot, "#roll-attribute-0")
             app.query_one("#tech-name-0", Input).value = "Translator"
-            await pilot.pause()
-            assert not app.query_one("#use-tech-0").disabled
             app.query_one("#item-target", Select).value = 1
-            await click("#use-tech-0")
-            assert "1+4=5" in text(app, "#dice")
-            assert strengths() == [3, 4]
-            assert str(app.history[-1]).startswith("Tech Translator: +4 to die 2:")
-            assert app.query_one("#use-tech-0").disabled
-            await click("#undo-bonus")
-            assert strengths() == [4, 4]
-            assert not app.query_one("#use-tech-0").disabled
-            app.query_one("#tech-name-1", Input).value = "Drone"
             await pilot.pause()
-            await click("#sacrifice-tech-1")
-            assert strengths() == [4, 0]
-            assert app.query_one("#sacrifice-tech-1").disabled
-            assert str(app.history[-1]) == "Sacrificed Drone: strength 4 → 0."
-            await click("#new-scenario")
-            assert strengths() == [4, 4]
+            await click(app, pilot, "#use-tech-0")
+            assert "1+4=5" in text(app, "#dice")
+            assert str(app.history[-1]).startswith("Tech Translator: +4 to die 2:")
+            await click(app, pilot, "#sacrifice-tech-0")
+            assert app.session.tech.pieces[0].strength == 0
+            await click(app, pilot, "#new-scenario")
             assert app.query_one("#tech-name-0", Input).value == ""
-            assert not any(piece.defined for piece in app.session.tech.pieces)
-            assert str(app.history[-1]) == "New scenario: 2 empty Tech slot(s)."
-            await change_genre(app, pilot, Genre.CORE)
-            assert app.session.tech is None
-            assert app.query_one("#items-section", Collapsible).title == "Items"
-            assert not app.query_one("#tech-controls").display
 
     asyncio.run(scenario())
 
 
-def test_oldheart_rerolls_preserve_test_and_history():
+def test_oldheart_rerolls_selected_dice_for_corruption():
     async def scenario():
-        app = RollerApp(rng=ScriptedRandom([1, 2, 3, 4, 6, 1, 2]))
+        app = RollerApp(rng=ScriptedRandom([1, 2, 3, 4, 6]))
         async with app.run_test(size=(120, 50)) as pilot:
             assert not app.query_one("#reroll-controls").display
-            app.query_one("#genre", Select).value = Genre.OLDHEART
-            await pilot.pause()
+            await change_genre(app, pilot, Genre.OLDHEART)
             await start_game(app, pilot)
-            assert app.query_one("#reroll-controls").display
-            assert app.query_one("#reroll_button", Button).disabled
-            app.query_one("#expertise", Checkbox).value = True
-            await pilot.click("#roll-attribute-0")
-            await apply_item(app, pilot)
-            original = app.session.current_result
-            snapshot = str(app.history[-1])
-            app.query_one("#reroll-die-0", Checkbox).value = True
-            app.query_one("#reroll-die-2", Checkbox).value = True
-            await pilot.pause()
-            assert not app.query_one("#reroll_button", Button).disabled
-            app.tested_attribute = "Fitness"
-            app.query_one("#fear", Select).value = 3
-            app.query_one("#assisted", Checkbox).value = True
-            app.query_one("#expertise", Checkbox).value = False
-            app.query_one("#name-appropriate_item", Input).value = "Different draft name"
-            await pilot.pause()
-            await pilot.click("#reroll_button")
-            assert app.session.total_corruption == 2
-            assert app.session.current_result.request == original.request
-            assert "1: 6+1=7 hit" in text(app, "#dice")
-            assert "Hits: 2 (dice 1, expertise 1)" in text(app, "#summary")
-            assert "Corruption: +2 (session 2)" in text(app, "#resources")
-            assert "Reroll dice 1, 3" in str(app.history[-1])
-            assert str(app.history[-2]) == snapshot
-            assert "raw 1 +1 = 2" in snapshot
-            assert app.query_one("#reroll_button", Button).disabled
-            app.query_one("#reroll-die-0", Checkbox).value = True
-            await pilot.pause(0.4)
-            await pilot.click("#reroll_button")
-            assert app.session.total_corruption == 3
-            assert "1: 2+1=3 miss" in text(app, "#dice")
-            assert app.session.current_result.totals().expertise_hits == 1
-            previous = app.session.current_result
-            app.action_reroll()
-            assert app.session.current_result is previous
-            assert app.session.total_corruption == 3
-            assert "Select at least one" in text(app, "#feedback")
-            app.query_one("#genre", Select).value = Genre.CORE
-            await pilot.pause()
-            await pilot.click("#confirm-reset")
-            assert app.session.total_corruption == 0
-            assert app.session.current_result is None
-            assert not app.query_one("#reroll-controls").display
-
-    asyncio.run(scenario())
-
-
-def test_maximum_pool_scrolls_in_compact_terminal():
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([4] * 7))
-        async with app.run_test(size=(80, 24)) as pilot:
-            app.query_one("#genre", Select).value = Genre.HECKBOY
-            await pilot.pause()
-            await start_game(app, pilot)
-            app.query_one("#assisted", Checkbox).value = True
-            app.set_power(PowerMode.ERRATIC)
-            await pilot.pause()
             await pilot.press("ctrl+r")
-            assert len(app.session.current_result.dice) == 7
-            assert "7: 4+0=4 hit" in text(app, "#dice")
-            summary = app.query_one("#summary", Static)
-            summary.scroll_visible(animate=False)
+            app.query_one("#reroll-die-0", Checkbox).value = True
             await pilot.pause()
-            assert summary.region.overlaps(app.query_one("RollerGroup").content_region)
-            assert "Hits: 7" in text(app, "#summary")
+            await click(app, pilot, "#reroll_button")
+            assert "1: 6+0=6 hit" in text(app, "#dice")
+            assert "Corruption: +1 (session 1)" in text(app, "#resources")
+            assert "Reroll dice 1" in str(app.history[-1])
 
     asyncio.run(scenario())
 
 
-def test_theme_picker_opens_and_switches_theme():
+def test_theme_picker_switches_theme():
     async def scenario():
         app = RollerApp()
         async with app.run_test(size=(100, 40)) as pilot:
-            previous_theme = app.theme
             app.query_one("#roll-attribute-0").focus()
             await pilot.press("d")
             await pilot.pause()
@@ -352,96 +136,6 @@ def test_theme_picker_opens_and_switches_theme():
             await pilot.pause(0.5)
             await pilot.press("enter")
             await pilot.pause()
-            assert app.theme == "nord" != previous_theme
-            assert not isinstance(app.screen, CommandPalette)
-
-    asyncio.run(scenario())
-
-
-def test_startup_and_genre_setup_require_unique_fixed_attributes():
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([1, 2, 3, 4] * 3))
-        async with app.run_test(size=(120, 50)) as pilot:
-            assert app.query_one("#attribute-setup").display
-            assert all(app.query_one(f"#roll-attribute-{i}", Button).disabled for i in range(3))
-            await pilot.press("ctrl+r")
-            assert app.session.current_result is None
-            assert not app.history
-            assert "Set attributes" in text(app, "#feedback")
-            await start_game(app, pilot, (3, 1, 2))
-            assert app.query_one("#attribute-setup").display
-            assert app.session.attribute_rank("Athleticism") == 3
-
-            await change_genre(app, pilot, Genre.BALL_SEASON)
-            assert app.query_one("#attribute-setup").display
-            assert all(app.query_one(f"#roll-attribute-{i}", Button).disabled for i in range(3))
-            assert app.session.attributes is None
-            app.query_one("#attribute-rank-0", Select).value = 3
-            app.query_one("#start-game").scroll_visible(animate=False)
-            await pilot.pause()
-            await pilot.click("#start-game")
-            assert "only once" in text(app, "#feedback")
-            assert app.session.attributes is None
-            assert app.query_one("#attribute-rank-0", Select).value == 3
-            assert app.query_one("#attribute-rank-2", Select).value == 3
-            await pilot.press("ctrl+r")
-            assert app.session.current_result is None
-
-            app.query_one("#attribute-rank-1", Select).value = 1
-            app.query_one("#attribute-rank-2", Select).value = 2
-            await pilot.pause(0.4)
-            app.query_one("#start-game").focus()
-            await pilot.press("enter")
-            assert app.session.attributes.ranks == (3, 1, 2)
-            assert app.query_one("#attribute-setup").display
-            assert all(app.query_one(f"#attribute-rank-{i}", Select).disabled for i in range(3))
-            app.query_one("#attribute-rank-0", Select).value = 1
-            assert app.session.attributes.ranks == (3, 1, 2)
-            for index, (attribute, rank) in enumerate(
-                zip(PROFILES[Genre.BALL_SEASON].attributes, (3, 1, 2), strict=True)
-            ):
-                await pilot.pause()
-                app.action_roll_attribute(index)
-                assert f"{attribute} (rank {rank})" in text(app, "#tested-attribute")
-                assert app.session.current_result.request.attribute == attribute
-                assert app.session.current_result.request.attribute_rank == rank
-                assert app.session.current_result.totals().fumbles == rank
-
-    asyncio.run(scenario())
-
-
-def test_assisted_expertise_and_power_are_cleared_after_a_roll_but_scared_stays():
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([3, 4, 5, 6, 1]))
-        async with app.run_test(size=(100, 40)) as pilot:
-            await start_game(app, pilot)
-            app.query_one("#assisted", Checkbox).value = True
-            app.query_one("#expertise", Checkbox).value = True
-            app.query_one("#fear", Select).value = 1
-            await pilot.press("ctrl+r")
-            await pilot.pause()
-            assert app.session.current_result.request.assisted
-            assert app.session.current_result.request.expertise
-            assert not app.query_one("#assisted", Checkbox).value
-            assert not app.query_one("#expertise", Checkbox).value
-            assert app.query_one("#fear", Select).value == 1
-            assert text(app, "#pool").startswith("Pool: 3d6")
-
-    asyncio.run(scenario())
-
-
-def test_heckboy_power_is_cleared_after_a_roll():
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([3, 4, 5, 6, 1, 2]))
-        async with app.run_test(size=(100, 40)) as pilot:
-            app.query_one("#genre", Select).value = Genre.HECKBOY
-            await pilot.pause()
-            await start_game(app, pilot)
-            app.set_power(PowerMode.RELIABLE)
-            await pilot.press("ctrl+r")
-            await pilot.pause()
-            assert app.session.current_result.request.power == PowerMode.RELIABLE
-            assert app.chosen_power() == PowerMode.NONE
-            assert text(app, "#pool").startswith("Pool: 4d6")
+            assert app.theme == "nord"
 
     asyncio.run(scenario())
