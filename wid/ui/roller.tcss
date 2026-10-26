@@ -56,7 +56,8 @@ Select, Input { width: 1fr; }
 #notes-toolbar Button { width: 1fr; min-width: 0; }
 Checkbox { width: 1fr; height: auto; }
 #items, #item-rows, #powers, #tech-controls, #reroll-controls, #attribute-setup { height: auto; }
-#tech-scenario-row { height: auto; }
+#tech-scenario-row, #standing-field { height: auto; }
+#standing { height: 1; }
 #tech-attributes { width: 1fr; padding: 1 0; }
 #item-target-row { height: 3; }
 #item-target-row Label { width: 14; padding: 1 0; }

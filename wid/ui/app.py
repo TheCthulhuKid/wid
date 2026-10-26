@@ -57,6 +57,7 @@ from wid.ui.widgets import (
     SacrificeButton,
     SessionFile,
     SessionName,
+    StandingTrack,
     StrainBox,
     StrainGroup,
     StrainName,
@@ -311,6 +312,8 @@ class RollerApp(SessionActions, App):
         self.section("items").title = "Tech" if profile.has_tech else "Items"
         self.query_one("#item-rows").display = profile.uses_items
         self.query_one("#tech-controls").display = profile.has_tech
+        self.query_one("#standing-field").display = profile.has_standing
+        self.query_one(StandingTrack).standing = self.session.standing
         self.update_reroll_controls()
         self.update_bonus_controls()
 
@@ -486,6 +489,15 @@ class RollerApp(SessionActions, App):
         elif isinstance(event.input, BonusName):
             self.session.set_bonus_name(event.input.kind, event.value)
             self.update_bonus_controls()
+
+    def on_standing_track_moved(self, event: StandingTrack.Moved) -> None:
+        try:
+            self.session.set_standing(event.standing)
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.feedback("")
+        self.query_one(StandingTrack).standing = self.session.standing
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if isinstance(event.button, AttributeRollButton):

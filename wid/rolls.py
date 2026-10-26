@@ -192,6 +192,16 @@ class AttributeSetup(FrozenModel):
         return self.ranks[attributes.index(attribute)]
 
 
+# Ball Season's Standing track, from left to right; the game starts on the centre dot.
+STANDING_LABELS = ("Esteemed", "Reputable", "Reputable", "Reputable", "Scandalous")
+STANDING_START = 2
+Standing = Annotated[int, Field(strict=True, ge=0, le=len(STANDING_LABELS) - 1)]
+
+
+def standing_label(standing: int) -> str:
+    return STANDING_LABELS[standing]
+
+
 # The last box of each row: two wounds, then Defeat. Each is preceded by three strain boxes.
 STRAIN_ENDINGS = (3, 7, 11)
 
@@ -285,6 +295,8 @@ class RollSession(BaseModel):
     bonuses: NamedBonuses = Field(default_factory=NamedBonuses)
     # Heckboy power names, for the player's reference; they do not change rolls.
     power_names: tuple[str, str] = ("", "")
+    # Ball Season only; it sets the GM's target numbers, so it never changes a roll here.
+    standing: Standing = STANDING_START
     # Results before each bonus, newest last, with the Tech slot the bonus spent, if any.
     # Not saved; cleared by a roll and by anything else that changes the Tech.
     _before_bonus: list[tuple[RollResult, int | None]] = PrivateAttr(default_factory=list)
@@ -305,6 +317,14 @@ class RollSession(BaseModel):
         names = list(self.power_names)
         names[index] = name
         self.power_names = tuple(names)
+
+    def set_standing(self, standing: int) -> int:
+        if not PROFILES[self.profile_id].has_standing:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Standing")
+        if type(standing) is not int or not 0 <= standing < len(STANDING_LABELS):
+            raise ValueError("Standing runs from Esteemed (dot 1) to Scandalous (dot 5)")
+        self.standing = standing
+        return standing
 
     def _current_test(self) -> RollResult:
         previous = self.current_result

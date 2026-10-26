@@ -5,7 +5,7 @@ from textual.widgets import Checkbox, Input, RichLog, Select, TextArea
 from wid.export import history_markdown
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
-from wid.rolls import RollSession
+from wid.rolls import STANDING_START, RollSession
 from wid.sessions import CharacterDetails, SavedSession, session_file_path
 from wid.storage import write_text
 from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
@@ -202,6 +202,7 @@ class SessionActions:
             or any(self.character_details().model_dump().values())
             or any(self.session.bonuses.model_dump().values())
             or any(self.session.power_names)
+            or self.session.standing != STANDING_START
             or self.has_resources()
         )
 

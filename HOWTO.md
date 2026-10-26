@@ -53,7 +53,7 @@ Every kit has the same screen. Each adds at most one thing:
 | **Heckboy** | Aberrance, Ferocity, Savvy | Two powers (below) |
 | **Second Contact** | Science, Culture, Muscle | **Tech** slots instead of **Items** (below) |
 | **Oldheart** | Depravity, Hospitality, Fitness | Tick dice in the result, then **Reroll selected**. A running Corruption total is shown. |
-| **Ball Season** | Propriety, Stoutness, Yearning | None |
+| **Ball Season** | Propriety, Stoutness, Yearning | A **Standing** track (below) |
 | **This Isn't Happening** | Instincts, Endurance, Charity | None |
 
 **Powers (Heckboy).** Every Heckboy has a **Reliable power** (+1 die, +1 strain) and an
@@ -73,6 +73,11 @@ on one test, each once. At 0 a piece is depleted and its buttons grey out. **Und
 back and returns the strength. To stop a Danger's extermination, press **Sacrifice** on a named
 piece that still works: its strength drops to 0 and the history notes it. At the start of each
 scenario, press **New scenario** to empty every slot again.
+
+**Standing (Ball Season).** A five-dot track: **Esteemed** on the left, **Scandalous** on the
+right, and **Reputable** for the three dots in between. You start on the centre dot. Click a dot,
+or click the track and press ← and →, to move. Standing never changes your dice; the GM uses it
+to set how many hits a test needs.
 
 **Changing kit.** A kit lasts the whole game, so picking another kit in **Genre kit** starts a
 new game: the character, names, strain, history, notes, session name and file path are all

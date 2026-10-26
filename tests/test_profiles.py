@@ -5,7 +5,10 @@ def test_core_profile():
     core = PROFILES[Genre.CORE]
     assert core.attributes == ("Athleticism", "Composure", "Reasoning")
     assert core.uses_items
-    assert not any((core.has_powers, core.has_tech, core.has_rerolls))
+    assert not any((core.has_powers, core.has_tech, core.has_rerolls, core.has_standing))
+    assert [genre for genre, profile in PROFILES.items() if profile.has_standing] == [
+        Genre.BALL_SEASON
+    ]
 
 
 def test_genre_labels_and_capabilities():

@@ -4,8 +4,8 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, StringConstraints, model_validator
 
 from wid.history import HistoryEntry
-from wid.profiles import Genre
-from wid.rolls import FrozenModel, Index, RollRequest, RollSession
+from wid.profiles import PROFILES, Genre
+from wid.rolls import STANDING_START, FrozenModel, Index, RollRequest, RollSession
 from wid.storage import write_text
 
 
@@ -75,6 +75,8 @@ class SavedSession(FrozenModel):
             raise ValueError("Only Heckboy can have strain")
         if session.total_corruption and session.profile_id != Genre.OLDHEART:
             raise ValueError("Only Oldheart can have Corruption")
+        if session.standing != STANDING_START and not PROFILES[session.profile_id].has_standing:
+            raise ValueError("Only Ball Season can have Standing")
 
     def validate_tech(self) -> None:
         session = self.session

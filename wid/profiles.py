@@ -24,6 +24,7 @@ class WiDProfile(BaseModel):
     has_powers: bool = False
     has_tech: bool = False
     has_rerolls: bool = False
+    has_standing: bool = False
 
 
 PROFILES = {
@@ -52,6 +53,7 @@ PROFILES = {
         genre=Genre.BALL_SEASON,
         name="Ball Season",
         attributes=("Propriety", "Stoutness", "Yearning"),
+        has_standing=True,
     ),
     Genre.THIS_ISNT_HAPPENING: WiDProfile(
         genre=Genre.THIS_ISNT_HAPPENING,

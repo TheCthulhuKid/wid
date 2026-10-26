@@ -1,6 +1,12 @@
-from textual import on
+from typing import ClassVar
+
+from textual import events, on
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Grid, Horizontal, Vertical, VerticalScroll
+from textual.message import Message
+from textual.reactive import reactive
+from textual.widget import Widget
 from textual.widgets import (
     Button,
     Checkbox,
@@ -13,7 +19,14 @@ from textual.widgets import (
 )
 
 from wid.profiles import PROFILES, Genre
-from wid.rolls import BonusKind, PowerMode, StrainTracker
+from wid.rolls import (
+    STANDING_LABELS,
+    STANDING_START,
+    BonusKind,
+    PowerMode,
+    StrainTracker,
+    standing_label,
+)
 
 BONUS_LABELS = {
     BonusKind.EXPERTISE: "Expertise",
@@ -275,10 +288,49 @@ class RollOptions(Horizontal):
                 yield BonusButton("+1 hit", BonusKind.EXPERTISE, variant="primary", disabled=True)
 
 
+DOTS = range(len(STANDING_LABELS))
+
+
+class StandingTrack(Widget, can_focus=True):
+    """Ball Season's five-dot Standing track; click a dot, or press ← and →, to ask to move it."""
+
+    BINDINGS: ClassVar = [
+        Binding("left", "move(-1)", "Move toward Esteemed", show=False),
+        Binding("right", "move(1)", "Move toward Scandalous", show=False),
+    ]
+    standing = reactive(STANDING_START)
+
+    class Moved(Message):
+        """The player asked for ``standing``; the app decides whether it is allowed."""
+
+        def __init__(self, standing: int):
+            super().__init__()
+            self.standing = standing
+
+    def on_mount(self) -> None:
+        self.tooltip = "Click a dot, or press ← and →"
+
+    def render(self) -> str:
+        dots = " ".join("●" if index == self.standing else "○" for index in DOTS)
+        return f"{dots}  {standing_label(self.standing)}"
+
+    def action_move(self, step: int) -> None:
+        self.post_message(self.Moved(self.standing + step))
+
+    def on_click(self, event: events.Click) -> None:
+        # Each dot is followed by a space, so a dot and its gap share two cells.
+        dot = event.x // 2
+        if dot in DOTS:
+            self.post_message(self.Moved(dot))
+
+
 class KitControls(Vertical):
-    """Kit-specific controls that change the dice pool, and the resulting pool size."""
+    """Kit-specific controls, and the resulting pool size."""
 
     def compose(self) -> ComposeResult:
+        with Vertical(id="standing-field", classes="field"):
+            yield Label("Standing")
+            yield StandingTrack(id="standing")
         with Vertical(id="powers"):
             for index, mode in enumerate(POWERS):
                 with Horizontal(classes="named-bonus"):

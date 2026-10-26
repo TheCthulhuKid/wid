@@ -29,6 +29,7 @@ SCREEN_LABELS = [
     "Erratic power",
     "Use",
     "Sacrifice",
+    "Standing",
     "New scenario",
     "Reroll selected",
     "Take 1 strain",
