@@ -17,16 +17,18 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.templating import Jinja2Templates
 
-from wid.formatting import dice_lines, pool_line, summarize
 from wid.game import Game
 from wid.web.forms import ACTIONS, SheetForm, collect
+from wid.web.view import COLOURS, css_variables, sheet_context
 
 HOSTS = ["127.0.0.1", "localhost"]
 TOKEN_COOKIE = "wid_token"
-TEMPLATES = Jinja2Templates(directory=Path(__file__).with_name("templates"))
+HERE = Path(__file__).parent
+TEMPLATES = Jinja2Templates(directory=HERE / "templates")
 
 
 def matches(offered: str, token: str) -> bool:
@@ -34,16 +36,11 @@ def matches(offered: str, token: str) -> bool:
     return secrets.compare_digest(offered.encode(), token.encode())
 
 
-def render(request: Request, template: str, game: Game, message: str) -> Response:
-    result = game.session.current_result
-    context = {
-        "game": game,
-        "message": message,
-        "pool": pool_line(game.draft_request(preview=True)),
-        "dice": dice_lines(result) if result else "",
-        "summary": summarize(result) if result else "",
-        "history": [str(entry) for entry in game.history],
-    }
+def render(
+    request: Request, template: str, game: Game, message: str, *, preview: bool = False
+) -> Response:
+    context = sheet_context(game, message, preview=preview)
+    context |= {"light": css_variables(COLOURS["light"]), "dark": css_variables(COLOURS["dark"])}
     return TEMPLATES.TemplateResponse(request, template, context)
 
 
@@ -69,6 +66,7 @@ def create_app(game: Game, token: str) -> FastAPI:
 
     # Added last so it runs first: a foreign Host never reaches the token check.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=HOSTS)
+    app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 
     @app.get("/", response_class=HTMLResponse)
     async def page(request: Request) -> Response:
@@ -82,12 +80,14 @@ def create_app(game: Game, token: str) -> FastAPI:
             raise HTTPException(404, "No such action")
         body = await request.body()
         async with lock:
+            preview = False
             try:
                 form = SheetForm(body)
+                preview = form.ticked("notes-preview")
                 collect(game, form)
                 message = action(game, form)
             except ValueError as error:
                 message = str(error)
-            return render(request, "sheet.html", game, message)
+            return render(request, "sheet.html", game, message, preview=preview)
 
     return app

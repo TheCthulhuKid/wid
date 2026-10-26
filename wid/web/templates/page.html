@@ -3,11 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>We're in Danger</title>
+<style>
+  :root { {{ light }} }
+  @media (prefers-color-scheme: dark) { :root { {{ dark }} } }
+</style>
+<link rel="stylesheet" href="/static/sheet.css">
+<script src="/static/sheet.js" defer></script>
 </head>
 <body>
-<h1>We're in Danger</h1>
-<p>The full character sheet is on its way; until then, play in the terminal with <code>wid</code>.</p>
+<noscript><p class="feedback">wid needs JavaScript to send your actions to the game.</p></noscript>
 {% include "sheet.html" %}
 </body>
 </html>

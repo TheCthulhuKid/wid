@@ -75,6 +75,8 @@ def collect(game: Game, form: SheetForm) -> None:
     take("power", lambda value: setattr(game, "power", PowerMode(value)))
     game.assisted = form.ticked("assisted")
     game.expertise = form.ticked("expertise")
+    game.reroll_selection = tuple(form.numbers("reroll"))
+    take("die", lambda value: setattr(game, "item_target", int(value)))
     for kind in BonusKind:
         take(f"name-{kind}", lambda value, kind=kind: session.set_bonus_name(kind, value))
     # The counts come from the character, so a kit's slots exist only where it has them (Tech in
@@ -108,11 +110,14 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     "resources": lambda game, form: game.adjust_resources(form.number("amount")),
     "spend-resources": lambda game, form: game.spend_resources(ResourceEffect(form.text("effect"))),
     "lose-crafted-item": lambda game, form: game.lose_crafted_item(),
-    "gain-corruption": lambda game, form: game.gain_corruption(form.number("amount")),
+    "gain-corruption": lambda game, form: game.gain_corruption(form.number("corruption-amount")),
     "add-manifestation": lambda game, form: game.add_manifestation(),
     "remove-manifestation": lambda game, form: game.remove_manifestation(),
     "standing": lambda game, form: game.set_standing(form.number("standing")),
     "roll-d6": lambda game, form: game.roll_one_die(),
     "new-character": lambda game, form: game.new_character(),
     "change-kit": lambda game, form: game.change_kit(Genre(form.text("genre"))),
+    # Shows the sheet again with the fields taken in, for changes such as Scared or the notes
+    # preview that alter what the sheet shows without being a game action.
+    "update": lambda game, form: "",
 }

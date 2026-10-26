@@ -25,7 +25,7 @@ checkout: after updating, rebuild it with `uv tool install --force --reinstall .
 ```sh
 uv sync --locked --group dev
 uv run wid                 # or .venv/bin/python -m wid
-uv run wid --web           # the browser version (in progress): 127.0.0.1:8765 or a free port
+uv run wid --web           # the browser version: 127.0.0.1:8765 or a free port
 uv run pytest              # 4 workers, about 80 seconds; -m "not ui" for the quick domain tests
 uv run pytest --cov        # as CI runs it: fails below 80% coverage of wid/
 uv run ruff check .
@@ -95,7 +95,9 @@ wid/
     ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser with a token
     ├── app.py          # FastAPI app: the page, POST /actions/<name>, and the safety checks
     ├── forms.py        # The posted sheet fields copied into the game, and the action table
-    └── templates/      # Jinja2 page and sheet (the full sheet arrives in PLAN.md step 4)
+    ├── view.py         # Colours (light and dark), the notes preview, the template context
+    ├── templates/      # Jinja2 page and sheet: one form, each button posts to its action
+    └── static/         # sheet.css, and sheet.js: posts the form and swaps the reply in
 .github/workflows/      # ci.yml: tests, ruff; release.yml: Windows build, draft release
 release/                # PyInstaller spec, Windows build script, smoke test, icon
 tests/                  # Domain, persistence, headless UI, and launch tests
