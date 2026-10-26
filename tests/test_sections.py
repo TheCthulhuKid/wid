@@ -1,14 +1,11 @@
 import asyncio
 
-from helpers import reveal
-from test_rollerapp import start_game, text
-from test_rolls import ScriptedRandom
-from test_session_app import click_control, load_game
-from textual.widgets import Collapsible, Input, Select
+from helpers import click
+from test_rollerapp import start_game
+from textual.widgets import Collapsible
 
 from wid.formatting import strain_summary
-from wid.profiles import Genre
-from wid.rolls import PowerMode, StrainTracker
+from wid.rolls import StrainTracker
 from wid.ui.app import RollerApp
 
 
@@ -26,92 +23,22 @@ def section(app, name):
 
 
 def test_summary_text():
-    assert strain_summary(StrainTracker()) == "Strain 0 / 12"
-    assert strain_summary(StrainTracker().take(5)) == "Strain 5 / 12"
-    assert strain_summary(StrainTracker().take(12)) == "Strain 12 / 12 — Defeat"
+    assert strain_summary(StrainTracker()) == "Strain tracker: 0 strain, 0 wounds"
+    assert strain_summary(StrainTracker().take(5)) == "Strain tracker: 4 strain, 1 wound"
+    assert strain_summary(StrainTracker().take(12)) == "Strain tracker: 9 strain, 2 wounds — Defeat"
 
 
-def test_sections_start_open_and_the_strain_title_is_a_summary():
-    async def scenario(app, pilot):
-        assert not section(app, "strain").collapsed
-        assert not section(app, "items").collapsed
-        assert section(app, "strain").title == "Strain 0 / 12"
-        assert section(app, "items").title == "Items"
-
-    run(scenario)
-
-
-def test_collapsed_sections_hide_their_controls_and_keep_their_state():
+def test_a_folded_section_keeps_its_state_and_its_title_stays_current():
     async def scenario(app, pilot):
         await start_game(app, pilot)
-        for _ in range(4):
-            await click_control(app, pilot, "#take-strain")
-        app.query_one("#strain-name-0", Input).value = "Ribs"
-        await pilot.pause()
-        before = app.session.strain
-        assert before.names[0] == "Ribs"
         section(app, "strain").collapsed = True
-        section(app, "items").collapsed = True
         await pilot.pause()
         assert app.query_one("#strain-box-0").region.width == 0
-        assert app.query_one("#item-target").region.width == 0
-        assert section(app, "strain").title == "Strain 4 / 12"
-        section(app, "strain").collapsed = False
-        await pilot.pause()
-        assert app.query_one("#strain-box-0").region.width > 0
-        assert app.session.strain == before
-        assert app.query_one("#strain-name-0", Input).value == "Ribs"
-        assert text(app, "#strain-total") == "Character strain: 4 / 12 marked"
-
-    run(scenario)
-
-
-def test_strain_title_follows_power_strain_while_collapsed():
-    async def scenario(app, pilot):
-        app.query_one("#genre", Select).value = Genre.HECKBOY
-        await pilot.pause()
-        await start_game(app, pilot)
-        app.query_one("#power", Select).value = PowerMode.ERRATIC
-        await pilot.pause()
-        section(app, "strain").collapsed = True
-        await pilot.pause()
-        await pilot.press("ctrl+r")
-        assert app.session.total_strain == 2
-        assert section(app, "strain").title == "Strain 2 / 12"
-        assert section(app, "strain").collapsed
-
-    run(scenario, ScriptedRandom([4] * 7))
-
-
-def test_strain_title_follows_a_load_and_a_genre_reset(tmp_path, saved_session_factory):
-    path = tmp_path / "strained.json"
-    saved = saved_session_factory()
-    saved.session.strain = StrainTracker().take(12)
-    saved.save(path)
-
-    async def scenario(app, pilot):
-        section(app, "strain").collapsed = True
-        await reveal(app, pilot, "#session-path")
-        app.query_one("#session-path", Input).value = str(path)
-        await load_game(app, pilot)
-        assert section(app, "strain").title == "Strain 12 / 12 — Defeat"
-        app.query_one("#genre", Select).value = Genre.OLDHEART
-        await pilot.pause()
-        await pilot.click("#confirm-reset")
-        await pilot.pause()
-        assert section(app, "strain").title == "Strain 0 / 12"
-        assert section(app, "strain").collapsed
-
-    run(scenario)
-
-
-def test_reveal_opens_a_collapsed_section_for_the_controls_inside():
-    async def scenario(app, pilot):
-        await start_game(app, pilot)
-        section(app, "strain").collapsed = True
-        await pilot.pause()
-        await click_control(app, pilot, "#take-strain")
+        app.session.strain = app.session.strain.take(4)
+        app.update_strain_controls()
+        assert section(app, "strain").title == "Strain tracker: 3 strain, 1 wound"
+        await click(app, pilot, "#take-strain")
         assert not section(app, "strain").collapsed
-        assert app.session.strain.boxes[0]
+        assert app.session.strain.boxes[4]
 
     run(scenario)

@@ -21,23 +21,38 @@ from textual.widgets import (
 )
 from textual.widgets.tabbed_content import ContentTabs
 
-from wid.formatting import attribute_label, resources_line, strain_summary
+from wid.formatting import (
+    attribute_label,
+    check_summary,
+    manifestation_note,
+    resources_line,
+    resources_reminder,
+    spend_summary,
+    strain_summary,
+)
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
+    MANIFESTATION_LIMIT,
+    RESOURCES_MAX,
+    RESOURCES_MIN,
     BonusKind,
     PowerMode,
+    ResourceEffect,
     RollRequest,
     RollResult,
     RollSession,
     StrainTracker,
+    roll_d6,
 )
 from wid.settings import load_settings, save_settings
-from wid.ui.dialogs import ConfirmReset
+from wid.ui.dialogs import ConfirmReset, SpendResources
 from wid.ui.outcomes import dice_content, summary_content
 from wid.ui.sessions import SessionActions
+from wid.ui.themes import DANGER, DANGER_THEME
 from wid.ui.widgets import (
     BONUS_LABELS,
+    TECH_SLOTS,
     AttributeRollButton,
     AttributeSetup,
     BonusButton,
@@ -46,15 +61,22 @@ from wid.ui.widgets import (
     GameRow,
     ItemsGroup,
     KitControls,
+    ManifestationName,
     NotesGroup,
+    PowerName,
+    PowerToggle,
     RerollDie,
     RollerGroup,
     RollOptions,
+    SacrificeButton,
     SessionFile,
     SessionName,
+    StandingTrack,
     StrainBox,
     StrainGroup,
     StrainName,
+    TechName,
+    TechUseButton,
 )
 
 # Below these sizes the panel switches to one-row controls and starts with sections collapsed.
@@ -84,6 +106,7 @@ class RollerApp(SessionActions, App):
         self.rng = rng if rng is not None else Random()
         self.settings_path = settings_path
         self.settings = load_settings(settings_path)
+        self.register_theme(DANGER)
         self.layout: dict[str, object] = {}
         self.session = RollSession()
         self.history: list[HistoryEntry] = []
@@ -114,6 +137,7 @@ class RollerApp(SessionActions, App):
             with Vertical(id="output"):
                 with Horizontal(id="actions"):
                     yield Button("Show log", id="toggle-history")
+                    yield Button("Roll 1d6", id="roll-d6", tooltip="Roll one die outside a test")
                 yield Static(id="feedback", markup=False)
                 yield RollerGroup()
         with Vertical(id="history-panel"):
@@ -201,8 +225,9 @@ class RollerApp(SessionActions, App):
         self.update_strain_controls()
 
     def restore_theme(self) -> None:
-        if self.settings.theme in self.available_themes:
-            self.theme = self.settings.theme
+        self.theme = (
+            self.settings.theme if self.settings.theme in self.available_themes else DANGER_THEME
+        )
         self.watch(self, "theme", self.remember_theme, init=False)
         self.watch(self, "theme", self.redraw_outcomes, init=False)
 
@@ -243,9 +268,6 @@ class RollerApp(SessionActions, App):
     def update_strain_status(self) -> None:
         tracker = self.session.strain
         self.query_one("#strain-section", Collapsible).title = strain_summary(tracker)
-        self.query_one("#strain-total", Label).update(
-            f"Character strain: {sum(tracker.boxes)} / 12 marked"
-        )
         status = "Mark strain as it is taken. A wound needs the strain before it marked first."
         if tracker.defeated:
             status = "Defeat — character ended."
@@ -262,7 +284,7 @@ class RollerApp(SessionActions, App):
             else "Assign unique ranks (1–3), then start"
         )
         self.query_one("#start-game", Button).display = not ready
-        self.query_one("#initialize-tech", Button).disabled = not ready
+        self.query_one("#new-scenario", Button).disabled = not ready
         for index in range(3):
             label = self.query_one(f"#attribute-label-{index}", Label)
             selector = self.query_one(f"#attribute-rank-{index}", Select)
@@ -275,13 +297,13 @@ class RollerApp(SessionActions, App):
                 button.tooltip = f"Roll {attributes[index]}"
                 if ready:
                     selector.value = self.session.attribute_rank(attributes[index])
-        if ready and self.session.profile_id == Genre.SECOND_CONTACT:
-            self.query_one("#tech-attributes", Static).update(
-                f"Science {self.session.attribute_rank('Science')} + "
-                f"Culture {self.session.attribute_rank('Culture')}"
-            )
-        else:
-            self.query_one("#tech-attributes", Static).update("Set attributes first.")
+        tech = self.session.tech
+        self.query_one("#tech-attributes", Static).update(
+            f"Each piece starts at Science {tech.science} + Culture {tech.culture} = "
+            f"{tech.starting_strength}."
+            if tech is not None
+            else "Start the game to get your Tech slots."
+        )
 
     def start_game(self) -> None:
         try:
@@ -295,13 +317,24 @@ class RollerApp(SessionActions, App):
             self.feedback(str(error))
             return
         self.update_attribute_controls()
+        # Starting the game sets up kit state that depends on the ranks (Tech slots, Resources).
+        self.update_kit_controls()
         self.feedback("Attributes set for this game; press Roll beside an attribute.")
 
     def update_kit_controls(self) -> None:
         profile = PROFILES[self.session.profile_id]
         self.query_one("#powers").display = profile.has_powers
+        # Tech replaces items, so a kit with Tech shows its slots in the same section.
+        self.section("items").title = "Tech" if profile.has_tech else "Items"
+        self.query_one("#item-rows").display = profile.uses_items
         self.query_one("#tech-controls").display = profile.has_tech
-        self.update_tech_controls()
+        self.query_one("#standing-field").display = profile.has_standing
+        self.query_one("#resource-field").display = profile.has_resources
+        self.query_one("#corruption-field").display = profile.has_rerolls
+        self.update_corruption_controls()
+        self.query_one("#crafted-row").display = profile.has_resources
+        self.update_resource_controls()
+        self.query_one(StandingTrack).standing = self.session.standing
         self.update_reroll_controls()
         self.update_bonus_controls()
 
@@ -321,7 +354,13 @@ class RollerApp(SessionActions, App):
             available = result is not None and bool(getattr(self.session.bonuses, kind).strip())
             if kind == BonusKind.EXPERTISE and result is not None:
                 available = available and not result.request.expertise
+            elif result is not None:
+                available = available and kind not in result.applied_items
+            if kind == BonusKind.CRAFTED_ITEM:
+                available = available and self.session.item_crafted
             self.query_one(f"#apply-{kind}", Button).disabled = not available
+        self.query_one("#undo-bonus", Button).disabled = not self.session.can_undo_bonus
+        self.update_tech_controls()
 
     def selected_dice(self) -> set[int]:
         return {box.index for box in self.query(RerollDie) if box.value}
@@ -340,31 +379,65 @@ class RollerApp(SessionActions, App):
             not enabled or result is None or not self.selected_dice()
         )
 
-    def update_tech_controls(self) -> None:
-        tech = self.session.tech
-        strength = tech.remaining_bonus if tech is not None else 0
-        self.query_one("#tech-strength", Static).update(
-            f"Tech strength: {strength}" if tech is not None else "Tech: not initialized"
+    def update_corruption_controls(self) -> None:
+        session = self.session
+        count = len(session.manifestations)
+        status = (
+            f"Corruption {session.total_corruption} — {count} of {MANIFESTATION_LIMIT} "
+            "manifestations"
         )
-        selector = self.query_one("#tech-target", Select)
-        selector.disabled = strength == 0
-        if strength == 0:
-            selector.value = -1
+        if session.succumbed:
+            status += ". Succumbed: the character becomes a Brute Danger for the GM"
+        self.query_one("#corruption-status", Label).update(status)
+        for field in self.query(ManifestationName):
+            field.disabled = field.index >= count
+        self.query_one("#add-manifestation", Button).disabled = session.succumbed
+        self.query_one("#remove-manifestation", Button).disabled = not count
+
+    def update_resource_controls(self) -> None:
+        pool = self.session.resources
+        self.query_one("#resource-count", Static).update(
+            f"{pool} / {RESOURCES_MAX}" if pool is not None else "—"
+        )
+        self.query_one("#resources-down", Button).disabled = pool is None or pool <= RESOURCES_MIN
+        self.query_one("#resources-up", Button).disabled = pool is None or pool >= RESOURCES_MAX
+        self.query_one("#spend-resources", Button).disabled = pool != RESOURCES_MAX
+        crafted = self.session.item_crafted
+        self.query_one(f"#name-{BonusKind.CRAFTED_ITEM}", Input).disabled = not crafted
+        self.query_one("#lose-crafted-item", Button).disabled = not crafted
+
+    def update_tech_controls(self) -> None:
+        """Show one row per Tech slot; Use needs a roll, and both buttons a named, working piece."""
+        owned = self.session.tech.pieces if self.session.tech is not None else ()
+        result = self.session.current_result
+        for index in range(TECH_SLOTS):
+            self.query_one(f"#tech-row-{index}").display = index < len(owned)
+            if index >= len(owned):
+                continue
+            piece = owned[index]
+            working = piece.defined and piece.strength > 0
+            self.query_one(f"#tech-label-{index}", Label).update(
+                f"Tech {index + 1} — strength {piece.strength}"
+            )
+            self.query_one(f"#use-tech-{index}", Button).disabled = not (
+                working and result is not None and index not in result.applied_tech
+            )
+            self.query_one(f"#sacrifice-tech-{index}", Button).disabled = not working
 
     def has_resources(self) -> bool:
         return bool(
             self.session.total_strain
             or self.session.total_corruption
-            or (self.session.tech is not None and self.session.tech.remaining_bonus)
             or any(self.session.strain.boxes)
             or any(self.session.strain.names)
+            or self.session.manifestations
         )
 
     def request_genre(self, genre: Genre) -> None:
         if genre == self.session.profile_id or self.pending_genre is not None:
             return
         self.pending_genre = genre
-        if self.has_resources():
+        if self.has_unsaved_state():
             self.push_screen(ConfirmReset(), self.finish_genre_change)
         else:
             self.finish_genre_change(True)
@@ -375,10 +448,13 @@ class RollerApp(SessionActions, App):
         if not confirmed or genre is None:
             self.query_one("#genre", Select).value = self.session.profile_id
             return
-        self.session = RollSession(profile_id=genre, bonuses=self.session.bonuses)
-        self.query_one("#power", Select).value = PowerMode.NONE
-        self.query_one("#tech-target", Select).value = -1
-        self.tested_attribute = PROFILES[genre].attributes[0]
+        self.start_new_game(genre)
+
+    def start_fresh_session(self, session: RollSession) -> None:
+        """Replace the game with ``session`` and reset the controls that belong to a test."""
+        self.session = session
+        self.set_power(PowerMode.NONE)
+        self.tested_attribute = PROFILES[session.profile_id].attributes[0]
         for index in range(3):
             self.query_one(f"#attribute-rank-{index}", Select).value = index + 1
         self.clear_result_display()
@@ -386,9 +462,6 @@ class RollerApp(SessionActions, App):
         self.update_kit_controls()
         self.update_preview()
         self.update_strain_controls()
-        message = f"Switched to {PROFILES[genre].name}; active test cleared."
-        self.feedback(message)
-        self.record(HistoryEntry(notice=message))
 
     def clear_result_display(self) -> None:
         self.query_one("#tested-attribute", Static).update("")
@@ -410,36 +483,41 @@ class RollerApp(SessionActions, App):
             fear_level=self.query_one("#fear", Select).value,
             expertise=self.query_one("#expertise", Checkbox).value,
             power=(
-                self.query_one("#power", Select).value
+                self.chosen_power()
                 if PROFILES[self.session.profile_id].has_powers
                 else PowerMode.NONE
             ),
-            tech_target=(
-                self.query_one("#tech-target", Select).value
-                if not preview
-                and PROFILES[self.session.profile_id].has_tech
-                and self.query_one("#tech-target", Select).value != -1
-                else None
-            ),
+            resource_die=self.session.resource_die,
+            manifestations=len(self.session.manifestations),
         )
+
+    def chosen_power(self) -> PowerMode:
+        return next(
+            (toggle.mode for toggle in self.query(PowerToggle) if toggle.value), PowerMode.NONE
+        )
+
+    def set_power(self, mode: PowerMode) -> None:
+        """Tick the toggle for ``mode`` and untick the other, since one power is used per roll."""
+        for toggle in self.query(PowerToggle):
+            toggle.value = toggle.mode == mode
 
     def update_preview(self) -> None:
         request = self.draft_request(preview=True)
         size = request.pool_size()
-        tech_selector = self.query_one("#tech-target", Select)
-        old_target = tech_selector.value
-        tech_selector.set_options([("No Tech", -1)] + [(f"Die {n + 1}", n) for n in range(size)])
-        tech_selector.value = old_target if old_target != Select.BLANK and old_target < size else -1
-        self.query_one("#pool", Static).update(f"Pool: {size}d6 — hits on {request.hit_threshold}+")
-        if old_target != Select.BLANK and old_target >= size:
-            self.feedback("Pool changed: cleared the out-of-range Tech target.")
+        pool = f"Pool: {size}d6 — hits on {request.hit_threshold}+"
+        if request.resource_die:
+            pool += " (includes the Resources die)"
+        attributes = PROFILES[self.session.profile_id].attributes
+        if note := manifestation_note(attributes, request.manifestations):
+            pool += f" ({note}; never below 1d6)"
+        self.query_one("#pool", Static).update(pool)
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.value != event.select.value:
             return
         if event.select.id == "genre" and event.value != Select.BLANK:
             self.request_genre(Genre(event.value))
-        elif event.select.id in ("fear", "power"):
+        elif event.select.id == "fear":
             self.update_preview()
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
@@ -447,6 +525,10 @@ class RollerApp(SessionActions, App):
             return
         if isinstance(event.checkbox, StrainBox):
             self.change_strain_box(event.checkbox.index, event.value)
+        elif isinstance(event.checkbox, PowerToggle):
+            if event.value:
+                self.set_power(event.checkbox.mode)
+            self.update_preview()
         elif event.checkbox.id == "assisted":
             self.update_preview()
         elif isinstance(event.checkbox, RerollDie):
@@ -458,9 +540,25 @@ class RollerApp(SessionActions, App):
         if isinstance(event.input, StrainName):
             self.session.strain = self.session.strain.set_name(event.input.row, event.value)
             self.update_strain_status()
+        elif isinstance(event.input, PowerName):
+            self.session.set_power_name(event.input.index, event.value)
+        elif isinstance(event.input, ManifestationName):
+            self.session.set_manifestation_name(event.input.index, event.value)
+        elif isinstance(event.input, TechName):
+            self.session.set_tech_name(event.input.index, event.value)
+            self.update_tech_controls()
         elif isinstance(event.input, BonusName):
             self.session.set_bonus_name(event.input.kind, event.value)
             self.update_bonus_controls()
+
+    def on_standing_track_moved(self, event: StandingTrack.Moved) -> None:
+        try:
+            self.session.set_standing(event.standing)
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.feedback("")
+        self.query_one(StandingTrack).standing = self.session.standing
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if isinstance(event.button, AttributeRollButton):
@@ -469,36 +567,174 @@ class RollerApp(SessionActions, App):
         if isinstance(event.button, BonusButton):
             self.apply_bonus(event.button.kind)
             return
+        if isinstance(event.button, TechUseButton):
+            self.apply_tech(event.button.index)
+            return
+        if isinstance(event.button, SacrificeButton):
+            self.sacrifice_tech(event.button.index)
+            return
         action = {
             "save-session": self.action_save_session,
             "export-history": self.action_export_history,
+            "new-character": self.action_new_character,
             "load-session": self.action_load_session,
             "take-strain": self.take_strain,
+            "take-wound": self.take_wound,
+            "undo-bonus": self.undo_bonus,
             "toggle-history": self.action_toggle_history,
             "start-game": self.start_game,
             "reroll_button": self.action_reroll,
-            "initialize-tech": self.initialize_tech,
+            "new-scenario": self.start_scenario,
+            "resources-down": lambda: self.adjust_resources(-1),
+            "resources-up": lambda: self.adjust_resources(1),
+            "spend-resources": lambda: self.push_screen(SpendResources(), self.spend_resources),
+            "lose-crafted-item": self.lose_crafted_item,
+            "roll-d6": self.roll_one_die,
+            "gain-corruption": self.gain_corruption,
+            "add-manifestation": self.add_manifestation,
+            "remove-manifestation": self.remove_manifestation,
         }.get(event.button.id)
         if action is not None:
             action()
 
-    def initialize_tech(self) -> None:
+    def start_scenario(self) -> None:
         try:
-            tech = self.session.initialize_tech()
+            tech = self.session.start_scenario()
         except ValueError as error:
             self.feedback(str(error))
             return
-        self.update_tech_controls()
-        message = (
-            f"Tech explicitly initialized/replaced: Science {tech.science} + "
-            f"Culture {tech.culture} = {tech.remaining_bonus}."
-        )
+        with self.prevent(Input.Changed):
+            for field in self.query(TechName):
+                field.value = ""
+        self.update_bonus_controls()
+        message = f"New scenario: {len(tech.pieces)} empty Tech slot(s)."
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def sacrifice_tech(self, index: int) -> None:
+        try:
+            piece = self.session.sacrifice_tech(index)
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.update_bonus_controls()
+        message = f"Sacrificed {piece.label(index)}: strength {piece.strength} → 0."
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def apply_tech(self, index: int) -> None:
+        if self.pending_genre is not None:
+            return
+        piece = self.session.tech.pieces[index]
+        die = self.query_one("#item-target", Select).value
+        try:
+            result = self.session.apply_tech(index, die)
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.feedback("")
+        self.show_result(result)
+        action = f"Tech {piece.label(index)}: +{piece.strength} to die {die + 1}"
+        self.log_result(result, action, resource_cost=False)
+
+    def adjust_resources(self, amount: int) -> None:
+        try:
+            self.session.adjust_resources(amount)
+        except ValueError as error:
+            self.feedback(str(error))
+        self.update_resource_controls()
+
+    def spend_resources(self, effect: ResourceEffect | None) -> None:
+        if effect is None:
+            return
+        try:
+            spend = self.session.spend_resources(effect, rng=self.rng)
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.update_resource_controls()
+        self.update_strain_controls()
+        self.update_bonus_controls()
+        self.update_preview()
+        message = spend_summary(spend, self.session.resources)
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def lose_crafted_item(self) -> None:
+        try:
+            self.session.lose_crafted_item()
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        with self.prevent(Input.Changed):
+            self.query_one(f"#name-{BonusKind.CRAFTED_ITEM}", Input).value = ""
+        self.update_resource_controls()
+        self.update_bonus_controls()
+        message = "Lost the crafted item; its slot is free again."
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def gain_corruption(self) -> None:
+        amount = self.query_one("#corruption-amount", Select).value
+        try:
+            check = self.session.add_corruption(amount, rng=self.rng)
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        message = f"Gained {amount} Corruption. {check_summary(check)}"
+        self.after_corruption_change(message)
+
+    def add_manifestation(self) -> None:
+        try:
+            self.session.add_manifestation()
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.after_corruption_change("Manifestation added by hand.")
+
+    def remove_manifestation(self) -> None:
+        try:
+            self.session.remove_manifestation()
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        with self.prevent(Input.Changed):
+            field = self.query_one(f"#manifestation-name-{len(self.session.manifestations)}")
+            field.value = ""
+        self.after_corruption_change("Manifestation removed by hand.")
+
+    def after_corruption_change(self, message: str) -> None:
+        """Refresh what corruption and manifestations change, then report and log it."""
+        self.update_corruption_controls()
+        self.update_preview()
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def roll_one_die(self) -> None:
+        message = f"Rolled 1d6: {roll_d6(self.rng)}."
         self.feedback(message)
         self.record(HistoryEntry(notice=message))
 
     def take_strain(self) -> None:
         self.session.strain = self.session.strain.take(1)
         self.update_strain_controls()
+
+    def take_wound(self) -> None:
+        try:
+            self.session.strain = self.session.strain.take_wound()
+        except ValueError as error:
+            self.feedback(str(error))
+        self.update_strain_controls()
+
+    def undo_bonus(self) -> None:
+        try:
+            result = self.session.undo_bonus()
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.feedback("")
+        self.show_result(result)
+        self.log_result(result, "Undo last bonus", resource_cost=False)
 
     def apply_bonus(self, kind: BonusKind) -> None:
         if self.pending_genre is not None:
@@ -529,8 +765,9 @@ class RollerApp(SessionActions, App):
                 result,
                 total_strain=self.session.total_strain,
                 total_corruption=self.session.total_corruption,
-                tech_remaining=tech.remaining_bonus if tech else None,
+                tech_pieces=tech.pieces if tech else None,
             )
+            + (f"\n{reminder}" if (reminder := resources_reminder(result)) else "")
         )
         for box in self.query(RerollDie):
             box.value = False
@@ -552,7 +789,7 @@ class RollerApp(SessionActions, App):
                 charged=resource_cost,
                 total_strain=self.session.total_strain,
                 total_corruption=self.session.total_corruption,
-                tech_remaining=tech.remaining_bonus if tech else None,
+                tech_pieces=tech.pieces if tech else None,
                 expertise_name=self.session.bonuses.expertise,
             )
         )
@@ -575,11 +812,15 @@ class RollerApp(SessionActions, App):
         self.show_result(result)
         self.update_strain_controls()
         self.log_result(result)
-        self.update_tech_controls()
-        if result.request.tech_target is not None and self.session.tech.remaining_bonus == 0:
-            self.feedback(
-                "Tech depleted: target cleared; initialize/replace explicitly to use again."
-            )
+        self.clear_roll_bonuses()
+        # A Resources die lasts one test, so the next pool is smaller again.
+        self.update_preview()
+
+    def clear_roll_bonuses(self) -> None:
+        """Assisted, Expertise and a power apply to one test; the next one starts without them."""
+        for selector in ("#assisted", "#expertise"):
+            self.query_one(selector, Checkbox).value = False
+        self.set_power(PowerMode.NONE)
 
     def action_reroll(self) -> None:
         if self.pending_genre is not None:
@@ -590,6 +831,8 @@ class RollerApp(SessionActions, App):
         except ValueError as error:
             self.feedback(str(error))
             return
-        self.feedback("")
+        self.feedback(check_summary(result.manifestation_check))
         self.show_result(result)
         self.log_result(result, f"Reroll dice {', '.join(str(i + 1) for i in sorted(indices))}")
+        self.update_corruption_controls()
+        self.update_preview()

@@ -40,7 +40,6 @@ StrainGroup { height: auto; margin: 1 0; }
 }
 .strain-row .strain-ending.-on { background: $error 35%; border: tall $error; }
 .strain-row .strain-ending.-on > .toggle--button { background: $error; }
-#strain-total { text-style: bold; }
 .strain-box { width: 4; }
 .strain-ending { width: 13; }
 .strain-row Input { width: 1fr; min-width: 30; }
@@ -56,13 +55,24 @@ Select, Input { width: 1fr; }
 #notes-toolbar { height: 3; }
 #notes-toolbar Button { width: 1fr; min-width: 0; }
 Checkbox { width: 1fr; height: auto; }
-#items, #powers, #tech-controls, #reroll-controls, #attribute-setup { height: auto; }
+#items, #item-rows, #powers, #tech-controls, #reroll-controls, #attribute-setup { height: auto; }
+#tech-scenario-row, #standing-field, #resource-field, #resource-row { height: auto; }
+#resource-row Button { min-width: 5; width: auto; }
+#corruption-field, #corruption-row { height: auto; }
+#corruption-amount { width: 10; }
+#resource-count { width: 7; padding: 1 1; }
+#crafted-row #lose-crafted-item { width: 8; }
+#standing { height: 1; }
+#tech-attributes { width: 1fr; padding: 1 0; }
 #item-target-row { height: 3; }
 #item-target-row Label { width: 14; padding: 1 0; }
 #item-target { width: 16; }
+#undo-bonus { margin-left: 1; }
 .named-bonus { height: 4; }
 .named-bonus .field { width: 1fr; }
 .named-bonus Button { width: 10; min-width: 0; margin: 1 0 0 1; }
+.named-bonus PowerToggle { width: 13; margin: 1 0 0 1; }
+.named-bonus SacrificeButton { width: 13; }
 #feedback { color: $warning; max-height: 5; overflow-y: auto; }
 #pool, #summary, #resources { margin: 1 0; }
 #pool { margin: 0; }
@@ -85,5 +95,9 @@ ConfirmReset, ConfirmSessionAction, LoadGame { align: center middle; background:
 .short #item-target-row { height: 1; }
 .short #item-target-row Label { padding: 0; }
 .short .named-bonus { height: 2; }
-.short .named-bonus Button { margin: 0 0 0 1; }
+.short .named-bonus Button, .short .named-bonus PowerToggle { margin: 0 0 0 1; }
 .short .button-row, .short #notes-toolbar { height: 1; }
+
+/* Danger theme: cream paper behind lavender fields, with a charcoal title bar. */
+.-theme-danger Screen { background: $background; }
+.-theme-danger Header { background: $secondary; color: $background; }

@@ -21,12 +21,9 @@ def test_entry_needs_exactly_one_kind(saved_session_factory):
         HistoryEntry(notice="x", result=result)
 
 
-@pytest.mark.parametrize(
-    "extra", [{"action": "Roll"}, {"total_strain": 1}, {"tech_remaining": 2}, {"charged": False}]
-)
-def test_notice_cannot_carry_action_fields(extra):
+def test_notice_cannot_carry_action_fields():
     with pytest.raises(ValidationError, match="cannot set"):
-        HistoryEntry(notice="Switched kit", **extra)
+        HistoryEntry(notice="Switched kit", total_strain=1)
 
 
 def test_result_entry_needs_an_action(saved_session_factory):

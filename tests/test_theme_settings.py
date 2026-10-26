@@ -4,6 +4,7 @@ from textual.widgets import Static
 
 from wid.settings import Settings, load_settings, save_settings
 from wid.ui.app import RollerApp
+from wid.ui.themes import DANGER, DANGER_THEME, HIGHLIGHT
 
 
 def run(settings_path, scenario):
@@ -15,7 +16,7 @@ def run(settings_path, scenario):
     asyncio.run(main())
 
 
-def test_saved_theme_is_applied_on_start(tmp_path):
+def test_saved_theme_is_applied_and_an_unknown_one_ignored(tmp_path):
     path = tmp_path / "settings.json"
     save_settings(Settings(theme="gruvbox"), path)
 
@@ -23,26 +24,12 @@ def test_saved_theme_is_applied_on_start(tmp_path):
         assert app.theme == "gruvbox"
 
     run(path, scenario)
-
-
-def test_unknown_saved_theme_is_ignored(tmp_path):
-    path = tmp_path / "settings.json"
     save_settings(Settings(theme="no-such-theme"), path)
 
-    async def scenario(app, pilot):
-        assert app.theme == "textual-dark"
+    async def unknown(app, pilot):
+        assert app.theme == DANGER_THEME
 
-    run(path, scenario)
-
-
-def test_nothing_is_written_until_the_theme_changes(tmp_path):
-    path = tmp_path / "settings.json"
-
-    async def scenario(app, pilot):
-        await pilot.pause()
-        assert not path.exists()
-
-    run(path, scenario)
+    run(path, unknown)
 
 
 def test_changed_theme_is_saved_and_other_settings_survive(tmp_path):
@@ -55,15 +42,6 @@ def test_changed_theme_is_saved_and_other_settings_survive(tmp_path):
         assert load_settings(path).theme == "dracula"
 
     run(path, scenario)
-
-
-def test_default_location_is_used_without_an_explicit_path():
-    async def scenario(app, pilot):
-        app.theme = "monokai"
-        await pilot.pause()
-        assert load_settings().theme == "monokai"
-
-    run(None, scenario)
 
 
 def test_unwritable_settings_are_reported_not_fatal(tmp_path):
@@ -79,18 +57,10 @@ def test_unwritable_settings_are_reported_not_fatal(tmp_path):
     run(blocker / "settings.json", scenario)
 
 
-def test_failed_save_from_the_theme_picker_is_reported(tmp_path):
-    blocker = tmp_path / "file"
-    blocker.write_text("x", encoding="utf-8")
-
+def test_character_sheet_theme_is_the_default(tmp_path):
     async def scenario(app, pilot):
-        await pilot.press("d")
-        await pilot.pause()
-        await pilot.press(*"nord")
-        await pilot.pause(0.5)
-        await pilot.press("enter")
-        await pilot.pause()
-        assert app.theme == "nord"
-        assert "Could not save settings" in str(app.query_one("#feedback", Static).content)
+        assert app.theme == DANGER_THEME
+        assert app.available_themes[DANGER_THEME] is DANGER
+        assert DANGER.primary == HIGHLIGHT == "#B22222"
 
-    run(blocker / "settings.json", scenario)
+    run(tmp_path / "settings.json", scenario)

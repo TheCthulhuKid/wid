@@ -1,8 +1,6 @@
 import re
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[1]
 HOWTO = (ROOT / "HOWTO.md").read_text(encoding="utf-8")
 SOURCE = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "wid").rglob("*.py"))
@@ -15,7 +13,7 @@ SCREEN_LABELS = [
     "Load game",
     "Character",
     "Session",
-    "Fear",
+    "Scared",
     "Assisted",
     "Expertise",
     "Items",
@@ -24,13 +22,26 @@ SCREEN_LABELS = [
     "Apply to die",
     "+1 value",
     "+1 hit",
-    "Power",
-    "Tech target",
-    "Initialize / replace Tech",
+    "Undo",
+    "Reliable power",
+    "Erratic power",
+    "Use",
+    "Sacrifice",
+    "Standing",
+    "Resources",
+    "Crafted item",
+    "Lose",
+    "Gain corruption",
+    "Add manifestation",
+    "Remove manifestation",
+    "Roll 1d6",
+    "New scenario",
     "Reroll selected",
     "Take 1 strain",
+    "Take 1 wound",
     "Save session",
     "Export history",
+    "New character",
     "Preview",
     "Roll",
 ]
@@ -45,18 +56,16 @@ KIT_NAMES = [
 ]
 
 
-@pytest.mark.parametrize("label", SCREEN_LABELS)
-def test_every_label_the_how_to_uses_exists_in_the_program(label):
-    assert label in SOURCE, f"{label!r} is in HOWTO.md but not in the program"
-    assert label in HOWTO
+def test_every_label_the_how_to_uses_exists_in_the_program():
+    missing = [label for label in SCREEN_LABELS if label not in SOURCE or label not in HOWTO]
+    assert not missing, f"in one of HOWTO.md and the program but not the other: {missing}"
 
 
-@pytest.mark.parametrize("kit", KIT_NAMES)
-def test_every_genre_kit_is_described(kit):
+def test_every_genre_kit_is_described():
     from wid.profiles import PROFILES
 
-    assert kit in {profile.name for profile in PROFILES.values()}
-    assert f"**{kit}**" in HOWTO
+    assert set(KIT_NAMES) == {profile.name for profile in PROFILES.values()}
+    assert all(f"**{kit}**" in HOWTO for kit in KIT_NAMES)
 
 
 def test_every_kits_attributes_are_listed():

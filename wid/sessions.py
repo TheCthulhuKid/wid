@@ -4,8 +4,8 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, StringConstraints, model_validator
 
 from wid.history import HistoryEntry
-from wid.profiles import Genre
-from wid.rolls import FrozenModel, Index, RollRequest, RollSession, TechState
+from wid.profiles import PROFILES, Genre
+from wid.rolls import STANDING_START, FrozenModel, Index, RollRequest, RollSession
 from wid.storage import write_text
 
 
@@ -44,6 +44,7 @@ class SavedSession(FrozenModel):
         self.validate_result()
         self.validate_resources()
         self.validate_tech()
+        self.validate_pool_of_resources()
         self.validate_item_target()
         self.validate_reroll_indices()
         return self
@@ -75,26 +76,42 @@ class SavedSession(FrozenModel):
             raise ValueError("Only Heckboy can have strain")
         if session.total_corruption and session.profile_id != Genre.OLDHEART:
             raise ValueError("Only Oldheart can have Corruption")
+        if session.manifestations and session.profile_id != Genre.OLDHEART:
+            raise ValueError("Only Oldheart can have manifestations")
+        if self.draft.manifestations != len(session.manifestations):
+            raise ValueError("Draft manifestations must match the character's")
+        if session.standing != STANDING_START and not PROFILES[session.profile_id].has_standing:
+            raise ValueError("Only Ball Season can have Standing")
+
+    def validate_pool_of_resources(self) -> None:
+        session = self.session
+        if not PROFILES[session.profile_id].has_resources:
+            if session.resources is not None or session.resource_die or session.item_crafted:
+                raise ValueError("Only This Isn't Happening can have Resources")
+            return
+        if session.resources is None:
+            raise ValueError("This Isn't Happening needs its Resources pool")
+        if self.draft.resource_die and not session.resource_die:
+            raise ValueError("Draft Resources die requires a waiting die")
 
     def validate_tech(self) -> None:
-        tech = self.session.tech
-        if tech is None:
-            if self.draft.tech_target is not None:
-                raise ValueError("Draft Tech target requires available Tech")
-            return
-        self.validate_tech_strength(tech)
-        if self.draft.tech_target is not None and tech.remaining_bonus == 0:
-            raise ValueError("Draft Tech target requires available Tech")
-
-    def validate_tech_strength(self, tech: TechState) -> None:
         session = self.session
+        tech = session.tech
+        result = session.current_result
+        used = result.applied_tech if result is not None else frozenset()
         if session.profile_id != Genre.SECOND_CONTACT:
-            raise ValueError("Only Second Contact can have Tech")
+            if tech is not None or used:
+                raise ValueError("Only Second Contact can have Tech")
+            return
+        if tech is None:
+            raise ValueError("Second Contact needs its Tech slots")
         ranks = (session.attribute_rank("Science"), session.attribute_rank("Culture"))
         if (tech.science, tech.culture) != ranks:
             raise ValueError("Tech must use the assigned Science and Culture ranks")
-        if tech.remaining_bonus > tech.science + tech.culture:
-            raise ValueError("Tech strength exceeds its starting bonus")
+        if len(tech.pieces) != session.attribute_rank("Muscle"):
+            raise ValueError("Tech needs one slot per Muscle rank")
+        if any(index >= len(tech.pieces) for index in used):
+            raise ValueError("Used Tech is outside the Tech slots")
 
     def validate_item_target(self) -> None:
         if self.item_target is None:

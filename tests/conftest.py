@@ -34,17 +34,18 @@ def saved_session_factory(session_factory):
             fear_level=2,
             expertise=True,
             power=PowerMode.RELIABLE if genre == Genre.HECKBOY else PowerMode.NONE,
-            tech_target=0 if genre == Genre.SECOND_CONTACT else None,
         )
-        if genre == Genre.SECOND_CONTACT:
-            session.initialize_tech()
         session.roll(request, rng=Random(1))
+        if genre == Genre.SECOND_CONTACT:
+            session.set_tech_name(0, "Translator")
+            session.apply_tech(0, 0)
         if genre == Genre.OLDHEART:
             session.reroll({0}, rng=Random(2))
         return SavedSession(
             name="Friday's danger 🎲",
             session=session,
-            draft=request,
+            # The reroll's manifestation check may have changed the pool for the next test.
+            draft=request.model_copy(update={"manifestations": len(session.manifestations)}),
             history=(HistoryEntry(notice="First roll"), HistoryEntry(notice="Second action")),
             reroll_indices=(0,) if genre == Genre.OLDHEART else (),
         )

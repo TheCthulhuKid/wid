@@ -24,6 +24,8 @@ class WiDProfile(BaseModel):
     has_powers: bool = False
     has_tech: bool = False
     has_rerolls: bool = False
+    has_standing: bool = False
+    has_resources: bool = False
 
 
 PROFILES = {
@@ -38,6 +40,8 @@ PROFILES = {
         genre=Genre.SECOND_CONTACT,
         name="Second Contact",
         attributes=("Science", "Culture", "Muscle"),
+        # Tech replaces items in this kit.
+        uses_items=False,
         has_tech=True,
     ),
     Genre.OLDHEART: WiDProfile(
@@ -50,10 +54,12 @@ PROFILES = {
         genre=Genre.BALL_SEASON,
         name="Ball Season",
         attributes=("Propriety", "Stoutness", "Yearning"),
+        has_standing=True,
     ),
     Genre.THIS_ISNT_HAPPENING: WiDProfile(
         genre=Genre.THIS_ISNT_HAPPENING,
         name="This Isn't Happening",
         attributes=("Instincts", "Endurance", "Charity"),
+        has_resources=True,
     ),
 }

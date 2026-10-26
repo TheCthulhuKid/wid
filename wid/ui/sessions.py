@@ -4,12 +4,19 @@ from textual.widgets import Checkbox, Input, RichLog, Select, TextArea
 
 from wid.export import history_markdown
 from wid.history import HistoryEntry
-from wid.profiles import Genre
-from wid.rolls import RollSession
+from wid.profiles import PROFILES, Genre
+from wid.rolls import STANDING_START, RollSession
 from wid.sessions import CharacterDetails, SavedSession, session_file_path
 from wid.storage import write_text
 from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
-from wid.ui.widgets import CHARACTER_LABELS, BonusName, RerollDie
+from wid.ui.widgets import (
+    CHARACTER_LABELS,
+    BonusName,
+    ManifestationName,
+    PowerName,
+    RerollDie,
+    TechName,
+)
 
 
 class SessionActions:
@@ -123,6 +130,50 @@ class SessionActions:
         else:
             self.feedback("Export canceled; existing file unchanged.")
 
+    def action_new_character(self) -> None:
+        if self.pending_genre is not None:
+            return
+        if self.has_unsaved_state():
+            self.push_screen(
+                ConfirmSessionAction(
+                    "Start a new character? This clears the character, ranks, items, strain and "
+                    "the current roll. The history, notes and file path stay."
+                ),
+                self.finish_new_character,
+            )
+        else:
+            self.finish_new_character(True)
+
+    def finish_new_character(self, confirmed: bool) -> None:
+        if not confirmed:
+            self.feedback("New character canceled; current character unchanged.")
+            return
+        self.clear_sheet(self.session.profile_id)
+        message = "New character started."
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def start_new_game(self, genre: Genre) -> None:
+        """A genre kit lasts a whole game, so changing it starts over: sheet, history and file."""
+        self.clear_sheet(genre)
+        self.history.clear()
+        self.query_one("#log", RichLog).clear()
+        self.query_one("#session-name", Input).value = ""
+        self.query_one("#session-path", Input).value = ""
+        self.query_one("#session-notes", TextArea).load_text("")
+        self.sub_title = ""
+        self.feedback(f"New {PROFILES[genre].name} game started.")
+
+    def clear_sheet(self, genre: Genre) -> None:
+        """Blank the character and every name on the sheet, then start a fresh session."""
+        with self.prevent(Input.Changed, Select.Changed):
+            for field in CHARACTER_LABELS:
+                self.query_one(f"#character-{field}", Input).value = ""
+            for field in self.query("BonusName, PowerName, TechName, ManifestationName"):
+                field.value = ""
+            self.query_one("#fear", Select).value = 0
+        self.start_fresh_session(RollSession(profile_id=genre))
+
     def action_load_session(self) -> None:
         if self.pending_genre is not None:
             return
@@ -157,6 +208,8 @@ class SessionActions:
             or self.query_one("#session-notes", TextArea).text
             or any(self.character_details().model_dump().values())
             or any(self.session.bonuses.model_dump().values())
+            or any(self.session.power_names)
+            or self.session.standing != STANDING_START
             or self.has_resources()
         )
 
@@ -173,16 +226,22 @@ class SessionActions:
             self.query_one("#genre", Select).value = self.session.profile_id
             self.tested_attribute = draft.attribute
             self.query_one("#fear", Select).value = draft.fear_level
-            self.query_one("#power", Select).value = draft.power
+            self.set_power(draft.power)
             self.query_one("#assisted", Checkbox).value = draft.assisted
             self.query_one("#expertise", Checkbox).value = draft.expertise
             self.update_attribute_controls()
             self.update_preview()
             for field in self.query(BonusName):
                 field.value = getattr(self.session.bonuses, field.kind)
-            self.query_one("#tech-target", Select).value = (
-                draft.tech_target if draft.tech_target is not None else -1
-            )
+            for field in self.query(PowerName):
+                field.value = self.session.power_names[field.index]
+            names = self.session.manifestations
+            for field in self.query(ManifestationName):
+                field.value = names[field.index] if field.index < len(names) else ""
+            tech = self.session.tech
+            for field in self.query(TechName):
+                owned = tech is not None and field.index < len(tech.pieces)
+                field.value = tech.pieces[field.index].name if owned else ""
             self.update_kit_controls()
             if self.session.current_result is not None:
                 self.show_result(self.session.current_result)

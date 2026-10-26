@@ -1,6 +1,12 @@
-from textual import on
+from typing import ClassVar
+
+from textual import events, on
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Grid, Horizontal, Vertical, VerticalScroll
+from textual.message import Message
+from textual.reactive import reactive
+from textual.widget import Widget
 from textual.widgets import (
     Button,
     Checkbox,
@@ -13,12 +19,22 @@ from textual.widgets import (
 )
 
 from wid.profiles import PROFILES, Genre
-from wid.rolls import BonusKind, PowerMode, StrainTracker
+from wid.rolls import (
+    MANIFESTATION_LIMIT,
+    RESOURCES_MAX,
+    STANDING_LABELS,
+    STANDING_START,
+    BonusKind,
+    PowerMode,
+    StrainTracker,
+    standing_label,
+)
 
 BONUS_LABELS = {
     BonusKind.EXPERTISE: "Expertise",
     BonusKind.APPROPRIATE_ITEM: "Appropriate Item",
     BonusKind.INAPPROPRIATE_ITEM: "Inappropriate Item",
+    BonusKind.CRAFTED_ITEM: "Crafted item",
 }
 CHARACTER_LABELS = {"name": "Name", "looks": "Looks", "nature": "Nature"}
 
@@ -39,6 +55,31 @@ class BonusButton(Button):
         self.kind = kind
 
 
+# Heckboy characters always have one reliable and one erratic power, in this order.
+POWERS = (PowerMode.RELIABLE, PowerMode.ERRATIC)
+POWER_LABELS = {
+    PowerMode.RELIABLE: "Reliable power (+1 die / +1 strain)",
+    PowerMode.ERRATIC: "Erratic power (+2 dice / +2 strain)",
+}
+
+
+class PowerName(Input):
+    """Text box naming the Heckboy power at ``index`` of ``POWERS``."""
+
+    def __init__(self, index: int, **kwargs):
+        mode = POWERS[index].value.capitalize()
+        super().__init__(placeholder=f"{mode} power name", id=f"power-name-{index}", **kwargs)
+        self.index = index
+
+
+class PowerToggle(Checkbox):
+    """Uses the power ``mode`` in the next roll; at most one is ticked."""
+
+    def __init__(self, mode: PowerMode, **kwargs):
+        super().__init__("Use", id=f"use-{mode}", **kwargs)
+        self.mode = mode
+
+
 class BonusName(Input):
     """Text box naming the bonus ``kind``."""
 
@@ -46,6 +87,53 @@ class BonusName(Input):
         super().__init__(id=f"name-{kind}", **kwargs)
         self.kind = kind
 
+
+class TechName(Input):
+    """Text box naming the Tech piece at ``index``."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__(
+            placeholder="Empty: name it when you use it", id=f"tech-name-{index}", **kwargs
+        )
+        self.index = index
+
+
+class TechUseButton(Button):
+    """Adds the Tech piece at ``index`` to the chosen die of the current test."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__("Use", id=f"use-tech-{index}", variant="primary", **kwargs)
+        self.index = index
+
+
+class ManifestationName(Input):
+    """Optional name of the Oldheart manifestation at ``index``."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__(
+            placeholder=f"Manifestation {index + 1}",
+            id=f"manifestation-name-{index}",
+            disabled=True,
+            **kwargs,
+        )
+        self.index = index
+
+
+class SacrificeButton(Button):
+    """Drops the Tech piece at ``index`` to 0 strength."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__(
+            "Sacrifice",
+            id=f"sacrifice-tech-{index}",
+            tooltip="Drop this piece to 0 to stop an extermination",
+            **kwargs,
+        )
+        self.index = index
+
+
+# Muscle, which sets the number of Tech slots, is ranked 1 to 3.
+TECH_SLOTS = 3
 
 LOCKED_NOTE = "Locked: boxes before a marked wound stay marked until that wound is cleared."
 NOT_READY_NOTE = "Mark all the strain before this wound first."
@@ -131,14 +219,14 @@ class AttributeSetup(Vertical):
 class NotesGroup(Vertical):
     def compose(self) -> ComposeResult:
         yield Label("Session notes (Markdown)")
-        yield TextArea(placeholder="Character and campaign notes", id="session-notes")
-        with VerticalScroll(id="notes-preview-panel"):
-            yield Markdown(open_links=False, id="notes-preview")
         with Horizontal(id="notes-toolbar"):
             yield Button("Preview", id="toggle-notes-preview")
             yield Button("Bold", id="notes-bold")
             yield Button("Italic", id="notes-italic")
             yield Button("Heading", id="notes-heading")
+        yield TextArea(placeholder="Character and campaign notes", id="session-notes")
+        with VerticalScroll(id="notes-preview-panel"):
+            yield Markdown(open_links=False, id="notes-preview")
 
     @on(Button.Pressed, "#toggle-notes-preview")
     async def toggle_preview(self, event: Button.Pressed) -> None:
@@ -193,16 +281,17 @@ class SessionFile(Vertical):
         yield Label("Save / load file path (JSON)")
         yield Input(placeholder="/path/to/session.json", id="session-path")
         with Horizontal(classes="button-row"):
-            yield Button("Save session", id="save-session")
+            yield Button("Save session", id="save-session", variant="primary")
             yield Button("Export history", id="export-history")
+            yield Button("New character", id="new-character")
 
 
 class RollOptions(Horizontal):
-    """Fear, assisted and expertise for the next test."""
+    """Scared, assisted and expertise for the next test."""
 
     def compose(self) -> ComposeResult:
         with Vertical(id="fear-field", classes="field"):
-            yield Label("Fear")
+            yield Label("Scared")
             yield Select([(str(n), n) for n in range(4)], value=0, allow_blank=False, id="fear")
         with Vertical(classes="field", id="assisted-field"):
             yield Label("Assisted")
@@ -212,53 +301,133 @@ class RollOptions(Horizontal):
             with Horizontal(id="expertise-controls"):
                 yield Checkbox(id="expertise", tooltip="Include expertise: +1 hit")
                 yield BonusName(BonusKind.EXPERTISE, placeholder="Describe expertise")
-                yield BonusButton("+1 hit", BonusKind.EXPERTISE, disabled=True)
+                yield BonusButton("+1 hit", BonusKind.EXPERTISE, variant="primary", disabled=True)
+
+
+DOTS = range(len(STANDING_LABELS))
+
+
+class StandingTrack(Widget, can_focus=True):
+    """Ball Season's five-dot Standing track; click a dot, or press ← and →, to ask to move it."""
+
+    BINDINGS: ClassVar = [
+        Binding("left", "move(-1)", "Move toward Esteemed", show=False),
+        Binding("right", "move(1)", "Move toward Scandalous", show=False),
+    ]
+    standing = reactive(STANDING_START)
+
+    class Moved(Message):
+        """The player asked for ``standing``; the app decides whether it is allowed."""
+
+        def __init__(self, standing: int):
+            super().__init__()
+            self.standing = standing
+
+    def on_mount(self) -> None:
+        self.tooltip = "Click a dot, or press ← and →"
+
+    def render(self) -> str:
+        dots = " ".join("●" if index == self.standing else "○" for index in DOTS)
+        return f"{dots}  {standing_label(self.standing)}"
+
+    def action_move(self, step: int) -> None:
+        self.post_message(self.Moved(self.standing + step))
+
+    def on_click(self, event: events.Click) -> None:
+        # Each dot is followed by a space, so a dot and its gap share two cells.
+        dot = event.x // 2
+        if dot in DOTS:
+            self.post_message(self.Moved(dot))
 
 
 class KitControls(Vertical):
-    """Kit-specific controls that change the dice pool, and the resulting pool size."""
+    """Kit-specific controls, and the resulting pool size."""
 
     def compose(self) -> ComposeResult:
+        with Vertical(id="resource-field", classes="field"):
+            yield Label("Resources")
+            with Horizontal(id="resource-row"):
+                yield Button("−", id="resources-down", tooltip="Lose 1 Resource")
+                yield Static(id="resource-count")
+                yield Button("+", id="resources-up", tooltip="Gain 1 Resource")
+                yield Button(
+                    f"Spend {RESOURCES_MAX} Resources", id="spend-resources", variant="primary"
+                )
+        with Vertical(id="corruption-field", classes="field"):
+            yield Label(id="corruption-status")
+            with Horizontal(id="corruption-row"):
+                yield Select(
+                    [(str(amount), amount) for amount in range(1, 7)],
+                    value=1,
+                    allow_blank=False,
+                    id="corruption-amount",
+                    tooltip="Corruption gained at once, such as from a Danger or avoided strain",
+                )
+                yield Button("Gain corruption", id="gain-corruption", variant="primary")
+            for index in range(MANIFESTATION_LIMIT):
+                yield ManifestationName(index)
+            with Horizontal(classes="button-row"):
+                yield Button("Add manifestation", id="add-manifestation")
+                yield Button("Remove manifestation", id="remove-manifestation")
+        with Vertical(id="standing-field", classes="field"):
+            yield Label("Standing")
+            yield StandingTrack(id="standing")
         with Vertical(id="powers"):
-            yield Label("Power (extra dice / strain)")
-            yield Select(
-                [
-                    ("None", PowerMode.NONE),
-                    ("Reliable (+1 / +1)", PowerMode.RELIABLE),
-                    ("Erratic (+2 / +2)", PowerMode.ERRATIC),
-                ],
-                value=PowerMode.NONE,
-                allow_blank=False,
-                id="power",
-            )
+            for index, mode in enumerate(POWERS):
+                with Horizontal(classes="named-bonus"):
+                    with Vertical(classes="field"):
+                        yield Label(POWER_LABELS[mode])
+                        yield PowerName(index)
+                    yield PowerToggle(mode)
         yield Static(id="pool")
-        with Vertical(id="tech-controls"):
-            yield Static("Tech: not initialized", id="tech-strength")
-            yield Static(id="tech-attributes")
-            yield Button("Initialize / replace Tech", id="initialize-tech")
-            yield Label("Tech target")
-            yield Select([("No Tech", -1)], value=-1, allow_blank=False, id="tech-target")
 
 
 class ItemsGroup(Vertical):
-    """The target die and the named items."""
+    """The target die, then the named items or, in a kit with Tech, the Tech slots."""
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="item-target-row"):
             yield Label("Apply to die")
             yield Select([("Roll first", -1)], value=-1, allow_blank=False, id="item-target")
-        for kind in (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM):
-            label = BONUS_LABELS[kind]
-            with Horizontal(classes="named-bonus"):
+            yield Button("Undo", id="undo-bonus", disabled=True)
+        with Vertical(id="item-rows"):
+            for kind in (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM):
+                label = BONUS_LABELS[kind]
+                with Horizontal(classes="named-bonus"):
+                    with Vertical(classes="field"):
+                        yield Label(label)
+                        yield BonusName(kind, placeholder=f"{label} name")
+                    yield BonusButton("+1 value", kind, variant="primary", disabled=True)
+            with Horizontal(classes="named-bonus", id="crafted-row"):
                 with Vertical(classes="field"):
-                    yield Label(label)
-                    yield BonusName(kind, placeholder=f"{label} name")
-                yield BonusButton("+1 value", kind, disabled=True)
+                    yield Label(BONUS_LABELS[BonusKind.CRAFTED_ITEM])
+                    yield BonusName(
+                        BonusKind.CRAFTED_ITEM,
+                        placeholder=f"Spend {RESOURCES_MAX} Resources to craft",
+                        disabled=True,
+                    )
+                yield BonusButton(
+                    "+1 value", BonusKind.CRAFTED_ITEM, variant="primary", disabled=True
+                )
+                yield Button("Lose", id="lose-crafted-item", disabled=True)
+        with Vertical(id="tech-controls"):
+            for index in range(TECH_SLOTS):
+                with Horizontal(classes="named-bonus", id=f"tech-row-{index}"):
+                    with Vertical(classes="field"):
+                        yield Label(id=f"tech-label-{index}")
+                        yield TechName(index)
+                    yield TechUseButton(index, disabled=True)
+                    yield SacrificeButton(index)
+            with Horizontal(id="tech-scenario-row"):
+                yield Static(id="tech-attributes")
+                yield Button("New scenario", id="new-scenario")
 
 
 class StrainGroup(Vertical):
     def compose(self) -> ComposeResult:
-        yield Label(id="strain-total")
+        with Horizontal(classes="button-row"):
+            yield Button("Take 1 strain", id="take-strain", variant="primary")
+            yield Button("Take 1 wound", id="take-wound", variant="primary")
         for row, ending in enumerate(("Wound", "Wound", "Defeat")):
             with Horizontal(classes="strain-row"):
                 with Horizontal(classes="strain-checks"):
@@ -272,7 +441,6 @@ class StrainGroup(Vertical):
                             tooltip=f"Row {row + 1}: {description}",
                         )
                 yield StrainName(row, placeholder=f"{ending} name")
-        yield Button("Take 1 strain", id="take-strain")
         yield Static(id="strain-status", markup=False)
 
 

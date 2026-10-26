@@ -2,9 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,7 +18,7 @@ jobs:
         run: uv sync --locked --group dev
 
       - name: Tests
-        run: uv run --no-sync python -m pytest
+        run: uv run --no-sync python -m pytest --cov
 
       - name: Lint
         run: uv run --no-sync python -m ruff check .
