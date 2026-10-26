@@ -284,7 +284,12 @@ class RollerApp(SessionActions, App):
         game.item_target = target if game.session.current_result is not None else None
 
     def act(self, action: Callable[[], str]) -> bool:
-        """Run a game action, show its message or why it was refused, and refresh the screen."""
+        """Run a game action, show its message or why it was refused, and refresh the screen.
+
+        Nothing runs while the kit-change dialog is open, since the game may be about to go.
+        """
+        if self.pending_genre is not None:
+            return False
         self.collect()
         try:
             message = action()
@@ -342,10 +347,8 @@ class RollerApp(SessionActions, App):
             self.set_power(game.power)
 
     def write_new_history(self) -> None:
+        """Add the entries the log does not show yet; ``show_game`` clears it for a new game."""
         log = self.query_one("#log", RichLog)
-        if len(self.history) < self.logged:
-            log.clear()
-            self.logged = 0
         for entry in self.history[self.logged :]:
             log.write(str(entry))
         self.logged = len(self.history)
@@ -485,8 +488,7 @@ class RollerApp(SessionActions, App):
             with self.prevent(Input.Changed):
                 self.query_one(f"#tech-name-{index}", Input).value = piece.name
             self.query_one(f"#use-tech-{index}", Button).disabled = not self.game.tech_usable(index)
-            working = piece.defined and piece.strength > 0
-            self.query_one(f"#sacrifice-tech-{index}", Button).disabled = not working
+            self.query_one(f"#sacrifice-tech-{index}", Button).disabled = not piece.working
 
     def request_genre(self, genre: Genre) -> None:
         if genre == self.session.profile_id or self.pending_genre is not None:
@@ -528,8 +530,12 @@ class RollerApp(SessionActions, App):
             toggle.value = toggle.mode == mode
 
     def update_preview(self) -> None:
-        self.collect()
         self.query_one("#pool", Static).update(pool_line(self.game.draft_request(preview=True)))
+
+    def options_changed(self) -> None:
+        """Scared, Assisted or a power changed: the game takes it, and the pool line follows."""
+        self.collect()
+        self.update_preview()
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.value != event.select.value:
@@ -537,7 +543,7 @@ class RollerApp(SessionActions, App):
         if event.select.id == "genre" and event.value != Select.BLANK:
             self.request_genre(Genre(event.value))
         elif event.select.id == "fear":
-            self.update_preview()
+            self.options_changed()
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         if event.value != event.checkbox.value:
@@ -548,9 +554,9 @@ class RollerApp(SessionActions, App):
         elif isinstance(event.checkbox, PowerToggle):
             if event.value:
                 self.set_power(event.checkbox.mode)
-            self.update_preview()
+            self.options_changed()
         elif event.checkbox.id == "assisted":
-            self.update_preview()
+            self.options_changed()
         elif isinstance(event.checkbox, RerollDie):
             self.update_reroll_controls()
 
@@ -614,8 +620,6 @@ class RollerApp(SessionActions, App):
             action()
 
     def apply_tech(self, index: int) -> None:
-        if self.pending_genre is not None:
-            return
         die = self.query_one("#item-target", Select).value
         self.act(lambda: self.game.apply_tech(index, die))
 
@@ -628,8 +632,6 @@ class RollerApp(SessionActions, App):
         self.act(lambda: self.game.gain_corruption(amount))
 
     def apply_bonus(self, kind: BonusKind) -> None:
-        if self.pending_genre is not None:
-            return
         die = self.query_one("#item-target", Select).value
         self.act(lambda: self.game.apply_bonus(kind, die))
 
@@ -655,18 +657,12 @@ class RollerApp(SessionActions, App):
         self.update_bonus_controls()
 
     def action_roll_attribute(self, index: int) -> None:
-        if self.pending_genre is not None or self.session.attributes is None:
-            return
         attribute = PROFILES[self.session.profile_id].attributes[index]
         self.act(lambda: self.game.roll(attribute))
 
     def action_roll(self) -> None:
-        if self.pending_genre is not None:
-            return
         self.act(self.game.roll)
 
     def action_reroll(self) -> None:
-        if self.pending_genre is not None:
-            return
         indices = self.selected_dice()
         self.act(lambda: self.game.reroll(indices))

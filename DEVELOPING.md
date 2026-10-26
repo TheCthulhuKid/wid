@@ -25,6 +25,7 @@ checkout: after updating, rebuild it with `uv tool install --force --reinstall .
 ```sh
 uv sync --locked --group dev
 uv run wid                 # or .venv/bin/python -m wid
+uv run wid --web           # the browser version (in progress): 127.0.0.1:8765 or a free port
 uv run pytest              # 4 workers, about 80 seconds; -m "not ui" for the quick domain tests
 uv run pytest --cov        # as CI runs it: fails below 80% coverage of wid/
 uv run ruff check .
@@ -72,7 +73,7 @@ Both workflows check out the full history (`fetch-depth: 0`) so the tag is visib
 wid/
 ├── __init__.py         # Lightweight package marker
 ├── __main__.py         # python -m wid
-├── cli.py              # Installed wid command (--version, --help, --self-test)
+├── cli.py              # Installed wid command (--version, --help, --self-test, --web)
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
@@ -90,6 +91,9 @@ wid/
     ├── dialogs.py      # Confirmation screens
     ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
     └── roller.tcss     # Bundled interface styles
+└── web/
+    ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser
+    └── app.py          # FastAPI application (the browser sheet is still being built)
 .github/workflows/      # ci.yml: tests, ruff; release.yml: Windows build, draft release
 release/                # PyInstaller spec, Windows build script, smoke test, icon
 tests/                  # Domain, persistence, headless UI, and launch tests

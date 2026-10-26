@@ -14,7 +14,7 @@ def package_version() -> str:
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        prog="wid", description="A terminal dice roller for We're in Danger."
+        prog="wid", description="A dice roller for We're in Danger, in the terminal or a browser."
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {package_version()}")
     parser.add_argument(
@@ -22,9 +22,26 @@ def main(argv: Sequence[str] | None = None) -> None:
         action="store_true",
         help="check that this installation works, without a terminal, then exit",
     )
+    parser.add_argument(
+        "--web",
+        action="store_true",
+        help="play in a web browser on this computer instead of the terminal",
+    )
+    parser.add_argument(
+        "--port", type=int, help="with --web: the port to use (default 8765, or any free one)"
+    )
+    parser.add_argument(
+        "--no-browser", action="store_true", help="with --web: only print the address to open"
+    )
     arguments = parser.parse_args(argv)
+    if (arguments.port is not None or arguments.no_browser) and not arguments.web:
+        parser.error("--port and --no-browser need --web")
     if arguments.self_test:
         from wid.selftest import run_self_test
 
         raise SystemExit(run_self_test())
+    if arguments.web:
+        from wid.web.server import serve
+
+        raise SystemExit(serve(port=arguments.port, open_browser=not arguments.no_browser))
     RollerApp().run()

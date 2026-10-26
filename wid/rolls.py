@@ -199,6 +199,11 @@ class TechPiece(FrozenModel):
     def defined(self) -> bool:
         return bool(self.name.strip())
 
+    @property
+    def working(self) -> bool:
+        """Named and not yet depleted, so it can be used or sacrificed."""
+        return self.defined and self.strength > 0
+
     def label(self, index: int) -> str:
         return self.name.strip() or f"Tech {index + 1}"
 

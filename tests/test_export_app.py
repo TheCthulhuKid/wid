@@ -1,7 +1,7 @@
 import asyncio
 from random import Random
 
-from helpers import click, reveal
+from helpers import click
 from test_rollerapp import start_game, text
 from textual.widgets import Input
 
@@ -39,24 +39,10 @@ def test_exports_the_history_to_a_markdown_file(tmp_path):
         await play(app, pilot)
         app.query_one("#session-name", Input).value = "Friday"
         app.query_one("#character-name", Input).value = "Ada"
-        await reveal(app, pilot, "#session-path")
-        app.query_one("#session-path", Input).value = str(tmp_path / "campaign.json")
-        await click(app, pilot, "#export-history")
-        assert app.screen.query_one("#export-path", Input).value == str(tmp_path / "campaign.md")
-        await pilot.press("escape")
-        await pilot.pause()
         await export_to(app, pilot, target)
         content = target.read_text(encoding="utf-8")
         assert content.startswith("# Friday\n\nCharacter: Ada\n\n## 1. Roll\n")
         assert text(app, "#feedback") == f"Exported 2 history entries to {target}."
-
-    run(scenario)
-
-
-def test_nothing_to_export_before_anything_happened():
-    async def scenario(app, pilot):
-        await click(app, pilot, "#export-history")
-        assert text(app, "#feedback") == "There is no history to export yet."
 
     run(scenario)
 

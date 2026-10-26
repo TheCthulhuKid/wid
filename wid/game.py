@@ -30,6 +30,7 @@ from wid.storage import write_text
 
 
 def file_exists(path: Path) -> FileExistsError:
+    """The error naming ``path``: the one from storage names its temporary file instead."""
     return FileExistsError(errno.EEXIST, "File exists", str(path))
 
 
@@ -141,19 +142,18 @@ class Game:
         return kind not in result.applied_items
 
     def apply_tech(self, index: int, die: int) -> str:
-        piece = self.session.tech.piece(index) if self.session.tech else None
         result = self.session.apply_tech(index, die)
-        action = f"Tech {piece.label(index)}: +{piece.strength} to die {die + 1}"
+        piece = self.session.tech.pieces[index]
+        # Using a piece weakens it by 1, so the bonus it just gave was one more than it has left.
+        action = f"Tech {piece.label(index)}: +{piece.strength + 1} to die {die + 1}"
         self.log_result(result, action, charged=False)
         return ""
 
     def tech_usable(self, index: int) -> bool:
         """Whether Tech slot ``index`` holds a named, working piece unused on the current test."""
-        piece = self.session.tech.pieces[index]
         result = self.session.current_result
         return (
-            piece.defined
-            and piece.strength > 0
+            self.session.tech.pieces[index].working
             and result is not None
             and index not in result.applied_tech
         )

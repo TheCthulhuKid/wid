@@ -18,17 +18,15 @@ class SessionActions:
     pending_genre: Genre | None
 
     def action_save_session(self, overwrite: bool = False) -> None:
-        if self.pending_genre is not None:
-            return
         try:
-            saved = self.act(lambda: self.game.save(overwrite=overwrite))
+            done = self.act(lambda: self.game.save(overwrite=overwrite))
         except FileExistsError as error:
             self.push_screen(
                 ConfirmSessionAction(f"Replace the existing save at {error.filename}?"),
                 self.finish_save,
             )
             return
-        if saved:
+        if done:
             self.query_one("#session-name", Input).value = self.game.name
             self.sub_title = self.game.name
 

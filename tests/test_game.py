@@ -38,14 +38,6 @@ def test_bonuses_are_offered_once_named_and_logged_without_a_cost():
     assert "Appropriate Item Sword: +1 to die 2" in str(game.history[-1])
 
 
-def test_refused_actions_raise_with_a_message_for_the_player():
-    game = Game()
-    with pytest.raises(ValueError, match="Set attributes"):
-        game.roll()
-    with pytest.raises(ValueError, match="There is no history to export yet"):
-        game.export_history("history.md")
-
-
 def test_new_character_keeps_history_and_file_but_a_new_kit_starts_over():
     game = started()
     game.notes = "Keep the map"

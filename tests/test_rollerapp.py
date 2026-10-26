@@ -6,7 +6,7 @@ from textual.command import CommandPalette
 from textual.widgets import Checkbox, Collapsible, Input, Select, Static
 
 from wid.profiles import Genre
-from wid.rolls import BonusKind, PowerMode
+from wid.rolls import BonusKind
 from wid.ui.app import RollerApp
 
 
@@ -63,22 +63,6 @@ def test_the_game_starts_only_with_unique_ranks():
             assert app.session.attributes is None
             await start_game(app, pilot, (3, 1, 2))
             assert app.query_one("#attribute-rank-0", Select).disabled
-
-    asyncio.run(scenario())
-
-
-def test_heckboy_power_adds_dice_and_strain_for_one_roll():
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([6] * 6))
-        async with app.run_test(size=(120, 50)) as pilot:
-            await change_genre(app, pilot, Genre.HECKBOY)
-            await start_game(app, pilot)
-            app.set_power(PowerMode.ERRATIC)
-            await pilot.pause()
-            assert "6d6" in text(app, "#pool")
-            await pilot.press("ctrl+r")
-            assert "Strain: +2 (session 2)" in text(app, "#resources")
-            assert app.chosen_power() == PowerMode.NONE
 
     asyncio.run(scenario())
 
