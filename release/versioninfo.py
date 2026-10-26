@@ -1,37 +1,42 @@
-"""The text of the Windows version resource, from ``pyproject.toml``.
+"""The text of the Windows version resource, from the installed package's version.
 
 PyInstaller reads this file format on Windows. It is plain text, so it can be produced and
 tested on any system without PyInstaller's own helper (which needs ``pefile``, Windows only).
 """
 
 import re
-import tomllib
-from pathlib import Path
+from importlib.metadata import version
 
 PRODUCT = "wid"
 DESCRIPTION = "A terminal dice roller for We're in Danger"
 LANGUAGE_CODE = "040904B0"  # US English, Unicode
 
 
-def project_version(pyproject: Path) -> str:
-    return tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+def installed_version() -> str:
+    """The version hatch-vcs gave the installed wid, taken from its git tag."""
+    return version(PRODUCT)
 
 
-def numeric_version(version: str) -> tuple[int, int, int, int]:
-    """The four-part number Windows wants: ``0.1.0`` becomes ``(0, 1, 0, 0)``."""
-    numbers = [int(part) for part in re.findall(r"\d+", version)[:4]]
+def numeric_version(text: str) -> tuple[int, int, int, int]:
+    """The four numbers Windows wants, from the release part only.
+
+    ``0.1.0`` becomes ``(0, 1, 0, 0)``; a dev build such as ``0.1.1.dev3+gabc1234`` becomes
+    ``(0, 1, 1, 0)``, since Windows file versions cannot hold the dev suffix.
+    """
+    release = re.match(r"\d+(?:\.\d+)*", text)
+    numbers = [int(part) for part in release.group().split(".")[:4]] if release else []
     return tuple((numbers + [0, 0, 0, 0])[:4])  # type: ignore[return-value]
 
 
-def version_file_text(version: str) -> str:
-    numbers = numeric_version(version)
+def version_file_text(text: str) -> str:
+    numbers = numeric_version(text)
     strings = {
         "FileDescription": DESCRIPTION,
-        "FileVersion": version,
+        "FileVersion": text,
         "InternalName": PRODUCT,
         "OriginalFilename": f"{PRODUCT}.exe",
         "ProductName": PRODUCT,
-        "ProductVersion": version,
+        "ProductVersion": text,
     }
     pairs = ",\n        ".join(
         f"StringStruct({key!r}, {value!r})" for key, value in strings.items()

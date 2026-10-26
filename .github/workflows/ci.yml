@@ -7,18 +7,32 @@ permissions:
   contents: read
 
 jobs:
-  checks:
+  tests:
     runs-on: ubuntu-latest
     steps:
+      # The whole history and its tags, so hatch-vcs can read the version from the tag.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: astral-sh/setup-uv@v6
 
       - name: Install the pinned development environment
         run: uv sync --locked --group dev
 
-      - name: Tests
-        run: uv run --no-sync python -m pytest --cov
+      - name: Tests with coverage
+        run: uv run --no-sync python -m pytest --cov -n 8
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      # Ruff reads the source, so the project itself is not installed (or versioned) here.
+      - name: Install the pinned development tools
+        run: uv sync --locked --group dev --no-install-project
 
       - name: Lint
         run: uv run --no-sync python -m ruff check .
