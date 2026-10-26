@@ -27,6 +27,9 @@ lists every die as *hit*, *miss* or *fumble* (green, yellow, red) with the total
 
 **Ctrl+R** rolls again with the last attribute you used, from anywhere in the program.
 
+**Roll 1d6** (beside **Show log**) rolls a single die outside a test, for anything the game asks
+you to roll, and writes the result to the history.
+
 ## Items and expertise
 
 Type a name for each item under **Items** (**Appropriate Item** and **Inappropriate Item**).
@@ -54,7 +57,7 @@ Every kit has the same screen. Each adds at most one thing:
 | **Second Contact** | Science, Culture, Muscle | **Tech** slots instead of **Items** (below) |
 | **Oldheart** | Depravity, Hospitality, Fitness | Tick dice in the result, then **Reroll selected**. A running Corruption total is shown. |
 | **Ball Season** | Propriety, Stoutness, Yearning | A **Standing** track (below) |
-| **This Isn't Happening** | Instincts, Endurance, Charity | None |
+| **This Isn't Happening** | Instincts, Endurance, Charity | **Resources** and a **Crafted item** (below) |
 
 **Powers (Heckboy).** Every Heckboy has a **Reliable power** (+1 die, +1 strain) and an
 **Erratic power** (+2 dice, +2 strain). Type each power's name in its box. Tick **Use** beside one
@@ -78,6 +81,19 @@ scenario, press **New scenario** to empty every slot again.
 right, and **Reputable** for the three dots in between. You start on the centre dot. Click a dot,
 or click the track and press ← and →, to move. Standing never changes your dice; the GM uses it
 to set how many hits a test needs.
+
+**Resources (This Isn't Happening).** Your pool starts at your Charity rank when the game starts
+and stays between 1 and 6. Press **−** or **+** when a task taxes it, a Danger depletes it, or
+you spend extra hits on it (after a roll with extra hits, the result panel reminds you). At 6,
+press **Spend 6 Resources** and choose one effect; the pool then resets to your Charity rank:
+
+- **+1d6 on the next test** (to confront a Danger or defend against it): the pool line shows the
+  extra die until your next roll.
+- **Automatically pass** an obstacle that does not involve a Danger: noted in the history.
+- **Craft an item**: unlocks the **Crafted item** line under **Items**, your third item. Name it
+  and use it like the others. Press **Lose** if it is lost; that frees the slot to craft again.
+- **Recover 1d6 strain**: rolls the die and unmarks that much of your newest strain. Wounds,
+  and strain before a marked wound, stay marked.
 
 **Changing kit.** A kit lasts the whole game, so picking another kit in **Genre kit** starts a
 new game: the character, names, strain, history, notes, session name and file path are all

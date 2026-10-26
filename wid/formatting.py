@@ -1,7 +1,16 @@
 """Plain-text renderings of a roll, shared by the result panel and the history log."""
 
 from wid.profiles import PROFILES
-from wid.rolls import STRAIN_ENDINGS, Outcome, RollResult, StrainTracker, TechPiece
+from wid.rolls import (
+    RESOURCES_MAX,
+    STRAIN_ENDINGS,
+    Outcome,
+    ResourceEffect,
+    ResourceSpend,
+    RollResult,
+    StrainTracker,
+    TechPiece,
+)
 
 # A piece of text and the outcome it should be coloured as, if any.
 Part = tuple[str, Outcome | None]
@@ -81,6 +90,29 @@ def tech_strengths(pieces: tuple[TechPiece, ...]) -> str:
     return ", ".join(
         f"{piece.label(index)} at {piece.strength}" for index, piece in enumerate(pieces)
     )
+
+
+def resources_reminder(result: RollResult) -> str:
+    """For kits with Resources, a reminder that hits beyond the first can buy Resources."""
+    if not PROFILES[result.request.profile_id].has_resources or result.totals().hits < 2:
+        return ""
+    return "Extra hits can be spent to gain Resources."
+
+
+SPEND_EFFECTS = {
+    ResourceEffect.EXTRA_DIE: "+1d6 on the next test to confront a Danger or defend against it",
+    ResourceEffect.AUTO_PASS: "automatically pass an obstacle that does not involve a Danger",
+    ResourceEffect.CRAFT_ITEM: "craft an item; name it under Crafted item",
+    ResourceEffect.RECOVER_STRAIN: "recover 1d6 strain",
+}
+
+
+def spend_summary(spend: ResourceSpend, pool: int) -> str:
+    """History line for spending a full pool, such as ``Spent 6 Resources: craft an item...``."""
+    text = f"Spent {RESOURCES_MAX} Resources: {SPEND_EFFECTS[spend.effect]}"
+    if spend.die is not None:
+        text += f" (rolled {spend.die}, cleared {spend.recovered} strain)"
+    return f"{text}. Resources reset to {pool}."
 
 
 def strain_counts(tracker: StrainTracker) -> str:

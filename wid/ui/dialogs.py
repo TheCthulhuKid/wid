@@ -5,6 +5,9 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Static
 
+from wid.formatting import SPEND_EFFECTS
+from wid.rolls import RESOURCES_MAX, ResourceEffect
+
 
 class ConfirmReset(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
@@ -35,6 +38,27 @@ class ConfirmSessionAction(ModalScreen[bool]):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         event.stop()
         self.dismiss(event.button.id == "confirm-session")
+
+
+class SpendResources(ModalScreen[ResourceEffect | None]):
+    """Choose what a full pool of Resources buys; dismisses with ``None`` when cancelled."""
+
+    BINDINGS: ClassVar = [("escape", "cancel", "Cancel")]
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="spend-dialog"):
+            yield Label(f"Spend {RESOURCES_MAX} Resources on:")
+            for effect, label in SPEND_EFFECTS.items():
+                yield Button(label.capitalize(), id=f"spend-{effect.value}")
+            yield Button("Cancel", id="cancel-spend")
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        chosen = event.button.id.removeprefix("spend-")
+        self.dismiss(ResourceEffect(chosen) if chosen in set(ResourceEffect) else None)
 
 
 class PathPrompt(ModalScreen[str | None]):

@@ -44,6 +44,7 @@ class SavedSession(FrozenModel):
         self.validate_result()
         self.validate_resources()
         self.validate_tech()
+        self.validate_pool_of_resources()
         self.validate_item_target()
         self.validate_reroll_indices()
         return self
@@ -77,6 +78,17 @@ class SavedSession(FrozenModel):
             raise ValueError("Only Oldheart can have Corruption")
         if session.standing != STANDING_START and not PROFILES[session.profile_id].has_standing:
             raise ValueError("Only Ball Season can have Standing")
+
+    def validate_pool_of_resources(self) -> None:
+        session = self.session
+        if not PROFILES[session.profile_id].has_resources:
+            if session.resources is not None or session.resource_die or session.item_crafted:
+                raise ValueError("Only This Isn't Happening can have Resources")
+            return
+        if session.resources is None:
+            raise ValueError("This Isn't Happening needs its Resources pool")
+        if self.draft.resource_die and not session.resource_die:
+            raise ValueError("Draft Resources die requires a waiting die")
 
     def validate_tech(self) -> None:
         session = self.session

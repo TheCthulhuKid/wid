@@ -25,6 +25,7 @@ class WiDProfile(BaseModel):
     has_tech: bool = False
     has_rerolls: bool = False
     has_standing: bool = False
+    has_resources: bool = False
 
 
 PROFILES = {
@@ -59,5 +60,6 @@ PROFILES = {
         genre=Genre.THIS_ISNT_HAPPENING,
         name="This Isn't Happening",
         attributes=("Instincts", "Endurance", "Charity"),
+        has_resources=True,
     ),
 }

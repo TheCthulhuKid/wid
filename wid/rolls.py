@@ -35,6 +35,17 @@ class BonusKind(StrEnum):
     EXPERTISE = "expertise"
     APPROPRIATE_ITEM = "appropriate_item"
     INAPPROPRIATE_ITEM = "inappropriate_item"
+    # This Isn't Happening only, once crafted with Resources.
+    CRAFTED_ITEM = "crafted_item"
+
+
+class ResourceEffect(StrEnum):
+    """What a full pool of Resources can buy in This Isn't Happening."""
+
+    EXTRA_DIE = "extra_die"
+    AUTO_PASS = "auto_pass"
+    CRAFT_ITEM = "craft_item"
+    RECOVER_STRAIN = "recover_strain"
 
 
 class FrozenModel(BaseModel):
@@ -45,10 +56,17 @@ class NamedBonuses(FrozenModel):
     expertise: str = ""
     appropriate_item: str = ""
     inappropriate_item: str = ""
+    crafted_item: str = ""
 
 
 Index = Annotated[int, Field(strict=True, ge=0)]
 Rank = Annotated[int, Field(strict=True, ge=1, le=3)]
+RESOURCES_MIN = 1
+RESOURCES_MAX = 6
+
+
+def roll_d6(rng: Random) -> int:
+    return rng.randint(1, 6)
 
 
 class RollRequest(FrozenModel):
@@ -59,9 +77,11 @@ class RollRequest(FrozenModel):
     attribute: str = "Athleticism"
     expertise: bool = False
     power: PowerMode = PowerMode.NONE
+    # A +1d6 bought with a full pool of Resources (This Isn't Happening).
+    resource_die: bool = False
 
     def pool_size(self) -> int:
-        return 4 - self.fear_level + int(self.assisted) + self.power.cost
+        return 4 - self.fear_level + int(self.assisted) + self.power.cost + int(self.resource_die)
 
     @property
     def hit_threshold(self) -> int:
@@ -70,6 +90,8 @@ class RollRequest(FrozenModel):
     @model_validator(mode="after")
     def validate_options(self) -> Self:
         self.validate_power()
+        if self.resource_die and not PROFILES[self.profile_id].has_resources:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Resources")
         return self
 
     def validate_power(self) -> None:
@@ -263,6 +285,18 @@ class StrainTracker(FrozenModel):
                 points -= 1
         return type(self)(boxes=boxes, names=self.names)
 
+    def recover(self, points: int) -> Self:
+        """Unmark up to ``points`` of the newest strain; wounds and locked boxes stay marked."""
+        points = TypeAdapter(Index).validate_python(points)
+        boxes = list(self.boxes)
+        for index in reversed(range(len(boxes))):
+            if points == 0:
+                break
+            if boxes[index] and index not in STRAIN_ENDINGS and index not in self.locked_boxes:
+                boxes[index] = False
+                points -= 1
+        return type(self)(boxes=boxes, names=self.names)
+
     def take_wound(self) -> Self:
         """Mark everything up to and including the next unmarked wound (or Defeat)."""
         ending = next((index for index in STRAIN_ENDINGS if not self.boxes[index]), None)
@@ -282,6 +316,15 @@ def raised_die(result: RollResult, index: int, amount: int) -> tuple[DieResult, 
     return tuple(dice)
 
 
+class ResourceSpend(FrozenModel):
+    """What spending a full pool of Resources did."""
+
+    effect: ResourceEffect
+    # The 1d6 rolled to recover strain, and the strain boxes it cleared.
+    die: Annotated[int, Field(ge=1, le=6)] | None = None
+    recovered: Annotated[int, Field(ge=0)] = 0
+
+
 class RollSession(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -297,6 +340,12 @@ class RollSession(BaseModel):
     power_names: tuple[str, str] = ("", "")
     # Ball Season only; it sets the GM's target numbers, so it never changes a roll here.
     standing: Standing = STANDING_START
+    # This Isn't Happening only: the pool starts at the Charity rank when the game starts.
+    resources: Annotated[int, Field(strict=True, ge=RESOURCES_MIN, le=RESOURCES_MAX)] | None = None
+    # A +1d6 bought with Resources, waiting for the next test.
+    resource_die: bool = False
+    # Whether the third item, bought with Resources, has been crafted.
+    item_crafted: bool = False
     # Results before each bonus, newest last, with the Tech slot the bonus spent, if any.
     # Not saved; cleared by a roll and by anything else that changes the Tech.
     _before_bonus: list[tuple[RollResult, int | None]] = PrivateAttr(default_factory=list)
@@ -344,6 +393,8 @@ class RollSession(BaseModel):
             raise ValueError("Expertise is not an item")
         if not PROFILES[self.profile_id].uses_items:
             raise ValueError(f"{PROFILES[self.profile_id].name} has no items")
+        if kind == BonusKind.CRAFTED_ITEM and not self.item_crafted:
+            raise ValueError(f"Spend {RESOURCES_MAX} Resources to craft an item first")
         previous = self._named_bonus_result(kind)
         if kind in previous.applied_items:
             raise ValueError(f"The {kind.value.replace('_', ' ')} was already used on this test")
@@ -409,7 +460,65 @@ class RollSession(BaseModel):
         self.attributes = candidate
         if PROFILES[self.profile_id].has_tech:
             self.start_scenario()
+        if PROFILES[self.profile_id].has_resources:
+            self.resources = self.attribute_rank("Charity")
         return candidate
+
+    def _pool(self) -> int:
+        if self.resources is None:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Resources")
+        return self.resources
+
+    def adjust_resources(self, amount: int) -> int:
+        """Add to or take from the pool, for taxes, Danger abilities and hits spent on it."""
+        pool = self._pool() + amount
+        if pool > RESOURCES_MAX:
+            raise ValueError(f"Resources cannot go above {RESOURCES_MAX}")
+        if pool < RESOURCES_MIN:
+            raise ValueError(f"Resources cannot go below {RESOURCES_MIN}")
+        self.resources = pool
+        return pool
+
+    def spend_resources(self, effect: ResourceEffect, *, rng: Random) -> ResourceSpend:
+        """Spend a full pool on ``effect``, then reset the pool to the Charity rank."""
+        effect = TypeAdapter(ResourceEffect).validate_python(effect)
+        if self._pool() < RESOURCES_MAX:
+            raise ValueError(f"Spending needs a full pool of {RESOURCES_MAX} Resources")
+        gain = {
+            ResourceEffect.EXTRA_DIE: self._arm_resource_die,
+            ResourceEffect.AUTO_PASS: lambda _rng: ResourceSpend(effect=ResourceEffect.AUTO_PASS),
+            ResourceEffect.CRAFT_ITEM: self._craft_item,
+            ResourceEffect.RECOVER_STRAIN: self._recover_strain,
+        }[effect]
+        spend = gain(rng)
+        self.resources = self.attribute_rank("Charity")
+        return spend
+
+    def _arm_resource_die(self, _rng: Random) -> ResourceSpend:
+        if self.resource_die:
+            raise ValueError("A Resources die is already waiting for the next test")
+        self.resource_die = True
+        return ResourceSpend(effect=ResourceEffect.EXTRA_DIE)
+
+    def _craft_item(self, _rng: Random) -> ResourceSpend:
+        if self.item_crafted:
+            raise ValueError("You already carry the most items you can (3)")
+        self.item_crafted = True
+        return ResourceSpend(effect=ResourceEffect.CRAFT_ITEM)
+
+    def _recover_strain(self, rng: Random) -> ResourceSpend:
+        die = roll_d6(rng)
+        recovered = self.strain.recover(die)
+        cleared = sum(self.strain.boxes) - sum(recovered.boxes)
+        self.strain = recovered
+        return ResourceSpend(effect=ResourceEffect.RECOVER_STRAIN, die=die, recovered=cleared)
+
+    def lose_crafted_item(self) -> None:
+        """Drop the crafted item, which frees its slot for another one."""
+        if not self.item_crafted:
+            raise ValueError("There is no crafted item to lose")
+        self.item_crafted = False
+        self.bonuses = self.bonuses.model_copy(update={"crafted_item": ""})
 
     def attribute_rank(self, attribute: str) -> int:
         if self.attributes is None:
@@ -458,11 +567,13 @@ class RollSession(BaseModel):
         self.validate_roll_request(request)
         candidate = RollResult(
             request=request,
-            dice=tuple(DieResult(raw=rng.randint(1, 6)) for _ in range(request.pool_size())),
+            dice=tuple(DieResult(raw=roll_d6(rng)) for _ in range(request.pool_size())),
             strain_delta=request.power.cost,
         )
         next_strain = self.strain.take(candidate.strain_delta)
         self.strain = next_strain
+        if request.resource_die:
+            self.resource_die = False
         self.total_strain += candidate.strain_delta
         self._before_bonus.clear()
         self.current_result = candidate
@@ -473,6 +584,8 @@ class RollSession(BaseModel):
             raise ValueError("Request must match the session profile")
         if request.attribute_rank != self.attribute_rank(request.attribute):
             raise ValueError("Tested rank must match the assigned attribute value")
+        if request.resource_die and not self.resource_die:
+            raise ValueError("No Resources die is waiting; spend a full pool first")
 
     def reroll(self, indices: set[int], *, rng: Random) -> RollResult:
         indices = TypeAdapter(set[Index]).validate_python(indices)
@@ -486,7 +599,7 @@ class RollSession(BaseModel):
         candidate = RollResult(
             request=previous.request,
             dice=tuple(
-                DieResult(raw=rng.randint(1, 6), bonus=die.bonus) if index in indices else die
+                DieResult(raw=roll_d6(rng), bonus=die.bonus) if index in indices else die
                 for index, die in enumerate(previous.dice)
             ),
             corruption_delta=len(indices),

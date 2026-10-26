@@ -20,6 +20,7 @@ from textual.widgets import (
 
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
+    RESOURCES_MAX,
     STANDING_LABELS,
     STANDING_START,
     BonusKind,
@@ -32,6 +33,7 @@ BONUS_LABELS = {
     BonusKind.EXPERTISE: "Expertise",
     BonusKind.APPROPRIATE_ITEM: "Appropriate Item",
     BonusKind.INAPPROPRIATE_ITEM: "Inappropriate Item",
+    BonusKind.CRAFTED_ITEM: "Crafted item",
 }
 CHARACTER_LABELS = {"name": "Name", "looks": "Looks", "nature": "Nature"}
 
@@ -328,6 +330,15 @@ class KitControls(Vertical):
     """Kit-specific controls, and the resulting pool size."""
 
     def compose(self) -> ComposeResult:
+        with Vertical(id="resource-field", classes="field"):
+            yield Label("Resources")
+            with Horizontal(id="resource-row"):
+                yield Button("−", id="resources-down", tooltip="Lose 1 Resource")
+                yield Static(id="resource-count")
+                yield Button("+", id="resources-up", tooltip="Gain 1 Resource")
+                yield Button(
+                    f"Spend {RESOURCES_MAX} Resources", id="spend-resources", variant="primary"
+                )
         with Vertical(id="standing-field", classes="field"):
             yield Label("Standing")
             yield StandingTrack(id="standing")
@@ -357,6 +368,18 @@ class ItemsGroup(Vertical):
                         yield Label(label)
                         yield BonusName(kind, placeholder=f"{label} name")
                     yield BonusButton("+1 value", kind, variant="primary", disabled=True)
+            with Horizontal(classes="named-bonus", id="crafted-row"):
+                with Vertical(classes="field"):
+                    yield Label(BONUS_LABELS[BonusKind.CRAFTED_ITEM])
+                    yield BonusName(
+                        BonusKind.CRAFTED_ITEM,
+                        placeholder=f"Spend {RESOURCES_MAX} Resources to craft",
+                        disabled=True,
+                    )
+                yield BonusButton(
+                    "+1 value", BonusKind.CRAFTED_ITEM, variant="primary", disabled=True
+                )
+                yield Button("Lose", id="lose-crafted-item", disabled=True)
         with Vertical(id="tech-controls"):
             for index in range(TECH_SLOTS):
                 with Horizontal(classes="named-bonus", id=f"tech-row-{index}"):

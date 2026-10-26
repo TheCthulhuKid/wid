@@ -21,19 +21,29 @@ from textual.widgets import (
 )
 from textual.widgets.tabbed_content import ContentTabs
 
-from wid.formatting import attribute_label, resources_line, strain_summary
+from wid.formatting import (
+    attribute_label,
+    resources_line,
+    resources_reminder,
+    spend_summary,
+    strain_summary,
+)
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
+    RESOURCES_MAX,
+    RESOURCES_MIN,
     BonusKind,
     PowerMode,
+    ResourceEffect,
     RollRequest,
     RollResult,
     RollSession,
     StrainTracker,
+    roll_d6,
 )
 from wid.settings import load_settings, save_settings
-from wid.ui.dialogs import ConfirmReset
+from wid.ui.dialogs import ConfirmReset, SpendResources
 from wid.ui.outcomes import dice_content, summary_content
 from wid.ui.sessions import SessionActions
 from wid.ui.themes import DANGER, DANGER_THEME
@@ -123,6 +133,7 @@ class RollerApp(SessionActions, App):
             with Vertical(id="output"):
                 with Horizontal(id="actions"):
                     yield Button("Show log", id="toggle-history")
+                    yield Button("Roll 1d6", id="roll-d6", tooltip="Roll one die outside a test")
                 yield Static(id="feedback", markup=False)
                 yield RollerGroup()
         with Vertical(id="history-panel"):
@@ -302,7 +313,8 @@ class RollerApp(SessionActions, App):
             self.feedback(str(error))
             return
         self.update_attribute_controls()
-        self.update_tech_controls()
+        # Starting the game sets up kit state that depends on the ranks (Tech slots, Resources).
+        self.update_kit_controls()
         self.feedback("Attributes set for this game; press Roll beside an attribute.")
 
     def update_kit_controls(self) -> None:
@@ -313,6 +325,9 @@ class RollerApp(SessionActions, App):
         self.query_one("#item-rows").display = profile.uses_items
         self.query_one("#tech-controls").display = profile.has_tech
         self.query_one("#standing-field").display = profile.has_standing
+        self.query_one("#resource-field").display = profile.has_resources
+        self.query_one("#crafted-row").display = profile.has_resources
+        self.update_resource_controls()
         self.query_one(StandingTrack).standing = self.session.standing
         self.update_reroll_controls()
         self.update_bonus_controls()
@@ -335,6 +350,8 @@ class RollerApp(SessionActions, App):
                 available = available and not result.request.expertise
             elif result is not None:
                 available = available and kind not in result.applied_items
+            if kind == BonusKind.CRAFTED_ITEM:
+                available = available and self.session.item_crafted
             self.query_one(f"#apply-{kind}", Button).disabled = not available
         self.query_one("#undo-bonus", Button).disabled = not self.session.can_undo_bonus
         self.update_tech_controls()
@@ -355,6 +372,18 @@ class RollerApp(SessionActions, App):
         self.query_one("#reroll_button", Button).disabled = (
             not enabled or result is None or not self.selected_dice()
         )
+
+    def update_resource_controls(self) -> None:
+        pool = self.session.resources
+        self.query_one("#resource-count", Static).update(
+            f"{pool} / {RESOURCES_MAX}" if pool is not None else "—"
+        )
+        self.query_one("#resources-down", Button).disabled = pool is None or pool <= RESOURCES_MIN
+        self.query_one("#resources-up", Button).disabled = pool is None or pool >= RESOURCES_MAX
+        self.query_one("#spend-resources", Button).disabled = pool != RESOURCES_MAX
+        crafted = self.session.item_crafted
+        self.query_one(f"#name-{BonusKind.CRAFTED_ITEM}", Input).disabled = not crafted
+        self.query_one("#lose-crafted-item", Button).disabled = not crafted
 
     def update_tech_controls(self) -> None:
         """Show one row per Tech slot; Use needs a roll, and both buttons a named, working piece."""
@@ -436,6 +465,7 @@ class RollerApp(SessionActions, App):
                 if PROFILES[self.session.profile_id].has_powers
                 else PowerMode.NONE
             ),
+            resource_die=self.session.resource_die,
         )
 
     def chosen_power(self) -> PowerMode:
@@ -451,7 +481,10 @@ class RollerApp(SessionActions, App):
     def update_preview(self) -> None:
         request = self.draft_request(preview=True)
         size = request.pool_size()
-        self.query_one("#pool", Static).update(f"Pool: {size}d6 — hits on {request.hit_threshold}+")
+        pool = f"Pool: {size}d6 — hits on {request.hit_threshold}+"
+        if request.resource_die:
+            pool += " (includes the Resources die)"
+        self.query_one("#pool", Static).update(pool)
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.value != event.select.value:
@@ -524,6 +557,11 @@ class RollerApp(SessionActions, App):
             "start-game": self.start_game,
             "reroll_button": self.action_reroll,
             "new-scenario": self.start_scenario,
+            "resources-down": lambda: self.adjust_resources(-1),
+            "resources-up": lambda: self.adjust_resources(1),
+            "spend-resources": lambda: self.push_screen(SpendResources(), self.spend_resources),
+            "lose-crafted-item": self.lose_crafted_item,
+            "roll-d6": self.roll_one_die,
         }.get(event.button.id)
         if action is not None:
             action()
@@ -567,6 +605,48 @@ class RollerApp(SessionActions, App):
         self.show_result(result)
         action = f"Tech {piece.label(index)}: +{piece.strength} to die {die + 1}"
         self.log_result(result, action, resource_cost=False)
+
+    def adjust_resources(self, amount: int) -> None:
+        try:
+            self.session.adjust_resources(amount)
+        except ValueError as error:
+            self.feedback(str(error))
+        self.update_resource_controls()
+
+    def spend_resources(self, effect: ResourceEffect | None) -> None:
+        if effect is None:
+            return
+        try:
+            spend = self.session.spend_resources(effect, rng=self.rng)
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.update_resource_controls()
+        self.update_strain_controls()
+        self.update_bonus_controls()
+        self.update_preview()
+        message = spend_summary(spend, self.session.resources)
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def lose_crafted_item(self) -> None:
+        try:
+            self.session.lose_crafted_item()
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        with self.prevent(Input.Changed):
+            self.query_one(f"#name-{BonusKind.CRAFTED_ITEM}", Input).value = ""
+        self.update_resource_controls()
+        self.update_bonus_controls()
+        message = "Lost the crafted item; its slot is free again."
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
+
+    def roll_one_die(self) -> None:
+        message = f"Rolled 1d6: {roll_d6(self.rng)}."
+        self.feedback(message)
+        self.record(HistoryEntry(notice=message))
 
     def take_strain(self) -> None:
         self.session.strain = self.session.strain.take(1)
@@ -620,6 +700,7 @@ class RollerApp(SessionActions, App):
                 total_corruption=self.session.total_corruption,
                 tech_pieces=tech.pieces if tech else None,
             )
+            + (f"\n{reminder}" if (reminder := resources_reminder(result)) else "")
         )
         for box in self.query(RerollDie):
             box.value = False
@@ -665,6 +746,8 @@ class RollerApp(SessionActions, App):
         self.update_strain_controls()
         self.log_result(result)
         self.clear_roll_bonuses()
+        # A Resources die lasts one test, so the next pool is smaller again.
+        self.update_preview()
 
     def clear_roll_bonuses(self) -> None:
         """Assisted, Expertise and a power apply to one test; the next one starts without them."""

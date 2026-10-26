@@ -56,6 +56,8 @@ class HistoryEntry(FrozenModel):
         )
         if request.expertise:
             text += f"Expertise name: {self.expertise_name}\n"
+        if request.resource_die:
+            text += "Resources die: +1d6\n"
         text += (
             f"{describe_dice(result)}\n{summarize(result)}\n"
             f"Strain +{strain} (session {self.total_strain})"

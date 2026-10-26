@@ -245,10 +245,13 @@ def test_named_bonuses_defaults_immutable_updates_and_json_roundtrip(session_fac
         "expertise": "",
         "appropriate_item": "",
         "inappropriate_item": "",
+        "crafted_item": "",
     }
     session = session_factory()
     original = session.bonuses
-    for kind, name in zip(BonusKind, ("Dueling 🎲", "Sword", "[b]Teacup[/b]"), strict=True):
+    for kind, name in zip(
+        BonusKind, ("Dueling 🎲", "Sword", "[b]Teacup[/b]", "Spear"), strict=True
+    ):
         session.set_bonus_name(kind, name)
         assert getattr(session.bonuses, kind.value) == name
     assert original == NamedBonuses()
