@@ -26,7 +26,20 @@ Windows may say "Windows protected your PC", because the program is not code-sig
 Your theme and layout are remembered in `%APPDATA%\wid\settings.json`. Games are saved only
 when you press **Save session**, to the file you choose.
 
-## Other systems and developers
+## Get it (Linux and macOS)
+
+1. Download `wid-<version>-linux-x86_64.tar.gz` or `wid-<version>-macos-arm64.tar.gz` (Apple
+   silicon) from the Releases page.
+2. Unpack it with `tar -xzf <file>` and run `./wid` in the new folder from a terminal, or
+   `./wid --web` for the browser.
+
+macOS blocks the program the first time because it is not signed by Apple: run
+`xattr -d com.apple.quarantine wid` in the folder, or choose **Open Anyway** under System
+Settings > Privacy & Security. The Linux build needs glibc 2.35 or newer (Ubuntu 22.04 and
+later). Settings are kept in `~/.config/wid/settings.json`. The `README.txt` in the download
+explains checking the `.sha256` file.
+
+## Running from Python and developers
 
 Running from Python, building a release, the project layout, and the file formats are in
 [DEVELOPING.md](DEVELOPING.md).

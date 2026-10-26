@@ -148,8 +148,8 @@ notes, character details and the history.
 
 ## Play in the browser
 
-Prefer a web browser to the terminal? Start wid with `wid --web` (on Windows, `.\wid.exe --web`
-in the program's folder). Your browser opens the sheet by itself. The window you started it from
+Prefer a web browser to the terminal? Start wid with `wid --web` (from a release download,
+`.\wid.exe --web` on Windows or `./wid --web` on Linux and macOS, in the program's folder). Your browser opens the sheet by itself. The window you started it from
 shows the address and must stay open while you play; press **Ctrl+C** there to stop. Only this
 computer can reach the game.
 

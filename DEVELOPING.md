@@ -41,9 +41,9 @@ widget has settled on screen. Shared fixtures are in
 
 ## Release builds
 
-The Windows release is built with PyInstaller, which lives in its own dependency group
+The releases are built with PyInstaller, which lives in its own dependency group
 (`uv sync --locked --group dev --group release`; a plain `--group dev` sync removes it).
-On Windows:
+Each system builds its own release; PyInstaller cannot cross-compile. On Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File release\build_release.ps1 -Smoke
@@ -55,15 +55,29 @@ were bundled), and (with `-Smoke`)
 presses real keys in a Windows pseudo console, then writes the zip and its checksum to `dist\`.
 Add `-Python 3.13` to choose the interpreter.
 
+On Linux or macOS:
+
+```sh
+release/build_release.sh [3.13]
+```
+
+It builds a single-file program, runs `wid --version` and `wid --self-test`, then writes
+`wid-<version>-<linux|macos>-<arch>.tar.gz` (the program, `README-unix.txt` as `README.txt`,
+and `HOWTO.md`) and its checksum to `dist/`. A tar keeps the executable bit. There is no
+pseudo-console smoke test on these systems. Like the Windows script, it syncs the project
+environment without the dev group, so run `uv sync --locked --group dev` afterwards, or set
+`UV_PROJECT_ENVIRONMENT` to build in a separate environment.
+
 GitHub Actions:
 
 - `.github/workflows/ci.yml` runs two jobs on Linux for every push: the tests (8 workers,
   with coverage) and the quality checks (`ruff check` and `ruff format --check`).
-- `.github/workflows/release.yml` builds and smoke-tests the Windows zip on every push to
-  `main` and uploads it as a build artifact. Pushing a tag such as `v0.2.0` also attaches the
-  zip and checksum to a draft GitHub release, which you publish yourself; the zip, `wid.exe
-  --version` and the Windows file properties all take their version from that tag. Without a
-  tag, the `publish` job is skipped.
+- `.github/workflows/release.yml` builds and smoke-tests the Windows zip, and builds and
+  self-tests the Linux x86_64 (on Ubuntu 22.04, for the widest glibc support) and macOS arm64
+  archives, on every push to `main`, uploading each as a build artifact. Pushing a tag such as
+  `v0.2.0` also attaches every archive and checksum to a draft GitHub release, which you
+  publish yourself; the file names, `wid --version` and the Windows file properties all take
+  their version from that tag. Without a tag, the `publish` job is skipped.
 
 To release, tag the commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
 Both workflows check out the full history (`fetch-depth: 0`) so the tag is visible to
@@ -100,8 +114,8 @@ wid/
     ├── view.py         # Colours (light and dark), the notes preview, the template context
     ├── templates/      # Jinja2 page and sheet: one form, each button posts to its action
     └── static/         # sheet.css, and sheet.js: posts the form and swaps the reply in
-.github/workflows/      # ci.yml: tests, ruff; release.yml: Windows build, draft release
-release/                # PyInstaller spec, Windows build script, smoke test, icon
+.github/workflows/      # ci.yml: tests, ruff; release.yml: Windows, Linux, macOS builds, draft release
+release/                # PyInstaller spec, build scripts, release readmes, Windows smoke test, icon
 tests/                  # Domain, persistence, headless UI, and launch tests
 HOWTO.md                # How to use the program (for players)
 README.md               # Short overview for players, linking to the how-to

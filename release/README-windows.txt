@@ -14,6 +14,14 @@ PLAY IN YOUR BROWSER
   Your browser opens the character sheet. Keep the window open while you play;
   press Ctrl+C in it to stop. Only this computer can reach the game.
 
+  To start it with a double-click, make a shortcut (double-clicking wid.exe itself
+  always opens the terminal version):
+    1. Right-click wid.exe and choose "Create shortcut".
+    2. Right-click the new shortcut, choose "Properties", and add  --web  to the end
+       of "Target", for example:   "C:\Games\wid\wid.exe" --web
+    3. Double-click the shortcut. A console window opens next to the browser: that
+       window is the game, so leave it open and close it (or press Ctrl+C) to stop.
+
 HOW TO USE IT
   HOWTO.md in this folder explains the screen, the genre kits, saving and the keys.
 
