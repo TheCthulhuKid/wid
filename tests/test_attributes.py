@@ -4,7 +4,7 @@ from random import Random
 import pytest
 
 from wid.profiles import PROFILES, Genre
-from wid.rolls import RollRequest, RollSession
+from wid.rolls import RollRequest, RollSession, TechPiece
 
 
 @pytest.mark.parametrize("genre", list(Genre))
@@ -45,17 +45,9 @@ def test_setup_required_for_rolls_and_tech():
     with pytest.raises(ValueError, match="attributes"):
         session.roll(RollRequest(profile_id=Genre.SECOND_CONTACT), rng=Random(1))
     with pytest.raises(ValueError, match="attributes"):
-        session.initialize_tech()
+        session.start_scenario()
     session.configure_attributes((3, 1, 2))
-    assert [piece.strength for piece in session.initialize_tech().pieces] == [4, 4]
-    session.roll(
-        RollRequest(
-            profile_id=Genre.SECOND_CONTACT, attribute="Culture", tech_target=0, tech_piece=1
-        ),
-        rng=Random(1),
-    )
-    assert [piece.strength for piece in session.tech.pieces] == [4, 3]
-    assert [piece.strength for piece in session.initialize_tech().pieces] == [4, 4]
+    assert session.tech.pieces == (TechPiece(strength=4),) * 2
 
 
 def test_unknown_attribute_and_cross_kit_setup_are_rejected():

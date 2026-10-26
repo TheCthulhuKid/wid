@@ -21,7 +21,7 @@ from textual.widgets import (
 )
 from textual.widgets.tabbed_content import ContentTabs
 
-from wid.formatting import attribute_label, resources_line, strain_summary, tech_strengths
+from wid.formatting import attribute_label, resources_line, strain_summary
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
@@ -39,6 +39,7 @@ from wid.ui.sessions import SessionActions
 from wid.ui.themes import DANGER, DANGER_THEME
 from wid.ui.widgets import (
     BONUS_LABELS,
+    TECH_SLOTS,
     AttributeRollButton,
     AttributeSetup,
     BonusButton,
@@ -53,11 +54,14 @@ from wid.ui.widgets import (
     RerollDie,
     RollerGroup,
     RollOptions,
+    SacrificeButton,
     SessionFile,
     SessionName,
     StrainBox,
     StrainGroup,
     StrainName,
+    TechName,
+    TechUseButton,
 )
 
 # Below these sizes the panel switches to one-row controls and starts with sections collapsed.
@@ -264,7 +268,7 @@ class RollerApp(SessionActions, App):
             else "Assign unique ranks (1–3), then start"
         )
         self.query_one("#start-game", Button).display = not ready
-        self.query_one("#initialize-tech", Button).disabled = not ready
+        self.query_one("#new-scenario", Button).disabled = not ready
         for index in range(3):
             label = self.query_one(f"#attribute-label-{index}", Label)
             selector = self.query_one(f"#attribute-rank-{index}", Select)
@@ -277,13 +281,13 @@ class RollerApp(SessionActions, App):
                 button.tooltip = f"Roll {attributes[index]}"
                 if ready:
                     selector.value = self.session.attribute_rank(attributes[index])
-        if ready and self.session.profile_id == Genre.SECOND_CONTACT:
-            self.query_one("#tech-attributes", Static).update(
-                f"Science {self.session.attribute_rank('Science')} + "
-                f"Culture {self.session.attribute_rank('Culture')}"
-            )
-        else:
-            self.query_one("#tech-attributes", Static).update("Set attributes first.")
+        tech = self.session.tech
+        self.query_one("#tech-attributes", Static).update(
+            f"Each piece starts at Science {tech.science} + Culture {tech.culture} = "
+            f"{tech.starting_strength}."
+            if tech is not None
+            else "Start the game to get your Tech slots."
+        )
 
     def start_game(self) -> None:
         try:
@@ -297,13 +301,16 @@ class RollerApp(SessionActions, App):
             self.feedback(str(error))
             return
         self.update_attribute_controls()
+        self.update_tech_controls()
         self.feedback("Attributes set for this game; press Roll beside an attribute.")
 
     def update_kit_controls(self) -> None:
         profile = PROFILES[self.session.profile_id]
         self.query_one("#powers").display = profile.has_powers
+        # Tech replaces items, so a kit with Tech shows its slots in the same section.
+        self.section("items").title = "Tech" if profile.has_tech else "Items"
+        self.query_one("#item-rows").display = profile.uses_items
         self.query_one("#tech-controls").display = profile.has_tech
-        self.update_tech_controls()
         self.update_reroll_controls()
         self.update_bonus_controls()
 
@@ -327,6 +334,7 @@ class RollerApp(SessionActions, App):
                 available = available and kind not in result.applied_items
             self.query_one(f"#apply-{kind}", Button).disabled = not available
         self.query_one("#undo-bonus", Button).disabled = not self.session.can_undo_bonus
+        self.update_tech_controls()
 
     def selected_dice(self) -> set[int]:
         return {box.index for box in self.query(RerollDie) if box.value}
@@ -346,37 +354,27 @@ class RollerApp(SessionActions, App):
         )
 
     def update_tech_controls(self) -> None:
-        tech = self.session.tech
-        self.query_one("#tech-strength", Static).update(
-            f"Tech strength: {tech_strengths(tech.pieces)}"
-            if tech is not None
-            else "Tech: not initialized"
-        )
-        pieces = self.query_one("#tech-piece", Select)
-        previous = pieces.value
-        available = [
-            (piece.label(index), index)
-            for index, piece in enumerate(tech.pieces if tech is not None else ())
-            if piece.strength
-        ]
-        pieces.set_options(available or [("No Tech", -1)])
-        indices = [index for _, index in available]
-        pieces.value = previous if previous in indices else (indices[0] if indices else -1)
-        pieces.disabled = not available
-        self.query_one("#sacrifice-tech", Button).disabled = not available
-        target = self.query_one("#tech-target", Select)
-        target.disabled = not available
-        if not available:
-            target.value = -1
+        """Show one row per Tech slot; Use needs a roll, and both buttons a named, working piece."""
+        owned = self.session.tech.pieces if self.session.tech is not None else ()
+        result = self.session.current_result
+        for index in range(TECH_SLOTS):
+            self.query_one(f"#tech-row-{index}").display = index < len(owned)
+            if index >= len(owned):
+                continue
+            piece = owned[index]
+            working = piece.defined and piece.strength > 0
+            self.query_one(f"#tech-label-{index}", Label).update(
+                f"Tech {index + 1} — strength {piece.strength}"
+            )
+            self.query_one(f"#use-tech-{index}", Button).disabled = not (
+                working and result is not None and index not in result.applied_tech
+            )
+            self.query_one(f"#sacrifice-tech-{index}", Button).disabled = not working
 
     def has_resources(self) -> bool:
         return bool(
             self.session.total_strain
             or self.session.total_corruption
-            or (
-                self.session.tech is not None
-                and any(piece.strength for piece in self.session.tech.pieces)
-            )
             or any(self.session.strain.boxes)
             or any(self.session.strain.names)
         )
@@ -402,7 +400,6 @@ class RollerApp(SessionActions, App):
         """Replace the game with ``session`` and reset the controls that belong to a test."""
         self.session = session
         self.set_power(PowerMode.NONE)
-        self.query_one("#tech-target", Select).value = -1
         self.tested_attribute = PROFILES[session.profile_id].attributes[0]
         for index in range(3):
             self.query_one(f"#attribute-rank-{index}", Select).value = index + 1
@@ -436,15 +433,7 @@ class RollerApp(SessionActions, App):
                 if PROFILES[self.session.profile_id].has_powers
                 else PowerMode.NONE
             ),
-            **(self.chosen_tech() if not preview else {}),
         )
-
-    def chosen_tech(self) -> dict[str, int]:
-        """The Tech target die and piece for the draft, or nothing when Tech is not used."""
-        target = self.query_one("#tech-target", Select).value
-        if not PROFILES[self.session.profile_id].has_tech or target == -1:
-            return {}
-        return {"tech_target": target, "tech_piece": self.query_one("#tech-piece", Select).value}
 
     def chosen_power(self) -> PowerMode:
         return next(
@@ -459,13 +448,7 @@ class RollerApp(SessionActions, App):
     def update_preview(self) -> None:
         request = self.draft_request(preview=True)
         size = request.pool_size()
-        tech_selector = self.query_one("#tech-target", Select)
-        old_target = tech_selector.value
-        tech_selector.set_options([("No Tech", -1)] + [(f"Die {n + 1}", n) for n in range(size)])
-        tech_selector.value = old_target if old_target != Select.BLANK and old_target < size else -1
         self.query_one("#pool", Static).update(f"Pool: {size}d6 — hits on {request.hit_threshold}+")
-        if old_target != Select.BLANK and old_target >= size:
-            self.feedback("Pool changed: cleared the out-of-range Tech target.")
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.value != event.select.value:
@@ -497,6 +480,9 @@ class RollerApp(SessionActions, App):
             self.update_strain_status()
         elif isinstance(event.input, PowerName):
             self.session.set_power_name(event.input.index, event.value)
+        elif isinstance(event.input, TechName):
+            self.session.set_tech_name(event.input.index, event.value)
+            self.update_tech_controls()
         elif isinstance(event.input, BonusName):
             self.session.set_bonus_name(event.input.kind, event.value)
             self.update_bonus_controls()
@@ -507,6 +493,12 @@ class RollerApp(SessionActions, App):
             return
         if isinstance(event.button, BonusButton):
             self.apply_bonus(event.button.kind)
+            return
+        if isinstance(event.button, TechUseButton):
+            self.apply_tech(event.button.index)
+            return
+        if isinstance(event.button, SacrificeButton):
+            self.sacrifice_tech(event.button.index)
             return
         action = {
             "save-session": self.action_save_session,
@@ -519,39 +511,50 @@ class RollerApp(SessionActions, App):
             "toggle-history": self.action_toggle_history,
             "start-game": self.start_game,
             "reroll_button": self.action_reroll,
-            "initialize-tech": self.initialize_tech,
-            "sacrifice-tech": self.sacrifice_tech,
+            "new-scenario": self.start_scenario,
         }.get(event.button.id)
         if action is not None:
             action()
 
-    def initialize_tech(self) -> None:
+    def start_scenario(self) -> None:
         try:
-            tech = self.session.initialize_tech()
+            tech = self.session.start_scenario()
         except ValueError as error:
             self.feedback(str(error))
             return
-        self.update_tech_controls()
-        message = (
-            f"Tech explicitly initialized/replaced: {len(tech.pieces)} piece(s) at Science "
-            f"{tech.science} + Culture {tech.culture} = {tech.starting_strength}."
-        )
+        with self.prevent(Input.Changed):
+            for field in self.query(TechName):
+                field.value = ""
+        self.update_bonus_controls()
+        message = f"New scenario: {len(tech.pieces)} empty Tech slot(s)."
         self.feedback(message)
         self.record(HistoryEntry(notice=message))
 
-    def sacrifice_tech(self) -> None:
-        index = self.query_one("#tech-piece", Select).value
+    def sacrifice_tech(self, index: int) -> None:
         try:
             piece = self.session.sacrifice_tech(index)
         except ValueError as error:
             self.feedback(str(error))
             return
-        # The die was chosen for the sacrificed piece; do not let it pass to the next one.
-        self.query_one("#tech-target", Select).value = -1
-        self.update_tech_controls()
+        self.update_bonus_controls()
         message = f"Sacrificed {piece.label(index)}: strength {piece.strength} → 0."
         self.feedback(message)
         self.record(HistoryEntry(notice=message))
+
+    def apply_tech(self, index: int) -> None:
+        if self.pending_genre is not None:
+            return
+        piece = self.session.tech.pieces[index]
+        die = self.query_one("#item-target", Select).value
+        try:
+            result = self.session.apply_tech(index, die)
+        except ValueError as error:
+            self.feedback(str(error))
+            return
+        self.feedback("")
+        self.show_result(result)
+        action = f"Tech {piece.label(index)}: +{piece.strength} to die {die + 1}"
+        self.log_result(result, action, resource_cost=False)
 
     def take_strain(self) -> None:
         self.session.strain = self.session.strain.take(1)
@@ -572,7 +575,7 @@ class RollerApp(SessionActions, App):
             return
         self.feedback("")
         self.show_result(result)
-        self.log_result(result, "Undo last item or expertise bonus", resource_cost=False)
+        self.log_result(result, "Undo last bonus", resource_cost=False)
 
     def apply_bonus(self, kind: BonusKind) -> None:
         if self.pending_genre is not None:
@@ -650,14 +653,6 @@ class RollerApp(SessionActions, App):
         self.update_strain_controls()
         self.log_result(result)
         self.clear_roll_bonuses()
-        self.update_tech_controls()
-        piece = result.request.tech_piece
-        if piece is not None and self.session.tech.pieces[piece].strength == 0:
-            self.query_one("#tech-target", Select).value = -1
-            self.feedback(
-                f"{self.session.tech.pieces[piece].label(piece)} depleted: target cleared; "
-                "initialize/replace explicitly to use it again."
-            )
 
     def clear_roll_bonuses(self) -> None:
         """Assisted, Expertise and a power apply to one test; the next one starts without them."""

@@ -55,7 +55,9 @@ Select, Input { width: 1fr; }
 #notes-toolbar { height: 3; }
 #notes-toolbar Button { width: 1fr; min-width: 0; }
 Checkbox { width: 1fr; height: auto; }
-#items, #powers, #tech-controls, #reroll-controls, #attribute-setup { height: auto; }
+#items, #item-rows, #powers, #tech-controls, #reroll-controls, #attribute-setup { height: auto; }
+#tech-scenario-row { height: auto; }
+#tech-attributes { width: 1fr; padding: 1 0; }
 #item-target-row { height: 3; }
 #item-target-row Label { width: 14; padding: 1 0; }
 #item-target { width: 16; }
@@ -64,6 +66,7 @@ Checkbox { width: 1fr; height: auto; }
 .named-bonus .field { width: 1fr; }
 .named-bonus Button { width: 10; min-width: 0; margin: 1 0 0 1; }
 .named-bonus PowerToggle { width: 13; margin: 1 0 0 1; }
+.named-bonus SacrificeButton { width: 13; }
 #feedback { color: $warning; max-height: 5; overflow-y: auto; }
 #pool, #summary, #resources { margin: 1 0; }
 #pool { margin: 0; }

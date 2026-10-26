@@ -9,7 +9,7 @@ from wid.rolls import RollSession
 from wid.sessions import CharacterDetails, SavedSession, session_file_path
 from wid.storage import write_text
 from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
-from wid.ui.widgets import CHARACTER_LABELS, BonusName, PowerName, RerollDie
+from wid.ui.widgets import CHARACTER_LABELS, BonusName, PowerName, RerollDie, TechName
 
 
 class SessionActions:
@@ -162,7 +162,7 @@ class SessionActions:
         with self.prevent(Input.Changed, Select.Changed):
             for field in CHARACTER_LABELS:
                 self.query_one(f"#character-{field}", Input).value = ""
-            for field in self.query("BonusName, PowerName"):
+            for field in self.query("BonusName, PowerName, TechName"):
                 field.value = ""
             self.query_one("#fear", Select).value = 0
         self.start_fresh_session(RollSession(profile_id=genre))
@@ -227,12 +227,11 @@ class SessionActions:
                 field.value = getattr(self.session.bonuses, field.kind)
             for field in self.query(PowerName):
                 field.value = self.session.power_names[field.index]
-            self.query_one("#tech-target", Select).value = (
-                draft.tech_target if draft.tech_target is not None else -1
-            )
+            tech = self.session.tech
+            for field in self.query(TechName):
+                owned = tech is not None and field.index < len(tech.pieces)
+                field.value = tech.pieces[field.index].name if owned else ""
             self.update_kit_controls()
-            if draft.tech_piece is not None:
-                self.query_one("#tech-piece", Select).value = draft.tech_piece
             if self.session.current_result is not None:
                 self.show_result(self.session.current_result)
             else:

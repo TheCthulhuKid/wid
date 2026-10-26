@@ -170,8 +170,8 @@ def test_load_every_kit_and_continue_playing(tmp_path, genre, saved_session_fact
             await pilot.press("ctrl+r")
             assert len(app.history) == len(saved.history) + 1
             if genre == Genre.SECOND_CONTACT:
-                strength = saved.session.tech.pieces[0].strength
-                assert app.session.tech.pieces[0].strength == strength - 1
+                assert app.session.tech == saved.session.tech
+                assert app.query_one("#tech-name-0", Input).value == "Translator"
             if genre == Genre.HECKBOY:
                 assert app.session.total_strain == 2
             assert app.tested_attribute == saved.draft.attribute
@@ -191,11 +191,9 @@ def test_load_every_kit_and_continue_playing(tmp_path, genre, saved_session_fact
 def test_load_depleted_tech_without_replenishment(tmp_path, saved_session_factory):
     path = tmp_path / "depleted.json"
     saved = saved_session_factory(Genre.SECOND_CONTACT)
-    for piece in (0, 0, 1, 1, 1, 2, 2, 2):
-        saved.session.roll(saved.draft.model_copy(update={"tech_piece": piece}), rng=Random(1))
-    saved = saved.model_copy(
-        update={"draft": saved.draft.model_copy(update={"tech_target": None, "tech_piece": None})}
-    )
+    for _ in range(2):
+        saved.session.roll(saved.draft, rng=Random(1))
+        saved.session.apply_tech(0, 0)
     saved.save(path)
 
     async def scenario():
@@ -203,16 +201,12 @@ def test_load_depleted_tech_without_replenishment(tmp_path, saved_session_factor
         async with app.run_test(size=(80, 24)) as pilot:
             app.query_one("#session-path", Input).value = str(path)
             await load_game(app, pilot)
-            depleted = saved.session.tech.pieces
-            assert app.session.tech.pieces == depleted
-            assert app.query_one("#tech-target", Select).disabled
-            assert app.query_one("#tech-piece", Select).disabled
-            assert "Tech 1 at 0, Tech 2 at 0, Tech 3 at 0" in text(app, "#tech-strength")
-            assert "Tech remaining: Tech 1 at 0" in text(app, "#resources")
-            app.tested_attribute = "Culture"
-            await pilot.pause()
+            assert app.session.tech == saved.session.tech
+            assert app.query_one("#use-tech-0").disabled
+            assert app.query_one("#sacrifice-tech-0").disabled
+            assert "Tech remaining: Translator at 0" in text(app, "#resources")
             await pilot.press("ctrl+r")
-            assert app.session.tech.pieces == depleted
+            assert app.session.tech == saved.session.tech
 
     asyncio.run(scenario())
 

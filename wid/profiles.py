@@ -38,6 +38,8 @@ PROFILES = {
         genre=Genre.SECOND_CONTACT,
         name="Second Contact",
         attributes=("Science", "Culture", "Muscle"),
+        # Tech replaces items in this kit.
+        uses_items=False,
         has_tech=True,
     ),
     Genre.OLDHEART: WiDProfile(

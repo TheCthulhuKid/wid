@@ -7,7 +7,7 @@ from test_rolls import ScriptedRandom
 from test_session_app import load_game
 from textual.widgets import Button, Checkbox, Input, Select
 
-from wid.profiles import Genre
+from wid.profiles import PROFILES, Genre
 from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
 
@@ -18,7 +18,7 @@ async def click_visible(app, pilot, selector):
     await pilot.pause()
 
 
-@pytest.mark.parametrize("genre", list(Genre))
+@pytest.mark.parametrize("genre", [genre for genre in Genre if PROFILES[genre].uses_items])
 def test_named_items_apply_once_after_roll_in_every_kit(genre):
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([3, 2, 1, 6, 1]))
@@ -125,7 +125,7 @@ def test_names_target_and_item_bonuses_survive_save_load(tmp_path):
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("genre", [Genre.HECKBOY, Genre.SECOND_CONTACT, Genre.OLDHEART])
+@pytest.mark.parametrize("genre", [Genre.HECKBOY, Genre.OLDHEART])
 def test_bonus_history_does_not_report_another_resource_cost(
     genre, saved_session_factory, tmp_path
 ):

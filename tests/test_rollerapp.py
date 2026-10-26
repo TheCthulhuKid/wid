@@ -4,7 +4,7 @@ import pytest
 from helpers import change_genre, reveal
 from test_rolls import ScriptedRandom
 from textual.command import CommandPalette
-from textual.widgets import Button, Checkbox, Input, RichLog, Select, Static
+from textual.widgets import Button, Checkbox, Collapsible, Input, RichLog, Select, Static
 
 from wid.profiles import PROFILES, Genre
 from wid.rolls import BonusKind, PowerMode
@@ -202,98 +202,60 @@ def test_genres_power_maximum_and_reset_confirmation():
                 await start_game(app, pilot)
                 for index, attribute in enumerate(profile.attributes):
                     assert text(app, f"#attribute-label-{index}") == attribute
-                assert app.query_one("#items").display == profile.uses_items
+                assert app.query_one("#item-rows").display == profile.uses_items
+                assert app.query_one("#tech-controls").display == profile.has_tech
 
     asyncio.run(scenario())
 
 
-def test_sacrifice_tech_button():
-    async def scenario():
-        app = RollerApp()
-        async with app.run_test(size=(120, 60)) as pilot:
-            app.query_one("#genre", Select).value = Genre.SECOND_CONTACT
-            await pilot.pause()
-            await start_game(app, pilot, (2, 1, 3))
-            assert app.query_one("#sacrifice-tech").disabled
-            await reveal(app, pilot, "#initialize-tech")
-            await pilot.click("#initialize-tech")
-            app.query_one("#tech-piece", Select).value = 1
-            app.query_one("#tech-target", Select).value = 0
-            await reveal(app, pilot, "#sacrifice-tech")
-            await pilot.click("#sacrifice-tech")
-            assert [piece.strength for piece in app.session.tech.pieces] == [3, 0, 3]
-            assert app.query_one("#tech-target", Select).value == -1
-            assert app.query_one("#tech-piece", Select).value == 0
-            assert str(app.history[-1]) == "Sacrificed Tech 2: strength 3 → 0."
-
-    asyncio.run(scenario())
-
-
-def test_tech_widgets_depletion_draft_edits_and_reset():
+def test_tech_is_named_when_used_after_a_roll():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([1] * 12))
+
+        async def click(selector):
+            await reveal(app, pilot, selector)
+            await pilot.click(selector)
+            await pilot.pause()
 
         def strengths():
             return [piece.strength for piece in app.session.tech.pieces]
 
         async with app.run_test(size=(120, 60)) as pilot:
-            app.query_one("#genre", Select).value = Genre.SECOND_CONTACT
+            await change_genre(app, pilot, Genre.SECOND_CONTACT)
+            await start_game(app, pilot, (1, 3, 2))
+            assert app.query_one("#items-section", Collapsible).title == "Tech"
+            assert not app.query_one("#item-rows").display
+            rows = [app.query_one(f"#tech-row-{index}").display for index in range(3)]
+            assert rows == [True, True, False]
+            assert text(app, "#tech-label-0") == "Tech 1 — strength 4"
+            await click("#roll-attribute-0")
+            assert app.query_one("#use-tech-0").disabled
+            app.query_one("#tech-name-0", Input).value = "Translator"
             await pilot.pause()
-            await start_game(app, pilot, (2, 1, 3))
-            assert app.query_one("#items").display
-            assert app.query_one("#tech-controls").display
-            assert app.query_one("#tech-target", Select).disabled
-            button = app.query_one("#initialize-tech")
-            button.scroll_visible()
+            assert not app.query_one("#use-tech-0").disabled
+            app.query_one("#item-target", Select).value = 1
+            await click("#use-tech-0")
+            assert "1+4=5" in text(app, "#dice")
+            assert strengths() == [3, 4]
+            assert str(app.history[-1]).startswith("Tech Translator: +4 to die 2:")
+            assert app.query_one("#use-tech-0").disabled
+            await click("#undo-bonus")
+            assert strengths() == [4, 4]
+            assert not app.query_one("#use-tech-0").disabled
+            app.query_one("#tech-name-1", Input).value = "Drone"
             await pilot.pause()
-            await pilot.click("#initialize-tech")
-            assert strengths() == [3, 3, 3]
-            assert "Science 2 + Culture 1" in text(app, "#tech-attributes")
-            assert not app.query_one("#tech-target", Select).disabled
-            assert app.query_one("#tech-piece", Select).value == 0
-            app.query_one("#tech-target", Select).value = 0
-            app.query_one("#roll-attribute-0").scroll_visible(animate=False)
-            await pilot.pause()
-            await pilot.click("#roll-attribute-0")
-            assert strengths() == [2, 3, 3]
-            assert "1+3=4" in text(app, "#dice")
-            snapshot = str(app.history[-1])
-            app.tested_attribute = "Culture"
-            await pilot.pause()
-            assert app.tested_attribute == "Culture"
-            assert strengths() == [2, 3, 3]
-            await pilot.click("#roll-attribute-1")
-            assert strengths() == [1, 3, 3]
-            assert app.session.current_result.request.attribute_rank == 1
-            await pilot.pause(0.4)
-            await pilot.click("#roll-attribute-1")
-            assert strengths() == [0, 3, 3]
-            assert "1+1=2" in text(app, "#dice")
-            assert app.query_one("#tech-target", Select).value == -1
-            assert app.query_one("#tech-piece", Select).value == 1
-            assert "Tech 1 at 0, Tech 2 at 3" in text(app, "#tech-strength")
-            assert "Tech 1 depleted" in text(app, "#feedback")
-            assert snapshot in [str(entry) for entry in app.history]
-            assert "Tech target=piece 1 on die 1" in snapshot
-            assert "Tech remaining Tech 1 at 2, Tech 2 at 3" in snapshot
-            app.query_one("#initialize-tech").scroll_visible()
-            await pilot.pause()
-            await pilot.click("#initialize-tech")
-            assert strengths() == [3, 3, 3]
-            app.query_one("#tech-target", Select).value = 3
-            app.query_one("#fear", Select).value = 3
-            await pilot.pause()
-            assert app.query_one("#tech-target", Select).value == -1
-            assert "out-of-range Tech target" in text(app, "#feedback")
-            app.query_one("#genre", Select).value = Genre.CORE
-            await pilot.pause()
-            await pilot.click("#cancel-reset")
-            assert strengths() == [3, 3, 3]
-            assert app.session.attributes.ranks == (2, 1, 3)
-            app.query_one("#genre", Select).value = Genre.CORE
-            await pilot.pause()
-            await pilot.click("#confirm-reset")
+            await click("#sacrifice-tech-1")
+            assert strengths() == [4, 0]
+            assert app.query_one("#sacrifice-tech-1").disabled
+            assert str(app.history[-1]) == "Sacrificed Drone: strength 4 → 0."
+            await click("#new-scenario")
+            assert strengths() == [4, 4]
+            assert app.query_one("#tech-name-0", Input).value == ""
+            assert not any(piece.defined for piece in app.session.tech.pieces)
+            assert str(app.history[-1]) == "New scenario: 2 empty Tech slot(s)."
+            await change_genre(app, pilot, Genre.CORE)
             assert app.session.tech is None
+            assert app.query_one("#items-section", Collapsible).title == "Items"
             assert not app.query_one("#tech-controls").display
 
     asyncio.run(scenario())

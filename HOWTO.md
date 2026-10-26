@@ -30,6 +30,8 @@ lists every die as *hit*, *miss* or *fumble* (green, yellow, red) with the total
 ## Items and expertise
 
 Type a name for each item under **Items** (**Appropriate Item** and **Inappropriate Item**).
+Second Contact has no items: Tech replaces them, so the section is called **Tech** there and holds
+your Tech slots instead (below). **Apply to die** and **Undo** work the same way for Tech.
 After a roll:
 
 1. Choose a die in **Apply to die**.
@@ -49,7 +51,7 @@ Every kit has the same screen. Each adds at most one thing:
 |---|---|---|
 | **Core WiD** | Athleticism, Composure, Reasoning | None |
 | **Heckboy** | Aberrance, Ferocity, Savvy | Two powers (below) |
-| **Second Contact** | Science, Culture, Muscle | **Tech** buttons (below) |
+| **Second Contact** | Science, Culture, Muscle | **Tech** slots instead of **Items** (below) |
 | **Oldheart** | Depravity, Hospitality, Fitness | Tick dice in the result, then **Reroll selected**. A running Corruption total is shown. |
 | **Ball Season** | Propriety, Stoutness, Yearning | None |
 | **This Isn't Happening** | Instincts, Endurance, Charity | None |
@@ -59,13 +61,18 @@ Every kit has the same screen. Each adds at most one thing:
 before rolling to use it: the pool grows and the strain is added to the tracker for you. Only one power
 can be used per roll, and **Use** unticks itself after the roll.
 
-**Tech.** You have one piece of Tech for each rank of Muscle. Press **Initialize / replace Tech**
-to set them all up: each piece starts at Science + Culture. Each piece's strength is shown next to
-the button. To use one, choose it in **Tech piece** and a die in **Tech target** before rolling.
-The die gets that piece's strength as a bonus, and the piece loses 1. A piece at 0 drops out of the
-list, and when every piece is at 0 both lists are disabled. Press the button again to start over.
-To stop a Danger's extermination, choose a piece in **Tech piece** and press **Sacrifice**: its
-strength drops to 0 and the history notes it.
+**Tech (Second Contact).** You get one Tech slot for each rank of Muscle as soon as the game starts.
+A slot stays empty until you use it, and each one starts at Science + Culture. Tech is used after
+rolling, like an item:
+
+1. Type a name in an empty slot (or pick a piece you named before).
+2. Choose a die in **Apply to die** and press **Use** on that piece.
+
+The die gets the piece's strength, and the piece loses 1 for next time. You can use several pieces
+on one test, each once. At 0 a piece is depleted and its buttons grey out. **Undo** takes a use
+back and returns the strength. To stop a Danger's extermination, press **Sacrifice** on a named
+piece that still works: its strength drops to 0 and the history notes it. At the start of each
+scenario, press **New scenario** to empty every slot again.
 
 **Changing kit.** A kit lasts the whole game, so picking another kit in **Genre kit** starts a
 new game: the character, names, strain, history, notes, session name and file path are all
@@ -113,7 +120,7 @@ notes, character details and the history.
 |---|---|
 | **Ctrl+R** | Roll again with the last attribute |
 | **C** / **S** | Open the Character / Session tab, then Tab or the arrow keys to move in |
-| **T** / **I** | Fold or unfold the strain tracker / the items |
+| **T** / **I** | Fold or unfold the strain tracker / the items (Tech in Second Contact) |
 | **D** | Pick a colour theme (it is remembered; the default is "danger", cream with red highlights) |
 | **Ctrl+L** | Show or hide the history log |
 | **Tab** / **Shift+Tab** | Move between controls |

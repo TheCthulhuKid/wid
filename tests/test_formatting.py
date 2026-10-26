@@ -49,4 +49,4 @@ def test_resources_line_by_kit(saved_session_factory):
         total_corruption=0,
         tech_pieces=second_contact.tech.pieces,
     )
-    assert line.endswith("| Tech remaining: Tech 1 at 2, Drone at 3, Tech 3 at 3")
+    assert line.endswith("| Tech remaining: Translator at 2, Drone at 3, Tech 3 at 3")

@@ -59,9 +59,6 @@ class RollRequest(FrozenModel):
     attribute: str = "Athleticism"
     expertise: bool = False
     power: PowerMode = PowerMode.NONE
-    # The die that gets the Tech bonus, and the piece of Tech that gives it.
-    tech_target: Index | None = None
-    tech_piece: Index | None = None
 
     def pool_size(self) -> int:
         return 4 - self.fear_level + int(self.assisted) + self.power.cost
@@ -73,22 +70,11 @@ class RollRequest(FrozenModel):
     @model_validator(mode="after")
     def validate_options(self) -> Self:
         self.validate_power()
-        self.validate_tech_target()
         return self
 
     def validate_power(self) -> None:
         if self.power != PowerMode.NONE and self.profile_id != Genre.HECKBOY:
             raise ValueError("Only Heckboy can use powers")
-
-    def validate_tech_target(self) -> None:
-        if (self.tech_target is None) != (self.tech_piece is None):
-            raise ValueError("Choose both a Tech piece and a die for it")
-        if self.tech_target is None:
-            return
-        if self.profile_id != Genre.SECOND_CONTACT:
-            raise ValueError("Only Second Contact can use Tech")
-        if self.tech_target >= self.pool_size():
-            raise ValueError("Tech target is outside the dice pool")
 
 
 class DieResult(FrozenModel):
@@ -125,6 +111,8 @@ class RollResult(FrozenModel):
     corruption_delta: Annotated[int, Field(ge=0)] = 0
     # Each item adds +1 to one die per test, so an item used here cannot be used again.
     applied_items: frozenset[BonusKind] = frozenset()
+    # Slots of the Tech pieces used on this test; each piece alters one die per test.
+    applied_tech: frozenset[Index] = frozenset()
 
     @model_validator(mode="after")
     def validate_pool(self) -> Self:
@@ -143,8 +131,14 @@ class RollResult(FrozenModel):
 
 
 class TechPiece(FrozenModel):
+    """A Tech slot; it stays empty until the player names it, which defines the piece."""
+
     name: str = ""
     strength: Annotated[int, Field(strict=True, ge=0)] = 0
+
+    @property
+    def defined(self) -> bool:
+        return bool(self.name.strip())
 
     def label(self, index: int) -> str:
         return self.name.strip() or f"Tech {index + 1}"
@@ -268,6 +262,16 @@ class StrainTracker(FrozenModel):
         return type(self)(boxes=boxes, names=self.names)
 
 
+def raised_die(result: RollResult, index: int, amount: int) -> tuple[DieResult, ...]:
+    """The result's dice with ``amount`` added to the die at ``index``."""
+    index = TypeAdapter(Index).validate_python(index)
+    if index >= len(result.dice):
+        raise ValueError("That die is outside the dice pool")
+    dice = list(result.dice)
+    dice[index] = DieResult(raw=dice[index].raw, bonus=dice[index].bonus + amount)
+    return tuple(dice)
+
+
 class RollSession(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -281,8 +285,9 @@ class RollSession(BaseModel):
     bonuses: NamedBonuses = Field(default_factory=NamedBonuses)
     # Heckboy power names, for the player's reference; they do not change rolls.
     power_names: tuple[str, str] = ("", "")
-    # Results before each item or expertise bonus, newest last; not saved and cleared by a roll.
-    _before_bonus: list[RollResult] = PrivateAttr(default_factory=list)
+    # Results before each bonus, newest last, with the Tech slot the bonus spent, if any.
+    # Not saved; cleared by a roll and by anything else that changes the Tech.
+    _before_bonus: list[tuple[RollResult, int | None]] = PrivateAttr(default_factory=list)
 
     @model_validator(mode="after")
     def validate_attributes(self) -> Self:
@@ -301,10 +306,14 @@ class RollSession(BaseModel):
         names[index] = name
         self.power_names = tuple(names)
 
-    def _named_bonus_result(self, kind: BonusKind) -> RollResult:
+    def _current_test(self) -> RollResult:
         previous = self.current_result
         if previous is None or previous.request.profile_id != self.profile_id:
             raise ValueError("Roll a test for the current genre kit before applying bonuses")
+        return previous
+
+    def _named_bonus_result(self, kind: BonusKind) -> RollResult:
+        previous = self._current_test()
         if not getattr(self.bonuses, kind.value).strip():
             raise ValueError(f"Name the {kind.value.replace('_', ' ')} before applying it")
         return previous
@@ -313,19 +322,38 @@ class RollSession(BaseModel):
         kind = TypeAdapter(BonusKind).validate_python(kind)
         if kind == BonusKind.EXPERTISE:
             raise ValueError("Expertise is not an item")
+        if not PROFILES[self.profile_id].uses_items:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no items")
         previous = self._named_bonus_result(kind)
-        index = TypeAdapter(Index).validate_python(index)
         if kind in previous.applied_items:
             raise ValueError(f"The {kind.value.replace('_', ' ')} was already used on this test")
-        if index >= len(previous.dice):
-            raise ValueError("Item target is outside the dice pool")
-        dice = list(previous.dice)
-        die = dice[index]
-        dice[index] = DieResult(raw=die.raw, bonus=die.bonus + 1)
+        dice = raised_die(previous, index, 1)
         candidate = previous.model_copy(
-            update={"dice": tuple(dice), "applied_items": previous.applied_items | {kind}}
+            update={"dice": dice, "applied_items": previous.applied_items | {kind}}
         )
         return self._replace_result(candidate)
+
+    def apply_tech(self, index: int, die: int) -> RollResult:
+        """Add a defined piece's strength to one die of the current test, then weaken it by 1."""
+        previous = self._current_test()
+        if self.tech is None:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
+        piece = self.tech.piece(index)
+        if not piece.defined:
+            raise ValueError(f"Name Tech {index + 1} before using it")
+        if piece.strength == 0:
+            raise ValueError(f"{piece.label(index)} is depleted")
+        if index in previous.applied_tech:
+            raise ValueError(f"{piece.label(index)} was already used on this test")
+        candidate = previous.model_copy(
+            update={
+                "dice": raised_die(previous, die, piece.strength),
+                "applied_tech": previous.applied_tech | {index},
+            }
+        )
+        spent = TechPiece(name=piece.name, strength=piece.strength - 1)
+        self.tech = self.tech.with_piece(index, spent)
+        return self._replace_result(candidate, tech_slot=index)
 
     def apply_expertise(self) -> RollResult:
         previous = self._named_bonus_result(BonusKind.EXPERTISE)
@@ -335,8 +363,8 @@ class RollSession(BaseModel):
         candidate = previous.model_copy(update={"request": request})
         return self._replace_result(candidate)
 
-    def _replace_result(self, candidate: RollResult) -> RollResult:
-        self._before_bonus.append(self.current_result)
+    def _replace_result(self, candidate: RollResult, *, tech_slot: int | None = None) -> RollResult:
+        self._before_bonus.append((self.current_result, tech_slot))
         self.current_result = candidate
         return candidate
 
@@ -346,8 +374,12 @@ class RollSession(BaseModel):
 
     def undo_bonus(self) -> RollResult:
         if not self._before_bonus:
-            raise ValueError("No item or expertise bonus to undo")
-        self.current_result = self._before_bonus.pop()
+            raise ValueError("No bonus to undo")
+        self.current_result, tech_slot = self._before_bonus.pop()
+        if tech_slot is not None:
+            piece = self.tech.pieces[tech_slot]
+            restored = TechPiece(name=piece.name, strength=piece.strength + 1)
+            self.tech = self.tech.with_piece(tech_slot, restored)
         return self.current_result
 
     def configure_attributes(self, ranks: tuple[int, ...]) -> AttributeSetup:
@@ -355,6 +387,8 @@ class RollSession(BaseModel):
             raise ValueError("Attributes are fixed until changing genre kit")
         candidate = AttributeSetup(profile_id=self.profile_id, ranks=ranks)
         self.attributes = candidate
+        if PROFILES[self.profile_id].has_tech:
+            self.start_scenario()
         return candidate
 
     def attribute_rank(self, attribute: str) -> int:
@@ -362,28 +396,25 @@ class RollSession(BaseModel):
             raise ValueError("Set attributes before starting the game")
         return self.attributes.rank(attribute)
 
-    def initialize_tech(self) -> TechState:
-        """Give every Tech slot (one per Muscle rank) full strength, keeping the piece names."""
-        if self.profile_id != Genre.SECOND_CONTACT:
-            raise ValueError("Only Second Contact can initialize Tech")
+    def start_scenario(self) -> TechState:
+        """Empty every Tech slot (one per Muscle rank); a slot gives Science + Culture when used."""
+        if not PROFILES[self.profile_id].has_tech:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
         science = self.attribute_rank("Science")
         culture = self.attribute_rank("Culture")
-        names = (
-            [piece.name for piece in self.tech.pieces]
-            if self.tech is not None
-            else [""] * self.attribute_rank("Muscle")
-        )
         candidate = TechState(
             science=science,
             culture=culture,
-            pieces=tuple(TechPiece(name=name, strength=science + culture) for name in names),
+            pieces=(TechPiece(strength=science + culture),) * self.attribute_rank("Muscle"),
         )
         self.tech = candidate
+        # An undo would hand strength back to a slot that has been emptied.
+        self._before_bonus.clear()
         return candidate
 
     def set_tech_name(self, index: int, name: str) -> TechState:
         if self.tech is None:
-            raise ValueError("Initialize Tech before naming it")
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
         piece = self.tech.piece(index)
         candidate = self.tech.with_piece(index, TechPiece(name=name, strength=piece.strength))
         self.tech = candidate
@@ -392,23 +423,25 @@ class RollSession(BaseModel):
     def sacrifice_tech(self, index: int) -> TechPiece:
         """Drop a piece to 0 strength to stop a Danger's extermination; returns it as it was."""
         if self.tech is None:
-            raise ValueError("Initialize Tech before sacrificing it")
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
         piece = self.tech.piece(index)
+        if not piece.defined:
+            raise ValueError(f"Name Tech {index + 1} before sacrificing it")
         if piece.strength == 0:
             raise ValueError(f"{piece.label(index)} is already at 0")
         self.tech = self.tech.with_piece(index, TechPiece(name=piece.name, strength=0))
+        # An undo would hand strength back to the sacrificed piece.
+        self._before_bonus.clear()
         return piece
 
     def roll(self, request: RollRequest, *, rng: Random) -> RollResult:
         self.validate_roll_request(request)
-        bonuses, next_tech = self.dice_bonuses(request)
         candidate = RollResult(
             request=request,
-            dice=tuple(DieResult(raw=rng.randint(1, 6), bonus=b) for b in bonuses),
+            dice=tuple(DieResult(raw=rng.randint(1, 6)) for _ in range(request.pool_size())),
             strain_delta=request.power.cost,
         )
         next_strain = self.strain.take(candidate.strain_delta)
-        self.tech = next_tech
         self.strain = next_strain
         self.total_strain += candidate.strain_delta
         self._before_bonus.clear()
@@ -420,21 +453,6 @@ class RollSession(BaseModel):
             raise ValueError("Request must match the session profile")
         if request.attribute_rank != self.attribute_rank(request.attribute):
             raise ValueError("Tested rank must match the assigned attribute value")
-
-    def dice_bonuses(self, request: RollRequest) -> tuple[list[int], TechState | None]:
-        """Per-die bonuses for a request and the Tech state after it; changes nothing."""
-        bonuses = [0] * request.pool_size()
-        tech = self.tech
-        if request.tech_target is None:
-            return bonuses, tech
-        if tech is None:
-            raise ValueError("Tech is unavailable; explicitly initialize it first")
-        piece = tech.piece(request.tech_piece)
-        if piece.strength == 0:
-            raise ValueError(f"{piece.label(request.tech_piece)} is depleted; choose another piece")
-        bonuses[request.tech_target] += piece.strength
-        spent = piece.model_copy(update={"strength": piece.strength - 1})
-        return bonuses, tech.with_piece(request.tech_piece, spent)
 
     def reroll(self, indices: set[int], *, rng: Random) -> RollResult:
         indices = TypeAdapter(set[Index]).validate_python(indices)
@@ -453,6 +471,7 @@ class RollSession(BaseModel):
             ),
             corruption_delta=len(indices),
             applied_items=previous.applied_items,
+            applied_tech=previous.applied_tech,
         )
         self.total_corruption += candidate.corruption_delta
         self._before_bonus.clear()

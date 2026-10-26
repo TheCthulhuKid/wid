@@ -129,7 +129,7 @@ def test_save_before_first_roll(tmp_path, genre, session_factory):
     assert len(result.dice) == 2
     assert result.request.attribute_rank == 2
     assert restored.session.total_strain == restored.session.total_corruption == 0
-    assert restored.session.tech is None
+    assert (restored.session.tech is None) == (genre != Genre.SECOND_CONTACT)
 
 
 @pytest.mark.parametrize("name", ["", " \t\n", "a" * 101])
@@ -183,15 +183,22 @@ def test_older_save_without_notes_loads_empty(tmp_path, saved_session_factory):
     assert SavedSession.load(path).notes == ""
 
 
-def test_tech_needs_one_slot_per_muscle_rank_and_a_charged_target(saved_session_factory):
+def test_tech_needs_one_slot_per_muscle_rank_and_only_second_contact(saved_session_factory):
     data = saved_session_factory(Genre.SECOND_CONTACT).model_dump()
     data["session"]["tech"]["pieces"] = data["session"]["tech"]["pieces"][:2]
     with pytest.raises(ValueError, match="one slot per Muscle rank"):
         SavedSession.model_validate(data)
 
     data = saved_session_factory(Genre.SECOND_CONTACT).model_dump()
-    data["session"]["tech"]["pieces"][0]["strength"] = 0
-    with pytest.raises(ValueError, match="requires available Tech"):
+    data["session"]["current_result"]["applied_tech"] = {3}
+    with pytest.raises(ValueError, match="outside the Tech slots"):
+        SavedSession.model_validate(data)
+
+    data = saved_session_factory().model_dump()
+    data["session"]["tech"] = saved_session_factory(Genre.SECOND_CONTACT).model_dump()["session"][
+        "tech"
+    ]
+    with pytest.raises(ValueError, match="Only Second Contact"):
         SavedSession.model_validate(data)
 
 
@@ -212,4 +219,4 @@ def test_session_factory_returns_independent_games(session_factory, genre):
 
     assert second.current_result is None
     assert second.total_strain == second.total_corruption == 0
-    assert second.tech is None
+    assert second.tech == session_factory(genre).tech

@@ -48,16 +48,11 @@ class HistoryEntry(FrozenModel):
         request = result.request
         strain = result.strain_delta if self.charged else 0
         corruption = result.corruption_delta if self.charged else 0
-        target = (
-            f"piece {request.tech_piece + 1} on die {request.tech_target + 1}"
-            if request.tech_target is not None
-            else "none"
-        )
         text = (
             f"{self.action}: {request.profile_id.value}, {request.attribute} "
             f"rank {request.attribute_rank}; assisted={request.assisted}, "
             f"fear={request.fear_level}, expertise={request.expertise}, "
-            f"power={request.power.value}, Tech target={target}\n"
+            f"power={request.power.value}\n"
         )
         if request.expertise:
             text += f"Expertise name: {self.expertise_name}\n"

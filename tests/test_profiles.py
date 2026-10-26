@@ -11,7 +11,7 @@ def test_core_profile():
 def test_genre_labels_and_capabilities():
     expected = {
         Genre.HECKBOY: (("Aberrance", "Ferocity", "Savvy"), True, False, False, True),
-        Genre.SECOND_CONTACT: (("Science", "Culture", "Muscle"), False, True, False, True),
+        Genre.SECOND_CONTACT: (("Science", "Culture", "Muscle"), False, True, False, False),
         Genre.OLDHEART: (("Depravity", "Hospitality", "Fitness"), False, False, True, True),
         Genre.BALL_SEASON: (("Propriety", "Stoutness", "Yearning"), False, False, False, True),
         Genre.THIS_ISNT_HAPPENING: (

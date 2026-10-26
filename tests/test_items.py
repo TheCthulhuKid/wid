@@ -14,6 +14,7 @@ from wid.rolls import (
 )
 
 ITEM_KINDS = (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM)
+ITEM_GENRES = [genre for genre in Genre if PROFILES[genre].uses_items]
 
 
 def roll_test(session, **options):
@@ -27,7 +28,7 @@ def roll_test(session, **options):
     )
 
 
-@pytest.mark.parametrize("genre", list(Genre))
+@pytest.mark.parametrize("genre", ITEM_GENRES)
 def test_items_and_expertise_for_every_kit(session_factory, genre):
     session = session_factory(genre)
     for kind in BonusKind:
@@ -50,6 +51,14 @@ def test_items_and_expertise_for_every_kit(session_factory, genre):
     assert session.total_strain == session.total_corruption == 0
     with pytest.raises(ValidationError):
         result.dice[0].bonus = 99
+
+
+def test_second_contact_has_no_items(session_factory):
+    session = session_factory(Genre.SECOND_CONTACT)
+    session.set_bonus_name(BonusKind.APPROPRIATE_ITEM, "Sword")
+    roll_test(session)
+    with pytest.raises(ValueError, match="Second Contact has no items"):
+        session.apply_item(BonusKind.APPROPRIATE_ITEM, 0)
 
 
 @pytest.mark.parametrize("kind", ITEM_KINDS)
@@ -87,14 +96,11 @@ def test_modifiers_preserve_resources_and_result_costs(session_factory, genre):
     options = {}
     if genre == Genre.HECKBOY:
         options["power"] = PowerMode.ERRATIC
-    if genre == Genre.SECOND_CONTACT:
-        session.initialize_tech()
-        options.update(tech_target=0, tech_piece=0)
     initial = roll_test(session, **options)
     if genre == Genre.OLDHEART:
         initial = session.reroll({0, 1}, rng=Random(1))
     before = session.model_dump(exclude={"current_result"})
-    for kind in ITEM_KINDS:
+    for kind in ITEM_KINDS if PROFILES[genre].uses_items else ():
         result = session.apply_item(kind, 0)
         assert result.strain_delta == initial.strain_delta
         assert result.corruption_delta == initial.corruption_delta

@@ -72,6 +72,40 @@ class BonusName(Input):
         self.kind = kind
 
 
+class TechName(Input):
+    """Text box naming the Tech piece at ``index``."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__(
+            placeholder="Empty: name it when you use it", id=f"tech-name-{index}", **kwargs
+        )
+        self.index = index
+
+
+class TechUseButton(Button):
+    """Adds the Tech piece at ``index`` to the chosen die of the current test."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__("Use", id=f"use-tech-{index}", variant="primary", **kwargs)
+        self.index = index
+
+
+class SacrificeButton(Button):
+    """Drops the Tech piece at ``index`` to 0 strength."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__(
+            "Sacrifice",
+            id=f"sacrifice-tech-{index}",
+            tooltip="Drop this piece to 0 to stop an extermination",
+            **kwargs,
+        )
+        self.index = index
+
+
+# Muscle, which sets the number of Tech slots, is ranked 1 to 3.
+TECH_SLOTS = 3
+
 LOCKED_NOTE = "Locked: boxes before a marked wound stay marked until that wound is cleared."
 NOT_READY_NOTE = "Mark all the strain before this wound first."
 
@@ -253,32 +287,35 @@ class KitControls(Vertical):
                         yield PowerName(index)
                     yield PowerToggle(mode)
         yield Static(id="pool")
-        with Vertical(id="tech-controls"):
-            yield Static("Tech: not initialized", id="tech-strength")
-            yield Static(id="tech-attributes")
-            yield Button("Initialize / replace Tech", id="initialize-tech")
-            yield Label("Tech piece")
-            yield Select([("No Tech", -1)], value=-1, allow_blank=False, id="tech-piece")
-            yield Button("Sacrifice", id="sacrifice-tech", tooltip="Drop this piece to 0")
-            yield Label("Tech target")
-            yield Select([("No Tech", -1)], value=-1, allow_blank=False, id="tech-target")
 
 
 class ItemsGroup(Vertical):
-    """The target die and the named items."""
+    """The target die, then the named items or, in a kit with Tech, the Tech slots."""
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="item-target-row"):
             yield Label("Apply to die")
             yield Select([("Roll first", -1)], value=-1, allow_blank=False, id="item-target")
             yield Button("Undo", id="undo-bonus", disabled=True)
-        for kind in (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM):
-            label = BONUS_LABELS[kind]
-            with Horizontal(classes="named-bonus"):
-                with Vertical(classes="field"):
-                    yield Label(label)
-                    yield BonusName(kind, placeholder=f"{label} name")
-                yield BonusButton("+1 value", kind, variant="primary", disabled=True)
+        with Vertical(id="item-rows"):
+            for kind in (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM):
+                label = BONUS_LABELS[kind]
+                with Horizontal(classes="named-bonus"):
+                    with Vertical(classes="field"):
+                        yield Label(label)
+                        yield BonusName(kind, placeholder=f"{label} name")
+                    yield BonusButton("+1 value", kind, variant="primary", disabled=True)
+        with Vertical(id="tech-controls"):
+            for index in range(TECH_SLOTS):
+                with Horizontal(classes="named-bonus", id=f"tech-row-{index}"):
+                    with Vertical(classes="field"):
+                        yield Label(id=f"tech-label-{index}")
+                        yield TechName(index)
+                    yield TechUseButton(index, disabled=True)
+                    yield SacrificeButton(index)
+            with Horizontal(id="tech-scenario-row"):
+                yield Static(id="tech-attributes")
+                yield Button("New scenario", id="new-scenario")
 
 
 class StrainGroup(Vertical):
