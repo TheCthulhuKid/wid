@@ -38,6 +38,15 @@ def test_bonuses_are_offered_once_named_and_logged_without_a_cost():
     assert "Appropriate Item Sword: +1 to die 2" in str(game.history[-1])
 
 
+def test_strain_and_standing_changes_are_logged():
+    game = started(Genre.BALL_SEASON)
+    game.take_strain()
+    assert str(game.history[-1]) == "Took 1 strain: 1 strain, 0 wounds."
+    game.set_standing(4)
+    assert str(game.history[-1]) == "Standing moved to Scandalous (dot 5)."
+    assert game.set_standing(4) == ""
+
+
 def test_new_character_keeps_history_and_file_but_a_new_kit_starts_over():
     game = started()
     game.notes = "Keep the map"

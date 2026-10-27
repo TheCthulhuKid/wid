@@ -16,7 +16,14 @@ from typing import Any, Literal
 from pydantic import ValidationError
 
 from wid.export import history_markdown
-from wid.formatting import BONUS_LABELS, check_summary, spend_summary
+from wid.formatting import (
+    BONUS_LABELS,
+    check_summary,
+    resources_notice,
+    spend_summary,
+    standing_notice,
+    strain_notice,
+)
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre, WiDProfile
 from wid.rolls import (
@@ -194,18 +201,19 @@ class Game:
 
     def set_strain_box(self, index: int, marked: bool) -> str:
         self.session.strain = self.session.strain.set_box(index, marked)
-        return ""
+        change = "Marked" if marked else "Cleared"
+        return self.notice(strain_notice(f"{change} strain box {index + 1}", self.session.strain))
 
     def take_strain(self) -> str:
         # Taking strain starts after the last marked wound, so after Defeat nothing is left.
         if self.session.strain.defeated:
             raise ValueError("Defeat is already marked")
         self.session.strain = self.session.strain.take(1)
-        return ""
+        return self.notice(strain_notice("Took 1 strain", self.session.strain))
 
     def take_wound(self) -> str:
         self.session.strain = self.session.strain.take_wound()
-        return ""
+        return self.notice(strain_notice("Took a wound", self.session.strain))
 
     def start_scenario(self) -> str:
         tech = self.session.start_scenario()
@@ -216,8 +224,8 @@ class Game:
         return self.notice(f"Sacrificed {piece.label(index)}: strength {piece.strength} → 0.")
 
     def adjust_resources(self, amount: int) -> str:
-        self.session.adjust_resources(amount)
-        return ""
+        pool = self.session.adjust_resources(amount)
+        return self.notice(resources_notice(amount, pool))
 
     def spend_resources(self, effect: ResourceEffect) -> str:
         spend = self.session.spend_resources(effect, rng=self.rng)
@@ -240,8 +248,10 @@ class Game:
         return self.notice("Manifestation removed by hand.")
 
     def set_standing(self, standing: int) -> str:
-        self.session.set_standing(standing)
-        return ""
+        before = self.session.standing
+        standing = self.session.set_standing(standing)
+        # Clicking the dot already chosen moves nothing, so there is nothing to log.
+        return self.notice(standing_notice(standing)) if standing != before else ""
 
     def roll_one_die(self) -> str:
         return self.notice(f"Rolled 1d6: {roll_d6(self.rng)}.")

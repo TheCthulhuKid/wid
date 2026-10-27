@@ -17,6 +17,7 @@ from wid.rolls import (
     StrainTracker,
     TechPiece,
     TechState,
+    standing_label,
 )
 
 BONUS_LABELS = {
@@ -177,6 +178,11 @@ def strain_counts(tracker: StrainTracker) -> str:
     return f"{text} — Defeat" if tracker.defeated else text
 
 
+def strain_notice(change: str, tracker: StrainTracker) -> str:
+    """History line for a strain change, such as ``Took 1 strain: 3 strain, 1 wound.``"""
+    return f"{change}: {strain_counts(tracker)}."
+
+
 def strain_summary(tracker: StrainTracker) -> str:
     """Title of the collapsible strain section, so the state shows while it is folded away."""
     return f"Strain tracker: {strain_counts(tracker)}"
@@ -187,6 +193,15 @@ def strain_status(tracker: StrainTracker) -> str:
     if not tracker.defeated:
         return "Mark strain as it is taken. Mark all the strain before a wound first."
     return f"Defeat — character ended. {tracker.names[2]}".rstrip()
+
+
+def standing_notice(standing: int) -> str:
+    # Three dots share the label Reputable, so the dot says which one.
+    return f"Standing moved to {standing_label(standing)} (dot {standing + 1})."
+
+
+def resources_notice(amount: int, pool: int) -> str:
+    return f"Resources {amount:+d}: {pool} in the pool."
 
 
 def corruption_status(session: RollSession) -> str:
