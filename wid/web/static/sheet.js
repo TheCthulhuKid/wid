@@ -169,8 +169,20 @@ function toggleTheme() {
   else root.dataset.theme = next;
 }
 
+// Copy result: the result as text, which the sheet carries on the button.
+async function copyResult(button) {
+  try {
+    await navigator.clipboard.writeText(button.dataset.copy);
+    feedback("Copied the result.");
+  } catch {
+    feedback("The browser did not let wid copy; select the result and copy it instead.");
+  }
+}
+
 document.addEventListener("click", (event) => {
   if (event.target.closest("[data-theme-toggle]")) toggleTheme();
+  const copy = event.target.closest("[data-copy]");
+  if (copy) copyResult(copy);
   const close = event.target.closest("[data-close]");
   if (close) close.closest("dialog").close();
   const button = event.target.closest("[data-format]");

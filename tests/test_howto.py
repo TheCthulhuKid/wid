@@ -42,6 +42,7 @@ SCREEN_LABELS = [
     "Roll 1d6",
     "Repeat roll",
     "Download history",
+    "Copy result",
     "Download save",
     "Upload a save",
     "Colours",

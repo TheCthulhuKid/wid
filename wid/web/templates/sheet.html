@@ -304,6 +304,7 @@
       <button formaction="/actions/roll" title="Roll the last attribute again (Ctrl+R)" {% if not session.attributes %}disabled{% endif %}>Repeat roll</button>
       <button formaction="/actions/roll-d6">Roll 1d6</button>
       <button formaction="/actions/undo" title="Take back the last change" {% if not game.can_undo %}disabled{% endif %}>Undo</button>
+      <button type="button" data-copy="{{ result_text }}" title="Copy the dice as text" {% if not result %}disabled{% endif %}>Copy result</button>
     </div>
     <h2>History</h2>
     {% if history %}

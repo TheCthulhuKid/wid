@@ -31,6 +31,10 @@ lists every die as *hit*, *miss* or *fumble* (green, yellow, red) with the total
 **Roll 1d6** (beside **Show log**) rolls a single die outside a test, for anything the game asks
 you to roll, and writes the result to the history.
 
+**Copy result** (under the result) copies the attribute, each die and the totals as plain text,
+ready to paste into a chat. In the terminal it goes through the terminal's clipboard, which most
+terminals pass on (macOS Terminal does not).
+
 **Undo** (under the result) takes back the last change to the sheet: a roll, a reroll, an item,
 expertise or Tech bonus, strain, Standing, Resources, Corruption or a manifestation. Press it
 again for the one before, up to 50 changes. The history keeps what happened and notes each undo.

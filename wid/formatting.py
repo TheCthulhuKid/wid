@@ -75,6 +75,11 @@ def summary_parts(result: RollResult) -> list[Part]:
     ]
 
 
+def result_text(result: RollResult) -> str:
+    """The result as plain text to paste elsewhere, such as a chat: attribute, dice and totals."""
+    return "\n".join((attribute_label(result), describe_dice(result), summarize(result)))
+
+
 def summarize(result: RollResult) -> str:
     return _plain(summary_parts(result))
 

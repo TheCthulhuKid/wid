@@ -30,6 +30,7 @@ from wid.formatting import (
     pool_line,
     resources_line,
     resources_reminder,
+    result_text,
     strain_status,
     strain_summary,
     tech_starting_line,
@@ -337,6 +338,7 @@ class RollerApp(SessionActions, App):
         self.update_preview()
         self.write_new_history()
         self.query_one("#undo", Button).disabled = not self.game.can_undo
+        self.query_one("#copy-result", Button).disabled = self.session.current_result is None
         # Every change ends here, so this is where the recovery copy follows the game.
         if warning := self.game.keep_recovery():
             self.feedback(warning)
@@ -610,6 +612,14 @@ class RollerApp(SessionActions, App):
         elif (handler := APP_BUTTONS.get(button.id)) is not None:
             handler(self)
 
+    def copy_result(self) -> None:
+        """Copy the shown result as text, for pasting into a chat; most terminals pass it on."""
+        result = self.session.current_result
+        if result is None:
+            return
+        self.copy_to_clipboard(result_text(result))
+        self.feedback("Copied the result.")
+
     def ask_spend_resources(self) -> None:
         self.push_screen(SpendResources(), self.spend_resources)
 
@@ -693,6 +703,7 @@ TYPED_BUTTONS: dict[type[Button], Callable[[RollerApp, Button], None]] = {
 
 # The other buttons, by id, that open a dialog or need more than one game call.
 APP_BUTTONS: dict[str, Callable[[RollerApp], None]] = {
+    "copy-result": RollerApp.copy_result,
     "save-session": RollerApp.action_save_session,
     "export-history": RollerApp.action_export_history,
     "new-character": RollerApp.action_new_character,

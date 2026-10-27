@@ -438,7 +438,11 @@ class RollerGroup(VerticalScroll):
         yield Static("Roll a test to see individual outcomes.", id="dice", markup=False)
         yield Static(id="summary")
         yield Static(id="resources")
-        yield Button("Undo", id="undo", disabled=True, tooltip="Take back the last change")
+        with Horizontal(classes="button-row"):
+            yield Button("Undo", id="undo", disabled=True, tooltip="Take back the last change")
+            yield Button(
+                "Copy result", id="copy-result", disabled=True, tooltip="Copy the dice as text"
+            )
         with Vertical(id="reroll-controls"):
             yield Label("Oldheart: select dice from the current test")
             for index in range(OLDHEART_MAX_POOL):
