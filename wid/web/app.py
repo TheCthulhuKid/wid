@@ -7,10 +7,10 @@ Three checks guard every request, because save and export can write files:
   ``SameSite=Strict`` cookie, so another site cannot borrow the player's session. The cookie is
   named after the token, because browsers share cookies across ports: with one name, a second
   ``wid --web`` would replace the first one's cookie and lock its page out;
-- actions must carry htmx's ``HX-Request`` header. Browsers only let another origin add a custom
-  header after a CORS check, which this app never grants. That matters because SameSite treats
-  every ``localhost`` port as the same site, so the cookie alone would not stop a page served
-  by some other local program.
+- actions must carry the ``HX-Request`` header that ``sheet.js`` adds. Browsers only let another
+  origin add a custom header after a CORS check, which this app never grants. That matters
+  because SameSite treats every ``localhost`` port as the same site, so the cookie alone would
+  not stop a page served by some other local program.
 """
 
 import asyncio

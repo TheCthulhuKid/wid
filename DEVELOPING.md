@@ -99,17 +99,18 @@ wid/
 ├── game.py             # One sitting: the state and actions every front end drives
 ├── export.py           # Markdown text of the action history
 ├── history.py          # Structured action history entries and their text rendering
-├── sessions.py         # Versioned JSON snapshots and atomic local storage
-├── storage.py          # Atomic file writes shared by saves
+├── sessions.py         # The versioned save format and the session file path rules
+├── storage.py          # Atomic file writes for saves, exports and settings
 ├── selftest.py         # `wid --self-test`: the app checked headless, for release builds
 ├── settings.py         # Remembered preferences in a small JSON file
-└── ui/
-    ├── app.py          # Textual front end: shows the game, passes actions to it
-    ├── sessions.py     # Save, load, export and new-character dialogs
-    ├── widgets.py      # Character, options, session, and result widgets
-    ├── dialogs.py      # Confirmation screens
-    ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
-    └── roller.tcss     # Bundled interface styles
+├── ui/
+│   ├── app.py          # Textual front end: shows the game, passes actions to it
+│   ├── sessions.py     # Save, load, export and new-character dialogs
+│   ├── widgets.py      # Character, options, session, and result widgets
+│   ├── dialogs.py      # Confirmation screens
+│   ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
+│   ├── themes.py       # The default danger theme: cream paper, lavender fields, red highlights
+│   └── roller.tcss     # Bundled interface styles
 └── web/
     ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser with a token
     ├── app.py          # FastAPI app: the page, POST /actions/<name>, and the safety checks
@@ -131,8 +132,9 @@ the game before each action (`collect`), then redraws from it (`refresh_sheet`),
 front end only needs the same two steps; the browser version does them per request (each action
 posts the whole sheet, `collect` copies it in, the action runs, the sheet comes back). Every web
 request must come from `127.0.0.1` or `localhost`, carry the per-launch token cookie, and, for
-actions, htmx's `HX-Request` header (see `wid/web/app.py` for why each check is needed). The
-cookie is named after its token, so two `wid --web` games can run at once in one browser.
+actions, the `HX-Request` header that `sheet.js` adds (see `wid/web/app.py` for why each check
+is needed). The cookie is named after its token, so two `wid --web` games can run at once in one
+browser.
 Persistence depends on the models, not the interface.
 Package initializers do not import the application.
 
@@ -142,12 +144,13 @@ Package initializers do not import the application.
 The terminal and the browser version read and write the same files.
 A file holds the session name, character details, notes, genre, attribute ranks, the roll
 options, item and expertise names, the Heckboy power names and the power chosen for the next
-roll, the Tech slots and their names, the Oldheart manifestations, the Ball Season Standing, the This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their names, cumulative
-power strain, Corruption, the current dice and result, selected reroll dice, and the full
-history. Loading never rolls dice, charges resources or refills Tech. Window layout, the
-Edit/Preview choice, the undo history for bonuses and the random generator's state are not
-saved, and the theme lives in the settings file instead. So **Undo** is unavailable right after a
-load, until the next bonus.
+roll, the Tech slots and their names, the Oldheart manifestations, the Ball Season Standing, the
+This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their
+names, cumulative power strain, Corruption, the current dice and result, the dice selected for a
+reroll and the die chosen for an item, and the full history. Loading never rolls dice, charges
+resources or refills Tech. Window layout, the Edit/Preview choice, the undo history for bonuses
+and the random generator's state are not saved, and the theme lives in the settings file
+instead. So **Undo** is unavailable right after a load, until the next bonus.
 
 - The format is versioned (`version: 2`); files from an unknown version, a marked wound with an
   unmarked box before it, or invalid values are rejected without replacing the current game. A

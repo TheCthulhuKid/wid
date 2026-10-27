@@ -28,7 +28,7 @@ from wid.rolls import (
 from wid.web.forms import NeedsConfirmation
 
 # The terminal's Danger theme on paper, and a dark variant for dark mode or the page's switch. The
-# outcome colours are checked against the paper and the fields (tests/test_web_sheet.py).
+# outcome colours are checked against the paper the dice sit on (tests/test_web_sheet.py).
 COLOURS = {
     "light": {
         "paper": "#FBF8F1",
