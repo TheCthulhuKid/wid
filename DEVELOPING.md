@@ -149,7 +149,7 @@ Edit/Preview choice, the undo history for bonuses and the random generator's sta
 saved, and the theme lives in the settings file instead. So **Undo** is unavailable right after a
 load, until the next bonus.
 
-- The format is versioned (`version: 1`); files from an unknown version, a marked wound with an
+- The format is versioned (`version: 2`); files from an unknown version, a marked wound with an
   unmarked box before it, or invalid values are rejected without replacing the current game. A
   file from a newer wid says so and asks the player to update.
 - A change to the save format bumps `version` on `SavedSession` and adds one function to

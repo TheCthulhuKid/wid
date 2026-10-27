@@ -92,6 +92,9 @@ class SessionActions:
 
     async def action_quit(self) -> None:
         """Ctrl+Q, which asks first when quitting would lose unsaved changes."""
+        # Pressed again while the question is open, it would stack a second copy.
+        if isinstance(self.screen, ConfirmSessionAction) and self.screen.message == QUIT_QUESTION:
+            return
         # An open dialog covers the fields, and the action that opened it took them already.
         if self.screen is self.screen_stack[0]:
             self.collect()

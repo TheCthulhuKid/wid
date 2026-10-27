@@ -31,9 +31,19 @@ class CharacterDetails(FrozenModel):
 
 
 SaveData = dict[str, Any]
+
+
+def note_succumbed_checks(data: SaveData) -> SaveData:
+    """Version 2 notes on each manifestation check whether the character had already succumbed.
+
+    Version 1 checks have no note, and its default (not succumbed) is how they were worded then.
+    """
+    return data
+
+
 # Each function turns a save file of the version it is keyed by into the next version's data.
 # A change to the save format bumps ``SavedSession.version`` and adds one function here.
-UPGRADES: dict[int, Callable[[SaveData], SaveData]] = {}
+UPGRADES: dict[int, Callable[[SaveData], SaveData]] = {1: note_succumbed_checks}
 
 
 def upgrade_step(step: Callable[[SaveData], SaveData], data: SaveData, version: int) -> SaveData:
@@ -45,7 +55,7 @@ def upgrade_step(step: Callable[[SaveData], SaveData], data: SaveData, version: 
 
 
 class SavedSession(FrozenModel):
-    version: Literal[1] = 1
+    version: Literal[2] = 2
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
     session: RollSession
     draft: RollRequest
@@ -61,7 +71,7 @@ class SavedSession(FrozenModel):
         """Bring an older save file up to the current version, one step at a time.
 
         A file from a newer wid, or with a version no wid wrote, is refused with a message that
-        says so, instead of pydantic's "Input should be 1".
+        says so, instead of pydantic's "Input should be 2".
         """
         if not isinstance(data, dict):
             return data

@@ -47,7 +47,7 @@ def test_invalid_or_corrupt_files_are_rejected(tmp_path, saved_session_factory):
     path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match="assigned attribute rank"):
         SavedSession.load(path)
-    data["version"] = 2
+    data["version"] = 3
     with pytest.raises(ValueError, match="saved by a newer wid"):
         SavedSession.model_validate(data)
     data["version"] = [1]
@@ -62,8 +62,10 @@ def test_notes_are_saved_and_older_saves_load_without_them(tmp_path, saved_sessi
     path.write_text(json.dumps(data), encoding="utf-8")
     assert SavedSession.load(path).notes == "Character: Ada 🎲"
     data.pop("notes")
+    data["version"] = 1
     path.write_text(json.dumps(data), encoding="utf-8")
-    assert SavedSession.load(path).notes == ""
+    older = SavedSession.load(path)
+    assert (older.notes, older.version) == ("", 2)
 
 
 def test_tech_needs_one_slot_per_muscle_rank(saved_session_factory):

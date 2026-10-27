@@ -85,6 +85,8 @@ class ManifestationCheck(FrozenModel):
 
     dice: tuple[Annotated[int, Field(strict=True, ge=1, le=6)], ...] = Field(min_length=1)
     score: Annotated[int, Field(strict=True, ge=1)]
+    # Made after the character succumbed, so a manifestation adds nothing.
+    succumbed: bool = False
 
     @property
     def total(self) -> int:
@@ -95,8 +97,11 @@ class ManifestationCheck(FrozenModel):
         return self.total <= self.score
 
 
-def manifestation_check(amount: int, score: int, rng: Random) -> ManifestationCheck:
-    return ManifestationCheck(dice=tuple(roll_d6(rng) for _ in range(amount)), score=score)
+def manifestation_check(
+    amount: int, score: int, rng: Random, *, succumbed: bool = False
+) -> ManifestationCheck:
+    dice = tuple(roll_d6(rng) for _ in range(amount))
+    return ManifestationCheck(dice=dice, score=score, succumbed=succumbed)
 
 
 class RollRequest(FrozenModel):
@@ -581,9 +586,10 @@ class RollSession(BaseModel):
         """Gain corruption in one go and make the manifestation check it calls for."""
         self._check_corruption_kit()
         amount = TypeAdapter(Annotated[int, Field(strict=True, ge=1)]).validate_python(amount)
-        check = manifestation_check(amount, self.total_corruption + amount, rng)
+        score = self.total_corruption + amount
+        check = manifestation_check(amount, score, rng, succumbed=self.succumbed)
         self.total_corruption += amount
-        if check.triggered and not self.succumbed:
+        if check.triggered and not check.succumbed:
             self.manifestations = (*self.manifestations, "")
         return check
 

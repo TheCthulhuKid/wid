@@ -109,7 +109,10 @@ def tech_strengths(pieces: tuple[TechPiece, ...]) -> str:
 
 def check_summary(check: ManifestationCheck) -> str:
     """The dice of a manifestation check and what they mean."""
-    outcome = "a manifestation!" if check.triggered else "no manifestation"
+    if check.succumbed:
+        outcome = "no effect: the character has already succumbed"
+    else:
+        outcome = "a manifestation!" if check.triggered else "no manifestation"
     dice = " + ".join(str(die) for die in check.dice)
     return (
         f"Manifestation check: {dice} = {check.total} against Corruption {check.score}, {outcome}"

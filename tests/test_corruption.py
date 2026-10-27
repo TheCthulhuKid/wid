@@ -5,6 +5,7 @@ import pytest
 from helpers import ScriptedRandom, change_genre, click, start_game, text
 from textual.widgets import Input, Select
 
+from wid.formatting import check_summary
 from wid.profiles import Genre
 from wid.rolls import OLDHEART_MAX_POOL, RollRequest, manifestation_check
 from wid.sessions import SavedSession
@@ -26,8 +27,9 @@ def test_corruption_is_gained_with_a_check_until_the_character_succumbs(session_
     session.add_manifestation()
     session.add_corruption(1, rng=ScriptedRandom([1]))
     assert session.succumbed
-    session.add_corruption(1, rng=ScriptedRandom([1]))
+    check = session.add_corruption(1, rng=ScriptedRandom([1]))
     assert len(session.manifestations) == 3
+    assert check_summary(check).endswith("no effect: the character has already succumbed")
     with pytest.raises(ValueError, match="Core WiD has no Corruption"):
         session_factory().add_corruption(1, rng=Random(0))
 
