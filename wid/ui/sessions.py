@@ -5,10 +5,11 @@ from textual.widgets import Input, Select
 from wid.formatting import (
     NEW_CHARACTER_QUESTION,
     QUIT_QUESTION,
+    RECOVERY_QUESTION,
     load_question,
     replace_question,
 )
-from wid.game import Game
+from wid.game import Game, player_message
 from wid.profiles import Genre
 from wid.sessions import SavedSession
 from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
@@ -105,9 +106,28 @@ class SessionActions:
 
     def finish_quit(self, confirmed: bool) -> None:
         if confirmed:
+            # The player chose to lose the changes, so their recovery copy goes too.
+            self.game.discard_recovery()
             self.exit()
         else:
             self.feedback("Quit canceled; the game is still open.")
+
+    def offer_recovery(self) -> None:
+        """On start, offer back the game an earlier run closed without saving."""
+        if self.game.recovery_available():
+            question = ConfirmSessionAction(RECOVERY_QUESTION, "Restore", "Start fresh")
+            self.push_screen(question, self.finish_recovery)
+
+    def finish_recovery(self, confirmed: bool) -> None:
+        if not confirmed:
+            return
+        try:
+            message = self.game.restore_recovery()
+        except ValueError as error:
+            self.feedback(player_message(error))
+            return
+        self.show_game()
+        self.feedback(message)
 
     def action_load_session(self) -> None:
         if self.pending_genre is not None:

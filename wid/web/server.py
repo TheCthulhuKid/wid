@@ -9,6 +9,7 @@ import webbrowser
 import uvicorn
 
 from wid.game import Game
+from wid.settings import recovery_path
 from wid.web.app import create_app
 
 # The loopback address only, so nothing outside this machine can reach the game.
@@ -55,7 +56,8 @@ def serve(*, port: int | None = None, open_browser: bool = True) -> int:
     # The socket already listens, so a browser that is quicker than the server just waits.
     if open_browser:
         webbrowser.open(url)
-    server = uvicorn.Server(uvicorn.Config(create_app(Game(), token), log_level="warning"))
+    game = Game(recovery_path=recovery_path())
+    server = uvicorn.Server(uvicorn.Config(create_app(game, token), log_level="warning"))
     with sock:
         try:
             server.run(sockets=[sock])

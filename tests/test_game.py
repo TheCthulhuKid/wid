@@ -102,6 +102,28 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     assert str(error.value) == f"Could not save session: No such file or directory: {loaded.path}"
 
 
+def test_unsaved_changes_are_kept_for_recovery_until_saved(tmp_path):
+    recovery = tmp_path / "recovery.json"
+    game = Game(rng=ScriptedRandom([4] * 8), recovery_path=recovery)
+    game.start_game((1, 2, 3))
+    game.roll()
+    game.path = str(tmp_path / "game.json")
+    assert game.keep_recovery() == ""
+    assert recovery.is_file()
+
+    restored = Game(recovery_path=recovery)
+    assert restored.recovery_available()
+    restored.restore_recovery()
+    assert restored.session.model_dump() == game.session.model_dump()
+    assert (restored.history, restored.name, restored.path) == (game.history, "", game.path)
+    assert restored.has_unsaved_state()
+
+    game.name = "Friday"
+    game.save()
+    game.keep_recovery()
+    assert not recovery.exists()
+
+
 def test_export_writes_markdown_beside_the_session_file(tmp_path):
     game = started()
     game.roll()

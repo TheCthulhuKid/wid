@@ -310,12 +310,12 @@
   </div>
 
   {% if ask %}
-  {#- Shown as a modal by sheet.js; Replace sends the action again with its flag set. -#}
+  {#- Shown as a modal by sheet.js; the confirm button sends the action again with its flag set. -#}
   <dialog class="ask" data-ask aria-labelledby="ask-question">
     <p id="ask-question">{{ ask.question }}</p>
     <div class="row">
-      <button class="primary" formaction="/actions/{{ ask.action }}" name="{{ ask.flag }}" value="{{ ask.value }}">Replace</button>
-      <button type="button" data-close>Cancel</button>
+      <button class="primary" formaction="/actions/{{ ask.action }}" name="{{ ask.flag }}" value="{{ ask.value }}">{{ ask.confirm }}</button>
+      <button type="button" data-close>{{ ask.cancel }}</button>
     </div>
   </dialog>
   {% endif %}

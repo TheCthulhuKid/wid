@@ -26,7 +26,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.templating import Jinja2Templates
 
 from wid.game import Game, player_message
-from wid.web.forms import ACTIONS, NeedsConfirmation, SheetForm, collect
+from wid.web.forms import ACTIONS, NeedsConfirmation, SheetForm, collect, recovery_question
 from wid.web.view import COLOURS, css_variables, sheet_context
 
 HOSTS = ["127.0.0.1", "localhost"]
@@ -94,7 +94,7 @@ def create_app(game: Game, token: str) -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     async def page(request: Request) -> Response:
         async with lock:
-            return render(request, "page.html", game, "")
+            return render(request, "page.html", game, "", ask=recovery_question(game))
 
     @app.post("/actions/{name}", response_class=HTMLResponse)
     async def act(name: str, request: Request) -> Response:
@@ -114,6 +114,8 @@ def create_app(game: Game, token: str) -> FastAPI:
                 message, ask = "", question
             except ValueError as error:
                 message = player_message(error)
+            if warning := game.keep_recovery():
+                message = f"{message} {warning}".strip()
             return render(
                 request,
                 "sheet.html",

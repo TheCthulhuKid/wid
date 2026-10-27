@@ -50,6 +50,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
         raise SystemExit(serve(port=arguments.port, open_browser=not arguments.no_browser))
     # Imported here so --web and --self-test do not load the terminal interface first.
+    from wid.settings import recovery_path
     from wid.ui.app import RollerApp
 
-    RollerApp().run()
+    RollerApp(recovery_path=recovery_path()).run()

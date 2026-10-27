@@ -8,6 +8,7 @@ front end can ask before calling again with ``overwrite=True``.
 """
 
 from collections.abc import Callable, Iterable
+from contextlib import suppress
 from pathlib import Path
 from random import Random
 from typing import Any, Literal
@@ -35,7 +36,7 @@ from wid.rolls import (
     RollSession,
     roll_d6,
 )
-from wid.sessions import CharacterDetails, SavedSession, session_file_path
+from wid.sessions import CharacterDetails, Recovery, SavedSession, session_file_path
 from wid.storage import write_text
 
 type NameField = Literal["bonus", "power", "manifestation", "tech", "strain"]
@@ -61,8 +62,12 @@ def player_message(error: Exception) -> str:
     return str(error)
 
 
+# A save needs a name; the recovery copy of a game that has none uses this one.
+UNNAMED = "Unsaved game"
+
+
 class Game:
-    def __init__(self, *, rng: Random | None = None):
+    def __init__(self, *, rng: Random | None = None, recovery_path: Path | None = None):
         self.rng = rng if rng is not None else Random()
         self.history: list[HistoryEntry] = []
         self.name = ""
@@ -70,6 +75,11 @@ class Game:
         self.notes = ""
         # What the last save or load held, to tell whether anything has changed since.
         self.saved_snapshot: dict[str, object] | None = None
+        # Where unsaved changes are kept in case wid closes; None keeps no copy (as in tests).
+        self.recovery_path = recovery_path
+        # What this run last wrote there, so an unchanged game is not written again.
+        self.recovery_snapshot: dict[str, object] | None = None
+        self.recovery_failed = False
         self.reset_sheet(Genre.CORE)
 
     def reset_sheet(self, genre: Genre) -> None:
@@ -347,19 +357,9 @@ class Game:
     def save(self, *, overwrite: bool = False) -> str:
         if not self.name.strip():
             raise ValueError("Name the session before saving.")
-        session = self.session
         try:
             path = session_file_path(self.path)
-            saved = SavedSession(
-                name=self.name,
-                session=session.model_copy(deep=True),
-                draft=self.draft_request(),
-                notes=self.notes,
-                character=self.character,
-                history=tuple(self.history),
-                reroll_indices=self.reroll_selection,
-                item_target=self.item_target,
-            )
+            saved = self.saved_session(self.name)
             saved.save(path, overwrite=overwrite)
         except FileExistsError:
             raise
@@ -368,6 +368,19 @@ class Game:
         self.name = saved.name
         self.saved_snapshot = self.snapshot()
         return f"Saved {saved.name} to {path}."
+
+    def saved_session(self, name: str) -> SavedSession:
+        """The game as a save file holds it, under ``name``."""
+        return SavedSession(
+            name=name,
+            session=self.session.model_copy(deep=True),
+            draft=self.draft_request(),
+            notes=self.notes,
+            character=self.character,
+            history=tuple(self.history),
+            reroll_indices=self.reroll_selection,
+            item_target=self.item_target,
+        )
 
     def read_save(self, text: str) -> tuple[SavedSession, Path]:
         """Read a session file without changing the game, so the player can confirm first."""
@@ -378,10 +391,16 @@ class Game:
             raise ValueError(f"Could not load session: {player_message(error)}") from error
 
     def load(self, saved: SavedSession, path: Path) -> str:
+        self.take_over(saved)
+        self.path = str(path)
+        self.saved_snapshot = self.snapshot()
+        return f"Loaded {saved.name} from {path}."
+
+    def take_over(self, saved: SavedSession) -> None:
+        """Replace this game with ``saved``: the sheet, history, name, notes and options."""
         self.session = saved.session.model_copy(deep=True)
         self.history = list(saved.history)
         self.name = saved.name
-        self.path = str(path)
         self.notes = saved.notes
         self.character = saved.character
         draft = saved.draft
@@ -392,8 +411,67 @@ class Game:
         self.power = draft.power
         self.reroll_selection = saved.reroll_indices
         self.item_target = saved.item_target
-        self.saved_snapshot = self.snapshot()
-        return f"Loaded {saved.name} from {path}."
+
+    def keep_recovery(self) -> str:
+        """Bring the recovery copy in step with the game, after any change.
+
+        While something is unsaved the copy holds the game; once nothing is (after a save, a
+        load or a new kit), the copy this run wrote goes. Before the game starts there is no
+        sheet to save, so an earlier copy is left alone. A copy that cannot be written is
+        reported once, as a message to show, and play carries on.
+        """
+        if self.recovery_path is None:
+            return ""
+        try:
+            if not self.has_unsaved_state():
+                if self.recovery_snapshot is not None:
+                    self.discard_recovery()
+            elif self.session.attributes is not None and self.snapshot() != self.recovery_snapshot:
+                self.write_recovery()
+        except (OSError, ValueError) as error:
+            if self.recovery_failed:
+                return ""
+            self.recovery_failed = True
+            return f"Could not keep a recovery copy: {player_message(error)}"
+        return ""
+
+    def write_recovery(self) -> None:
+        recovery = Recovery(
+            name=self.name, path=self.path, game=self.saved_session(self.name.strip() or UNNAMED)
+        )
+        self.recovery_path.parent.mkdir(parents=True, exist_ok=True)
+        write_text(self.recovery_path, recovery.model_dump_json(indent=2), overwrite=True)
+        self.recovery_snapshot = self.snapshot()
+
+    def discard_recovery(self) -> None:
+        """Remove the recovery copy, as when the player chose to lose the unsaved changes."""
+        # A copy that cannot be removed is only offered again on the next start.
+        if self.recovery_path is not None:
+            with suppress(OSError):
+                self.recovery_path.unlink(missing_ok=True)
+        self.recovery_snapshot = None
+
+    def recovery_available(self) -> bool:
+        """Whether a copy from an earlier run waits, and taking it would lose nothing here."""
+        return (
+            self.recovery_path is not None
+            and self.recovery_path.is_file()
+            and not self.has_unsaved_state()
+        )
+
+    def restore_recovery(self) -> str:
+        """Take back the game an earlier run left unsaved; it stays unsaved until saved."""
+        if self.recovery_path is None:
+            raise ValueError("There is no recovery copy to restore.")
+        try:
+            text = self.recovery_path.read_text(encoding="utf-8")
+            recovery = Recovery.model_validate_json(text)
+        except (OSError, ValueError) as error:
+            raise ValueError(f"Could not restore the game: {player_message(error)}") from error
+        self.take_over(recovery.game)
+        self.name, self.path = recovery.name, recovery.path
+        self.saved_snapshot = None
+        return "Restored the game wid had kept; save it to keep it for good."
 
     def default_export_path(self) -> str:
         """The session file's path with a .md ending, or a plain name when none is set."""

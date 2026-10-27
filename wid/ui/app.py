@@ -118,13 +118,19 @@ class RollerApp(SessionActions, App):
         ("ctrl+l", "toggle_history", "Log"),
     ]
 
-    def __init__(self, *, rng: Random | None = None, settings_path: Path | None = None):
+    def __init__(
+        self,
+        *,
+        rng: Random | None = None,
+        settings_path: Path | None = None,
+        recovery_path: Path | None = None,
+    ):
         super().__init__()
         self.settings_path = settings_path
         self.settings = load_settings(settings_path)
         self.register_theme(DANGER)
         self.layout: dict[str, object] = {}
-        self.game = Game(rng=rng)
+        self.game = Game(rng=rng, recovery_path=recovery_path)
         # How many history entries the log shows, so only new ones are written.
         self.logged = 0
         self.pending_genre: Genre | None = None
@@ -244,6 +250,7 @@ class RollerApp(SessionActions, App):
         self.set_short_mode(self.size.height < SHORT_HEIGHT)
         self.restore_layout()
         self.refresh_sheet()
+        self.offer_recovery()
 
     def restore_theme(self) -> None:
         self.theme = (
@@ -322,6 +329,9 @@ class RollerApp(SessionActions, App):
             self.show_result(result)
         self.update_preview()
         self.write_new_history()
+        # Every change ends here, so this is where the recovery copy follows the game.
+        if warning := self.game.keep_recovery():
+            self.feedback(warning)
 
     def show_game(self) -> None:
         """Show a game that was replaced (loaded, a new character or kit), text fields included."""

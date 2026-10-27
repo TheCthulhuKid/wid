@@ -34,4 +34,5 @@ CHECK THAT IT WORKS
 YOUR SETTINGS
   Theme, last tab and collapsed sections are kept in ~/.config/wid/settings.json (or under
   $XDG_CONFIG_HOME when it is set). Delete that file to start fresh. Saved games and exported
-  history go where you choose.
+  history go where you choose. A game with unsaved changes is also kept in recovery.json there,
+  and offered back if wid closes without a save.

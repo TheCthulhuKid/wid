@@ -36,3 +36,5 @@ CHECK THAT IT WORKS
 YOUR SETTINGS
   Theme, last tab and collapsed sections are kept in %APPDATA%\wid\settings.json.
   Delete that file to start fresh. Saved games and exported history go where you choose.
+  A game with unsaved changes is also kept in recovery.json there, and offered back if wid
+  closes without a save.

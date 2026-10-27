@@ -169,6 +169,10 @@ NEW_CHARACTER_QUESTION = (
     "roll. The history, notes and file path stay."
 )
 QUIT_QUESTION = "Quit? Unsaved changes will be lost."
+RECOVERY_QUESTION = (
+    "wid closed last time with unsaved changes, and kept a copy. Restore that game, or start "
+    "fresh? Starting fresh keeps the copy until the new game has something to lose."
+)
 
 
 def replace_question(kind: str, path: object) -> str:

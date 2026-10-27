@@ -46,6 +46,17 @@ def settings_path() -> Path:
     return config_root() / "wid" / "settings.json"
 
 
+def recovery_path() -> Path | None:
+    """Where the game is kept while it has unsaved changes, in case wid closes without a save.
+
+    None when there is no home directory to keep it in; wid then plays without a copy.
+    """
+    try:
+        return config_root() / "wid" / "recovery.json"
+    except OSError:
+        return None
+
+
 def load_settings(path: Path | None = None) -> Settings:
     """Read settings, returning defaults when the file is missing, unreadable or invalid."""
     try:

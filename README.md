@@ -24,7 +24,8 @@ Windows may say "Windows protected your PC", because the program is not code-sig
 `Get-FileHash <zip> -Algorithm SHA256` with the `.sha256` file that comes with it.
 
 Your theme and layout are remembered in `%APPDATA%\wid\settings.json`. Games are saved only
-when you press **Save session**, to the file you choose.
+when you press **Save session**, to the file you choose. Until then wid keeps a recovery copy
+beside the settings, and offers it back if wid closed without a save.
 
 ## Get it (Linux and macOS)
 

@@ -162,6 +162,14 @@ instead. So **Undo** is unavailable right after a load, until the next bonus.
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.
 
+**Recovery file** (JSON): `recovery.json` beside the settings. While the game has unsaved
+changes and has started, `Game.keep_recovery` writes it after every change (the terminal from
+`refresh_sheet`, the browser after each action), in the save format with the typed session name
+and file path beside it. It goes once nothing is unsaved (a save, a load, a new kit) or when
+the player quits after agreeing to lose the changes. On start, an untouched game offers it back;
+**Start fresh** leaves it until the new game writes over it. It is the most recent game, so two
+games running at once take turns in it. A write that fails is reported once and play goes on.
+
 **Settings** (JSON): the theme, the open tab, and whether the strain tracker and items are
 collapsed. They live in `~/.config/wid/settings.json`, `%APPDATA%\wid\settings.json` on
 Windows, or under `$XDG_CONFIG_HOME` when it is set. A missing or invalid file means defaults.

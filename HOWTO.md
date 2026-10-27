@@ -148,6 +148,13 @@ folded away. A wound is not counted as strain.
 A save includes everything on screen: kit, ranks, options, items, Tech, strain, Corruption,
 notes, character details and the history.
 
+While a game has unsaved changes, wid also keeps a recovery copy of it beside its settings. If
+wid closes without a save (a crash, or a closed window), the next start asks whether to
+**Restore** that game or **Start fresh**. A restored game still needs saving. **Start fresh**
+keeps the copy until the new game has something to lose, and quitting with Ctrl+Q after saying
+you will lose your changes removes it. Two games running at once share the one copy, so it
+holds whichever changed last.
+
 ## Play in the browser
 
 Prefer a web browser to the terminal? Start wid with `wid --web` (from a release download,
