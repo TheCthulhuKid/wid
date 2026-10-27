@@ -22,6 +22,7 @@ from wid.formatting import BONUS_LABELS
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     MANIFESTATION_LIMIT,
+    OLDHEART_MAX_POOL,
     RESOURCES_MAX,
     STANDING_LABELS,
     STANDING_START,
@@ -447,6 +448,6 @@ class RollerGroup(VerticalScroll):
         yield Static(id="resources")
         with Vertical(id="reroll-controls"):
             yield Label("Oldheart: select dice from the current test")
-            for index in range(7):
+            for index in range(OLDHEART_MAX_POOL):
                 yield RerollDie(index)
             yield Button("Reroll selected", id="reroll_button", disabled=True)

@@ -75,6 +75,9 @@ def roll_d6(rng: Random) -> int:
 MANIFESTATION_LIMIT = 3
 # Dice each manifestation adds to (or takes from) tests of these attributes.
 MANIFESTATION_EFFECTS = {"Depravity": 1, "Hospitality": -1}
+# The largest pool Oldheart can roll, so the terminal has a reroll box for every die: the base 4,
+# plus 1 for Assisted, plus a Depravity die per manifestation. Powers and Resources are other kits'.
+OLDHEART_MAX_POOL = 4 + 1 + MANIFESTATION_EFFECTS["Depravity"] * MANIFESTATION_LIMIT
 
 
 class ManifestationCheck(FrozenModel):
