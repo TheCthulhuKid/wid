@@ -7,19 +7,32 @@ const sheet = () => document.getElementById("sheet");
 
 // Whether the player typed since the last reply: the game has not seen that text yet.
 let typed = false;
+// Whether a request is waiting for its reply. Anything sent meanwhile is dropped, so a double
+// click rolls once.
+let pending = false;
+
+const feedback = (text) => { sheet().querySelector(".feedback").textContent = text; };
 
 async function send(url, data) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "HX-Request": "true", "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(data),
-  });
-  const text = await response.text();
-  if (!response.ok) {
-    sheet().querySelector(".feedback").textContent = text;
+  if (pending) return;
+  pending = true;
+  let response, text;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "HX-Request": "true", "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(data),
+    });
+    text = await response.text();
+  } catch {
+    // A failed fetch means nothing answered: the window running wid --web was closed.
+    feedback("wid is not running; start it again and reload this page.");
     return;
+  } finally {
+    pending = false;
   }
-  swap(text);
+  if (response.ok) swap(text);
+  else feedback(text);
 }
 
 // Replace the sheet, then put the focus back on the same control so typing and keyboard play
@@ -37,7 +50,9 @@ function swap(html) {
     return;
   }
   if (!name) return;
-  const selector = value === null ? `[name="${name}"]` : `[name="${name}"][value="${value}"]`;
+  // A value can hold what the player typed, quotes included, so the selector is escaped.
+  const field = `[name="${CSS.escape(name)}"]`;
+  const selector = value === null ? field : `${field}[value="${CSS.escape(value)}"]`;
   const again = sheet().querySelector(selector);
   if (again) again.focus({ preventScroll: true });
 }

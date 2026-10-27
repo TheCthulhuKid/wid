@@ -90,3 +90,7 @@ def test_bad_fields_are_refused_without_breaking_the_page_or_losing_typing():
     assert game.fear_level == 0
     assert game.notes == "Keep this"
     assert client.get("/").status_code == 200
+    game.start_game((1, 2, 3))
+    game.roll()
+    act(client, "update", sheet="1", die="9")
+    assert game.item_target is None

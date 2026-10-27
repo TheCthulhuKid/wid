@@ -126,6 +126,10 @@ def collect(game: Game, form: SheetForm) -> None:
     reroll = tuple(form.numbers("reroll"))
     if any(index < 0 for index in (*reroll, item_target or 0)):
         raise ValueError("That die is outside the dice pool")
+    result = session.current_result
+    # As in the terminal, a target past the current dice is dropped, so a later save cannot fail.
+    if item_target is not None and (result is None or item_target >= len(result.dice)):
+        item_target = None
     game.fear_level, game.power = fear, power
     game.item_target, game.reroll_selection = item_target, reroll
     game.assisted = form.ticked("assisted")
