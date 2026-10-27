@@ -29,9 +29,9 @@ def configured_session(genre=Genre.CORE, ranks=None):
 
 
 def test_pool_size_and_hit_threshold():
-    assert RollRequest().pool_size() == 4
+    assert RollRequest().pool_size == 4
     assisted = RollRequest(assisted=True, fear_level=2)
-    assert assisted.pool_size() == 3
+    assert assisted.pool_size == 3
     assert assisted.hit_threshold == 4
     assert RollRequest().hit_threshold == 5
 

@@ -116,6 +116,7 @@ class RollRequest(FrozenModel):
     def manifestation_dice(self) -> int:
         return MANIFESTATION_EFFECTS.get(self.attribute, 0) * self.manifestations
 
+    @property
     def pool_size(self) -> int:
         pool = 4 - self.fear_level + int(self.assisted) + self.power.cost + int(self.resource_die)
         # Whatever takes dice away, a test always rolls at least one.
@@ -180,7 +181,7 @@ class RollResult(FrozenModel):
 
     @model_validator(mode="after")
     def validate_pool(self) -> Self:
-        if len(self.dice) != self.request.pool_size():
+        if len(self.dice) != self.request.pool_size:
             raise ValueError("Result must contain the complete dice pool")
         return self
 
@@ -273,6 +274,8 @@ def standing_label(standing: int) -> str:
 
 # The last box of each row: two wounds, then Defeat. Each is preceded by three strain boxes.
 STRAIN_ENDINGS = (3, 7, 11)
+LOCKED_NOTE = "Locked: boxes before a marked wound stay marked until that wound is cleared."
+NOT_READY_NOTE = "Mark all the strain before this wound first."
 
 
 class StrainTracker(FrozenModel):
@@ -296,18 +299,21 @@ class StrainTracker(FrozenModel):
         marked = [ending for ending in STRAIN_ENDINGS if self.boxes[ending]]
         return frozenset(range(max(marked))) if marked else frozenset()
 
-    def markable(self, index: int) -> bool:
-        """A wound can be marked once every box before it is marked; other boxes always."""
-        return index not in STRAIN_ENDINGS or all(self.boxes[:index])
+    def lock_reason(self, index: int) -> str | None:
+        """Why box ``index`` cannot change now, or None when the player may tick or clear it."""
+        if index in self.locked_boxes:
+            return LOCKED_NOTE
+        # A wound can be marked once every box before it is marked; other boxes always.
+        if not self.boxes[index] and index in STRAIN_ENDINGS and not all(self.boxes[:index]):
+            return NOT_READY_NOTE
+        return None
 
     def set_box(self, index: int, checked: bool) -> Self:
         index = TypeAdapter(Index).validate_python(index)
         if index >= len(self.boxes):
             raise ValueError("Strain box is outside the tracker")
-        if checked and not self.markable(index):
-            raise ValueError("Mark all strain before a wound first")
-        if not checked and index in self.locked_boxes:
-            raise ValueError("Boxes before a marked wound stay marked until that wound is cleared")
+        if checked != self.boxes[index] and (reason := self.lock_reason(index)):
+            raise ValueError(reason)
         boxes = list(self.boxes)
         boxes[index] = checked
         return type(self)(boxes=boxes, names=self.names)
@@ -676,7 +682,7 @@ class RollSession(BaseModel):
         self.validate_roll_request(request)
         candidate = RollResult(
             request=request,
-            dice=tuple(DieResult(raw=roll_d6(rng)) for _ in range(request.pool_size())),
+            dice=tuple(DieResult(raw=roll_d6(rng)) for _ in range(request.pool_size)),
             strain_delta=request.power.cost,
         )
         next_strain = self.strain.take(candidate.strain_delta)

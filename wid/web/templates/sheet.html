@@ -219,7 +219,7 @@
             <span class="visually-hidden">{{ "Defeat" if index == 11 else ("Wound" if index == ending else "Strain") }} box {{ index + 1 }}</span>
             <input type="checkbox" data-action="strain-box" data-index="{{ index }}"
                    {% if session.strain.boxes[index] %}checked{% endif %}
-                   {% if index in session.strain.locked_boxes or (not session.strain.boxes[index] and not session.strain.markable(index)) %}disabled{% endif %}>
+                   {% if session.strain.lock_reason(index) %}disabled{% endif %}>
           </label>
           {% endfor %}
         </span>

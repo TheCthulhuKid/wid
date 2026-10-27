@@ -217,7 +217,7 @@ def corruption_status(session: RollSession) -> str:
 
 def pool_line(request: RollRequest) -> str:
     """The dice the next test rolls and why, such as ``Pool: 4d6 — hits on 5+``."""
-    text = f"Pool: {request.pool_size()}d6 — hits on {request.hit_threshold}+"
+    text = f"Pool: {request.pool_size}d6 — hits on {request.hit_threshold}+"
     if request.resource_die:
         text += " (includes the Resources die)"
     attributes = PROFILES[request.profile_id].attributes

@@ -130,10 +130,7 @@ class SavedSession(FrozenModel):
             raise ValueError("Reroll selection is outside the current result")
 
     def save(self, path: Path, *, overwrite: bool = False) -> None:
-        candidate = SavedSession.model_validate(self.model_dump())
-        write_text(
-            session_file_path(path), candidate.model_dump_json(indent=2), overwrite=overwrite
-        )
+        write_text(session_file_path(path), self.model_dump_json(indent=2), overwrite=overwrite)
 
     @classmethod
     def load(cls, path: Path) -> Self:

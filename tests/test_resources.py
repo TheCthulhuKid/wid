@@ -102,9 +102,11 @@ def test_reminder_only_for_this_kit_with_extra_hits(full_pool, session_factory):
 
 
 def test_pool_is_saved_and_belongs_to_this_kit(tmp_path, saved_session_factory):
-    saved = saved_session_factory(KIT)
-    saved.session.adjust_resources(3)
-    saved.session.spend_resources(ResourceEffect.EXTRA_DIE, rng=Random(0))
+    def spent(session):
+        session.adjust_resources(3)
+        session.spend_resources(ResourceEffect.EXTRA_DIE, rng=Random(0))
+
+    saved = saved_session_factory(KIT, edit=spent)
     path = tmp_path / "resources.json"
     saved.save(path)
     restored = SavedSession.load(path).session

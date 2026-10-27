@@ -43,7 +43,7 @@ def test_manifestations_change_depravity_and_hospitality_pools():
             fear_level=fear,
             assisted=assisted,
         )
-        return request.pool_size()
+        return request.pool_size
 
     assert pool("Depravity", 2) == 6
     assert pool("Hospitality", 2) == 2
@@ -53,8 +53,9 @@ def test_manifestations_change_depravity_and_hospitality_pools():
 
 
 def test_manifestations_are_saved_and_belong_to_oldheart(tmp_path, saved_session_factory):
-    saved = saved_session_factory(KIT)
-    saved.session.set_manifestation_name(0, "Milky eye")
+    saved = saved_session_factory(
+        KIT, edit=lambda session: session.set_manifestation_name(0, "Milky eye")
+    )
     path = tmp_path / "oldheart.json"
     saved.save(path)
     assert SavedSession.load(path).session.manifestations == ("Milky eye",)

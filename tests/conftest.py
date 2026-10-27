@@ -26,7 +26,8 @@ def session_factory():
 
 @pytest.fixture
 def saved_session_factory(session_factory):
-    def create(genre=Genre.CORE):
+    # ``edit`` changes the session before it is saved, so the save validates the result.
+    def create(genre=Genre.CORE, edit=None):
         session = session_factory(genre)
         request = RollRequest(
             profile_id=genre,
@@ -41,6 +42,8 @@ def saved_session_factory(session_factory):
             session.apply_tech(0, 0)
         if genre == Genre.OLDHEART:
             session.reroll({0}, rng=Random(2))
+        if edit is not None:
+            edit(session)
         return SavedSession(
             name="Friday's danger 🎲",
             session=session,

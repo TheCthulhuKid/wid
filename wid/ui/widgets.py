@@ -131,9 +131,6 @@ class SacrificeButton(Button):
 # Muscle, which sets the number of Tech slots, is ranked 1 to 3.
 TECH_SLOTS = 3
 
-LOCKED_NOTE = "Locked: boxes before a marked wound stay marked until that wound is cleared."
-NOT_READY_NOTE = "Mark all the strain before this wound first."
-
 
 class StrainBox(Checkbox):
     """One of the twelve strain boxes."""
@@ -146,11 +143,7 @@ class StrainBox(Checkbox):
     def sync(self, tracker: StrainTracker) -> None:
         """Show the tracker's state; boxes that cannot change are disabled and say why."""
         self.value = tracker.boxes[self.index]
-        note = None
-        if self.index in tracker.locked_boxes:
-            note = LOCKED_NOTE
-        elif not self.value and not tracker.markable(self.index):
-            note = NOT_READY_NOTE
+        note = tracker.lock_reason(self.index)
         self.disabled = note is not None
         self.tooltip = note or self.description
 

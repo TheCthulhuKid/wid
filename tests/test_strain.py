@@ -7,7 +7,7 @@ from test_rollerapp import start_game, text
 
 from wid.game import Game
 from wid.profiles import Genre
-from wid.rolls import PowerMode, RollRequest, StrainTracker
+from wid.rolls import LOCKED_NOTE, NOT_READY_NOTE, PowerMode, RollRequest, StrainTracker
 from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
 from wid.ui.widgets import StrainBox
@@ -20,10 +20,10 @@ def test_strain_fills_in_order_up_to_defeat():
 
 
 def test_a_wound_needs_the_strain_before_it_and_then_locks_it():
-    with pytest.raises(ValueError, match="Mark all strain"):
-        StrainTracker().set_box(3, True)
+    assert StrainTracker().lock_reason(3) == NOT_READY_NOTE
     tracker = StrainTracker().take(4)
-    assert tracker.locked_boxes == {0, 1, 2}
+    assert tracker.lock_reason(0) == LOCKED_NOTE
+    assert tracker.lock_reason(3) is None
     with pytest.raises(ValueError, match="stay marked"):
         tracker.set_box(0, False)
     assert not tracker.set_box(3, False).locked_boxes
@@ -47,8 +47,10 @@ def test_powers_mark_strain(session_factory):
 
 
 def test_tracker_is_saved_with_its_names(tmp_path, saved_session_factory):
-    saved = saved_session_factory()
-    saved.session.strain = StrainTracker().take(12).set_name(2, "Last stand")
+    def wounded(session):
+        session.strain = StrainTracker().take(12).set_name(2, "Last stand")
+
+    saved = saved_session_factory(edit=wounded)
     path = tmp_path / "strain.json"
     saved.save(path)
     assert SavedSession.load(path).session.strain == saved.session.strain
@@ -69,6 +71,6 @@ def test_strain_buttons_and_locked_boxes():
             app.query_one("#strain-box-7", StrainBox).value = True
             await pilot.pause()
             assert not app.session.strain.boxes[7]
-            assert "Mark all strain" in text(app, "#feedback")
+            assert text(app, "#feedback") == NOT_READY_NOTE
 
     asyncio.run(scenario())
