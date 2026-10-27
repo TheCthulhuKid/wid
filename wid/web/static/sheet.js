@@ -119,7 +119,22 @@ function heading(notes) {
   return value.slice(start, stop).split("\n").map((line) => `# ${line}`).join("\n");
 }
 
+// The light or dark switch: the opposite of what shows now, remembered in this browser only.
+function toggleTheme() {
+  const root = document.documentElement;
+  const dark = root.dataset.theme
+    ? root.dataset.theme === "dark"
+    : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+  try {
+    localStorage.setItem("wid-theme", root.dataset.theme);
+  } catch {
+    // Storage can be blocked; the switch still holds until the page is reloaded.
+  }
+}
+
 document.addEventListener("click", (event) => {
+  if (event.target.closest("[data-theme-toggle]")) toggleTheme();
   const close = event.target.closest("[data-close]");
   if (close) close.closest("dialog").close();
   const button = event.target.closest("[data-format]");

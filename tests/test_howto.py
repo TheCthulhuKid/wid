@@ -42,6 +42,8 @@ SCREEN_LABELS = [
     "Roll 1d6",
     "Repeat roll",
     "Download history",
+    "Dark mode",
+    "Light mode",
     "New scenario",
     "Reroll selected",
     "Take 1 strain",

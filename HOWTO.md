@@ -165,7 +165,8 @@ differences:
   Markdown to the **History file** box; **Download history** saves it through the browser.
 - When something would be replaced or lost, a small box asks first, as in the terminal.
   Closing or reloading the page with unsaved changes asks too.
-- The colours follow your browser's light or dark setting.
+- The colours follow your browser's light or dark setting. **Dark mode** (or **Light mode**) in
+  the title band switches them, and the browser remembers your choice.
 
 Games saved in the browser open in the terminal, and the other way round. If the page says to
 open wid from the address it printed, use the address shown in the window: it carries a key that

@@ -6,14 +6,19 @@
 
   <header class="band">
     <h1>We're in Danger</h1>
-    <label class="kit-picker">
-      <span class="visually-hidden">Genre kit</span>
-      <select name="genre" data-action="change-kit">
-        {% for genre, profile in kits.items() %}
-        <option value="{{ genre }}" {% if genre == session.profile_id %}selected{% endif %}>{{ profile.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
+    <div class="band-tools">
+      <button type="button" class="theme-toggle" data-theme-toggle>
+        <span class="when-light">Dark mode</span><span class="when-dark">Light mode</span>
+      </button>
+      <label class="kit-picker">
+        <span class="visually-hidden">Genre kit</span>
+        <select name="genre" data-action="change-kit">
+          {% for genre, profile in kits.items() %}
+          <option value="{{ genre }}" {% if genre == session.profile_id %}selected{% endif %}>{{ profile.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
   </header>
 
   <div class="columns">
