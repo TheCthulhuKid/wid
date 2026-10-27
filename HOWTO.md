@@ -56,14 +56,14 @@ Every kit has the same screen. Each adds at most one thing:
 | **Core WiD** | Athleticism, Composure, Reasoning | None |
 | **Heckboy** | Aberrance, Ferocity, Savvy | Two powers (below) |
 | **Second Contact** | Science, Culture, Muscle | **Tech** slots instead of **Items** (below) |
-| **Oldheart** | Depravity, Hospitality, Fitness | **Reroll selected**, Corruption and manifestations (below) |
+| **Oldheart** | Depravity, Hospitality, Fitness | Rerolls, Corruption and manifestations (below) |
 | **Ball Season** | Propriety, Stoutness, Yearning | A **Standing** track (below) |
-| **This Isn't Happening** | Instincts, Endurance, Charity | **Resources** and a **Crafted item** (below) |
+| **This Isn't Happening** | Instincts, Endurance, Charity | **Resources**, a crafted item (below) |
 
 **Powers (Heckboy).** Every Heckboy has a **Reliable power** (+1 die, +1 strain) and an
 **Erratic power** (+2 dice, +2 strain). Type each power's name in its box. Tick **Use** beside one
-before rolling to use it: the pool grows and the strain is added to the tracker for you. Only one power
-can be used per roll, and **Use** unticks itself after the roll.
+before rolling to use it: the pool grows and the strain is added to the tracker for you. Only one
+power can be used per roll, and **Use** unticks itself after the roll.
 
 **Tech (Second Contact).** You get one Tech slot for each rank of Muscle as soon as the game starts.
 A slot stays empty until you use it, and each one starts at Science + Culture. Tech is used after
@@ -163,14 +163,19 @@ holds whichever changed last.
 ## Play in the browser
 
 Prefer a web browser to the terminal? Start wid with `wid --web` (from a release download,
-`.\wid.exe --web` on Windows or `./wid --web` on Linux and macOS, in the program's folder). Your browser opens the sheet by itself. The window you started it from
-shows the address and must stay open while you play; press **Ctrl+C** there to stop. Only this
-computer can reach the game.
+`.\wid.exe --web` on Windows or `./wid --web` on Linux and macOS, in the program's folder). Your
+browser opens the sheet by itself. The window you started it from shows the address and must stay
+open while you play; press **Ctrl+C** there to stop. Only this computer can reach the game.
 
-The browser sheet has the same controls in the same order as the terminal, with a few
-differences:
+The browser sheet has the same game controls as the terminal, with these differences:
 
-- **Character** and **Session** are sections on one page instead of tabs.
+- **Character** and **Session** are sections on one page instead of tabs, so there is no **C**
+  or **S**.
+- Nothing folds: the strain tracker, the items and the history are always shown, so there is no
+  **T**, **I** or **Ctrl+L**.
+- The only keys of its own are **Ctrl+R** and **Enter** in a text box, which sends what you
+  typed. There is no **D** theme picker (the colours are below) and no **Ctrl+Q**: close the
+  tab instead.
 - The dice appear on the right (on a phone, straight after the options for the next test).
   **Repeat roll** or **Ctrl+R** rolls the last attribute again.
 - **Save session** and **Load game** use the **Session file** box. **Export history** writes the
@@ -191,7 +196,7 @@ changes every time wid starts.
 | **Ctrl+R** | Roll again with the last attribute |
 | **C** / **S** | Open the Character / Session tab, then Tab or the arrow keys to move in |
 | **T** / **I** | Fold or unfold the strain tracker / the items (Tech in Second Contact) |
-| **D** | Pick a colour theme (it is remembered; the default is "danger", cream with red highlights) |
+| **D** | Pick a colour theme, which is remembered (the default, "danger", is cream and red) |
 | **Ctrl+L** | Show or hide the history log |
 | **Tab** / **Shift+Tab** | Move between controls |
 | **Ctrl+Q** | Quit (asks first if anything is unsaved) |
