@@ -15,7 +15,7 @@ from wid.formatting import (
 )
 from wid.game import Game, NameField
 from wid.profiles import Genre
-from wid.rolls import SCARED_MAX, BonusKind, PowerMode, ResourceEffect
+from wid.rolls import BonusKind, PowerMode, ResourceEffect
 from wid.sessions import CharacterDetails
 
 
@@ -118,22 +118,14 @@ def collect(game: Game, form: SheetForm) -> None:
             lambda index, value, field=field: game.rename(field, index, value),
         )
 
-    fear = form.number("fear") if form.get("fear") else game.fear_level
-    if not 0 <= fear <= SCARED_MAX:
-        raise ValueError(f"Scared runs from 0 to {SCARED_MAX}")
-    power = PowerMode(form.get("power") or game.power)
-    item_target = form.number("die") if form.get("die") is not None else game.item_target
-    reroll = tuple(form.numbers("reroll"))
-    if any(index < 0 for index in (*reroll, item_target or 0)):
-        raise ValueError("That die is outside the dice pool")
-    result = session.current_result
-    # As in the terminal, a target past the current dice is dropped, so a later save cannot fail.
-    if item_target is not None and (result is None or item_target >= len(result.dice)):
-        item_target = None
-    game.fear_level, game.power = fear, power
-    game.item_target, game.reroll_selection = item_target, reroll
-    game.assisted = form.ticked("assisted")
-    game.expertise = form.ticked("expertise")
+    game.set_test_options(
+        fear_level=form.number("fear") if form.get("fear") else game.fear_level,
+        assisted=form.ticked("assisted"),
+        expertise=form.ticked("expertise"),
+        power=PowerMode(form.get("power") or game.power),
+        reroll=form.numbers("reroll"),
+        item_target=form.number("die") if form.get("die") is not None else game.item_target,
+    )
 
 
 def change_kit(game: Game, form: SheetForm) -> str:

@@ -7,7 +7,7 @@ appended here, so front ends only display ``Game.history``. Saving and exporting
 front end can ask before calling again with ``overwrite=True``.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from random import Random
 from typing import Any, Literal
@@ -26,6 +26,7 @@ from wid.formatting import (
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre, WiDProfile
 from wid.rolls import (
+    SCARED_MAX,
     BonusKind,
     PowerMode,
     ResourceEffect,
@@ -109,6 +110,42 @@ class Game:
             )
         )
         self.reroll_selection = ()
+        # A new roll can have fewer dice than the one the item was aimed at.
+        if self.item_target is not None and self.item_target >= self.dice_count:
+            self.item_target = None
+
+    @property
+    def dice_count(self) -> int:
+        result = self.session.current_result
+        return len(result.dice) if result is not None else 0
+
+    def set_test_options(
+        self,
+        *,
+        fear_level: int,
+        assisted: bool,
+        expertise: bool,
+        power: PowerMode,
+        reroll: Iterable[int],
+        item_target: int | None,
+    ) -> None:
+        """Take the options for the next test and the dice picked from the current result.
+
+        Scared off its track is refused. A die the current result does not have is dropped, since
+        a front end may still show the dice of an earlier roll, and so are rerolls in a kit
+        without them.
+        """
+        if not 0 <= fear_level <= SCARED_MAX:
+            raise ValueError(f"Scared runs from 0 to {SCARED_MAX}")
+        count = self.dice_count
+        self.fear_level = fear_level
+        self.assisted = assisted
+        self.expertise = expertise
+        self.power = power
+        picked = {index for index in reroll if 0 <= index < count}
+        self.reroll_selection = tuple(sorted(picked)) if self.profile.has_rerolls else ()
+        on_a_die = item_target is not None and 0 <= item_target < count
+        self.item_target = item_target if on_a_die else None
 
     def rename(self, field: NameField, slot: int | BonusKind, name: str) -> None:
         """Name a bonus, power, manifestation, Tech piece or strain row; nothing is logged."""
@@ -201,10 +238,7 @@ class Game:
         return self.notice(strain_notice(f"{change} strain box {index + 1}", self.session.strain))
 
     def take_strain(self) -> str:
-        # Taking strain starts after the last marked wound, so after Defeat nothing is left.
-        if self.session.strain.defeated:
-            raise ValueError("Defeat is already marked")
-        self.session.strain = self.session.strain.take(1)
+        self.session.strain = self.session.strain.take_by_hand()
         return self.notice(strain_notice("Took 1 strain", self.session.strain))
 
     def take_wound(self) -> str:
@@ -323,8 +357,8 @@ class Game:
                 notes=self.notes,
                 character=self.character,
                 history=tuple(self.history),
-                reroll_indices=tuple(sorted(self.reroll_selection)),
-                item_target=self.item_target if session.current_result is not None else None,
+                reroll_indices=self.reroll_selection,
+                item_target=self.item_target,
             )
             saved.save(path, overwrite=overwrite)
         except FileExistsError:

@@ -290,13 +290,14 @@ class RollerApp(SessionActions, App):
         game.name = self.query_one("#session-name", Input).value
         game.path = self.query_one("#session-path", Input).value
         game.notes = self.query_one("#session-notes", TextArea).text
-        game.fear_level = self.query_one("#fear", Select).value
-        game.assisted = self.query_one("#assisted", Checkbox).value
-        game.expertise = self.query_one("#expertise", Checkbox).value
-        game.power = self.chosen_power()
-        game.reroll_selection = tuple(sorted(self.selected_dice()))
-        target = self.query_one("#item-target", Select).value
-        game.item_target = target if game.session.current_result is not None else None
+        game.set_test_options(
+            fear_level=self.query_one("#fear", Select).value,
+            assisted=self.query_one("#assisted", Checkbox).value,
+            expertise=self.query_one("#expertise", Checkbox).value,
+            power=self.chosen_power(),
+            reroll=self.selected_dice(),
+            item_target=self.query_one("#item-target", Select).value,
+        )
 
     def act(self, action: Callable[[], str]) -> bool:
         """Run a game action, show its message or why it was refused, and refresh the screen.

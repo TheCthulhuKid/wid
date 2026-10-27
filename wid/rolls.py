@@ -343,6 +343,13 @@ class StrainTracker(FrozenModel):
                 points -= 1
         return type(self)(boxes=boxes, names=self.names)
 
+    def take_by_hand(self) -> Self:
+        """Take 1 strain from the strain button; a strain-costing roll calls ``take`` instead."""
+        # Taking strain starts after the last marked wound, so after Defeat nothing is left.
+        if self.defeated:
+            raise ValueError("Defeat is already marked")
+        return self.take(1)
+
     def recover(self, points: int) -> Self:
         """Unmark up to ``points`` of the newest strain; wounds and locked boxes stay marked."""
         points = TypeAdapter(Index).validate_python(points)
