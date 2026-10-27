@@ -44,7 +44,7 @@
           {% set default_rank = loop.index %}
           <label><span class="visually-hidden">{{ attribute }} rank</span>
             <select name="rank">
-              {% for rank in (1, 2, 3) %}<option {% if rank == default_rank %}selected{% endif %}>{{ rank }}</option>{% endfor %}
+              {% for rank in ranks %}<option {% if rank == default_rank %}selected{% endif %}>{{ rank }}</option>{% endfor %}
             </select>
           </label>
           {% endif %}
@@ -100,7 +100,7 @@
         <p class="status">{{ corruption_status }}</p>
         <div class="row">
           <label class="field narrow">Gain
-            <select name="corruption-amount">{% for amount in range(1, 7) %}<option>{{ amount }}</option>{% endfor %}</select>
+            <select name="corruption-amount">{% for amount in corruption_amounts %}<option>{{ amount }}</option>{% endfor %}</select>
           </label>
           <button formaction="/actions/gain-corruption">Gain corruption</button>
         </div>
@@ -220,7 +220,7 @@
         <span class="boxes">
           {% for index in range(ending - 3, ending + 1) %}
           <label class="box {% if index == ending %}ending{% endif %}">
-            <span class="visually-hidden">{{ "Defeat" if index == 11 else ("Wound" if index == ending else "Strain") }} box {{ index + 1 }}</span>
+            <span class="visually-hidden">{{ "Defeat" if index == strain_endings[-1] else ("Wound" if index == ending else "Strain") }} box {{ index + 1 }}</span>
             <input type="checkbox" data-action="strain-box" data-index="{{ index }}"
                    {% if session.strain.boxes[index] %}checked{% endif %}
                    {% if session.strain.lock_reason(index) %}disabled{% endif %}>

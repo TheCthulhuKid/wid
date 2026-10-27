@@ -4,6 +4,7 @@ from markdown_it import MarkdownIt
 
 from wid.formatting import (
     BONUS_LABELS,
+    CORRUPTION_AMOUNTS,
     POWER_LABELS,
     SPEND_LABELS,
     corruption_status,
@@ -17,6 +18,7 @@ from wid.formatting import (
 from wid.game import Game
 from wid.profiles import PROFILES
 from wid.rolls import (
+    RANKS,
     RESOURCES_MAX,
     RESOURCES_MIN,
     SCARED_MAX,
@@ -130,6 +132,8 @@ def sheet_context(
         "resources_min": RESOURCES_MIN,
         "resources_max": RESOURCES_MAX,
         "scared_max": SCARED_MAX,
+        "ranks": RANKS,
+        "corruption_amounts": CORRUPTION_AMOUNTS,
         "power_labels": POWER_LABELS,
         "spend_labels": SPEND_LABELS,
     }

@@ -133,6 +133,10 @@ def resources_reminder(result: RollResult) -> str:
     return "Extra hits can be spent to gain Resources."
 
 
+# The amounts the screens offer for Corruption gained by hand. Any amount is allowed: a reroll
+# gains one per die, so it can gain more at once.
+CORRUPTION_AMOUNTS = range(1, 7)
+
 POWER_LABELS = {
     PowerMode.RELIABLE: "Reliable power (+1 die, +1 strain)",
     PowerMode.ERRATIC: "Erratic power (+2 dice, +2 strain)",

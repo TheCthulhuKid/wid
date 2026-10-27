@@ -66,7 +66,10 @@ class NamedBonuses(FrozenModel):
 
 
 Index = Annotated[int, Field(strict=True, ge=0)]
-Rank = Annotated[int, Field(strict=True, ge=1, le=3)]
+RANK_MAX = 3
+Rank = Annotated[int, Field(strict=True, ge=1, le=RANK_MAX)]
+# The ranks an attribute can have, as the start screens offer them.
+RANKS = range(1, RANK_MAX + 1)
 SCARED_MAX = 3
 RESOURCES_MIN = 1
 RESOURCES_MAX = 6
@@ -301,7 +304,7 @@ class StrainTracker(FrozenModel):
 
     @property
     def defeated(self) -> bool:
-        return self.boxes[11]
+        return self.boxes[STRAIN_ENDINGS[-1]]
 
     @property
     def locked_boxes(self) -> frozenset[int]:
