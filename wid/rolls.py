@@ -40,6 +40,11 @@ class BonusKind(StrEnum):
     CRAFTED_ITEM = "crafted_item"
 
 
+def bonus_words(kind: BonusKind) -> str:
+    """The bonus as it reads inside a sentence, such as "appropriate item"."""
+    return kind.value.replace("_", " ")
+
+
 class ResourceEffect(StrEnum):
     """What a full pool of Resources can buy in This Isn't Happening."""
 
@@ -456,7 +461,7 @@ class RollSession(BaseModel):
     def _named_bonus_result(self, kind: BonusKind) -> RollResult:
         previous = self._current_test()
         if not getattr(self.bonuses, kind.value).strip():
-            raise ValueError(f"Name the {kind.value.replace('_', ' ')} before applying it")
+            raise ValueError(f"Name the {bonus_words(kind)} before applying it")
         return previous
 
     def apply_item(self, kind: BonusKind, index: int) -> RollResult:
@@ -469,7 +474,7 @@ class RollSession(BaseModel):
             raise ValueError(f"Spend {RESOURCES_MAX} Resources to craft an item first")
         previous = self._named_bonus_result(kind)
         if kind in previous.applied_items:
-            raise ValueError(f"The {kind.value.replace('_', ' ')} was already used on this test")
+            raise ValueError(f"The {bonus_words(kind)} was already used on this test")
         dice = raised_die(previous, index, 1)
         candidate = previous.model_copy(
             update={"dice": dice, "applied_items": previous.applied_items | {kind}}
@@ -479,9 +484,8 @@ class RollSession(BaseModel):
     def apply_tech(self, index: int, die: int) -> RollResult:
         """Add a defined piece's strength to one die of the current test, then weaken it by 1."""
         previous = self._current_test()
-        if self.tech is None:
-            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
-        piece = self.tech.piece(index)
+        tech = self._tech()
+        piece = tech.piece(index)
         if not piece.defined:
             raise ValueError(f"Name Tech {index + 1} before using it")
         if piece.strength == 0:
@@ -495,7 +499,7 @@ class RollSession(BaseModel):
             }
         )
         spent = TechPiece(name=piece.name, strength=piece.strength - 1)
-        self.tech = self.tech.with_piece(index, spent)
+        self.tech = tech.with_piece(index, spent)
         return self._replace_result(candidate, tech_slot=index)
 
     def apply_expertise(self) -> RollResult:
@@ -535,6 +539,11 @@ class RollSession(BaseModel):
         if PROFILES[self.profile_id].has_resources:
             self.resources = self.attribute_rank("Charity")
         return candidate
+
+    def _tech(self) -> TechState:
+        if self.tech is None:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
+        return self.tech
 
     def _pool(self) -> int:
         if self.resources is None:
@@ -670,23 +679,21 @@ class RollSession(BaseModel):
         return candidate
 
     def set_tech_name(self, index: int, name: str) -> TechState:
-        if self.tech is None:
-            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
-        piece = self.tech.piece(index)
-        candidate = self.tech.with_piece(index, TechPiece(name=name, strength=piece.strength))
+        tech = self._tech()
+        piece = tech.piece(index)
+        candidate = tech.with_piece(index, TechPiece(name=name, strength=piece.strength))
         self.tech = candidate
         return candidate
 
     def sacrifice_tech(self, index: int) -> TechPiece:
         """Drop a piece to 0 strength to stop a Danger's extermination; returns it as it was."""
-        if self.tech is None:
-            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
-        piece = self.tech.piece(index)
+        tech = self._tech()
+        piece = tech.piece(index)
         if not piece.defined:
             raise ValueError(f"Name Tech {index + 1} before sacrificing it")
         if piece.strength == 0:
             raise ValueError(f"{piece.label(index)} is already at 0")
-        self.tech = self.tech.with_piece(index, TechPiece(name=piece.name, strength=0))
+        self.tech = tech.with_piece(index, TechPiece(name=piece.name, strength=0))
         # An undo would hand strength back to the sacrificed piece.
         self._before_bonus.clear()
         return piece

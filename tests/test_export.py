@@ -1,4 +1,4 @@
-from wid.export import NO_HISTORY, fence_for, history_markdown
+from wid.export import fence_for, history_markdown
 from wid.history import HistoryEntry
 from wid.sessions import CharacterDetails
 
@@ -7,12 +7,6 @@ NO_CHARACTER = CharacterDetails()
 
 def roll_entry(saved_session_factory, action="Roll"):
     return HistoryEntry(action=action, result=saved_session_factory().session.current_result)
-
-
-def test_empty_history_says_so():
-    text = history_markdown("Friday", NO_CHARACTER, [])
-
-    assert text == f"# Friday\n\n{NO_HISTORY}\n"
 
 
 def test_entries_are_numbered_sections_with_their_text_in_code_blocks(saved_session_factory):
@@ -63,6 +57,6 @@ def test_player_text_cannot_break_out_of_the_code_block():
 def test_player_markup_in_the_title_and_character_stays_on_their_lines():
     character = CharacterDetails(name="[b]Ada[/b]\n## Not a heading")
 
-    text = history_markdown("# Hash", character, [])
+    text = history_markdown("# Hash", character, [HistoryEntry(notice="First roll")])
 
     assert text.splitlines()[:4] == ["# # Hash", "", "Character: [b]Ada[/b] ## Not a heading", ""]

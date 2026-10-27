@@ -4,6 +4,8 @@ from markdown_it import MarkdownIt
 
 from wid.formatting import (
     BONUS_LABELS,
+    POWER_LABELS,
+    SPEND_LABELS,
     corruption_status,
     pool_line,
     resources_line,
@@ -17,11 +19,11 @@ from wid.profiles import PROFILES
 from wid.rolls import (
     RESOURCES_MAX,
     RESOURCES_MIN,
+    SCARED_MAX,
     STANDING_LABELS,
     STRAIN_ENDINGS,
     BonusKind,
     PowerMode,
-    ResourceEffect,
 )
 from wid.web.forms import NeedsConfirmation
 
@@ -123,9 +125,11 @@ def sheet_context(
         "item_kinds": (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM),
         "BonusKind": BonusKind,
         "PowerMode": PowerMode,
-        "ResourceEffect": ResourceEffect,
         "standing_labels": STANDING_LABELS,
         "strain_endings": STRAIN_ENDINGS,
         "resources_min": RESOURCES_MIN,
         "resources_max": RESOURCES_MAX,
+        "scared_max": SCARED_MAX,
+        "power_labels": POWER_LABELS,
+        "spend_labels": SPEND_LABELS,
     }

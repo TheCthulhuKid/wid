@@ -9,6 +9,7 @@ from wid.rolls import (
     BonusKind,
     ManifestationCheck,
     Outcome,
+    PowerMode,
     ResourceEffect,
     ResourceSpend,
     RollRequest,
@@ -56,10 +57,6 @@ def dice_parts(result: RollResult) -> list[list[Part]]:
             ]
         )
     return lines
-
-
-def dice_lines(result: RollResult) -> str:
-    return "\n".join(_plain(line) for line in dice_parts(result))
 
 
 def summary_parts(result: RollResult) -> list[Part]:
@@ -136,12 +133,22 @@ def resources_reminder(result: RollResult) -> str:
     return "Extra hits can be spent to gain Resources."
 
 
+POWER_LABELS = {
+    PowerMode.RELIABLE: "Reliable power (+1 die, +1 strain)",
+    PowerMode.ERRATIC: "Erratic power (+2 dice, +2 strain)",
+}
+
 SPEND_EFFECTS = {
     ResourceEffect.EXTRA_DIE: "+1d6 on the next test to confront a Danger or defend against it",
     ResourceEffect.AUTO_PASS: "automatically pass an obstacle that does not involve a Danger",
     ResourceEffect.CRAFT_ITEM: "craft an item; name it under Crafted item",
     ResourceEffect.RECOVER_STRAIN: "recover 1d6 strain",
 }
+
+
+# The effects as choices on screen. They start lower case to fit the middle of a history line,
+# and str.capitalize would lower "Crafted item" as well.
+SPEND_LABELS = {effect: text[0].upper() + text[1:] for effect, text in SPEND_EFFECTS.items()}
 
 
 def spend_summary(spend: ResourceSpend, pool: int) -> str:

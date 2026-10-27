@@ -1,7 +1,7 @@
 from wid.formatting import (
     attribute_label,
     describe_dice,
-    dice_lines,
+    dice_parts,
     resources_line,
     summarize,
 )
@@ -12,11 +12,11 @@ def test_dice_formats_differ_only_in_verbosity(saved_session_factory):
     result = saved_session_factory().session.current_result
 
     first_long = describe_dice(result).splitlines()[0]
-    first_short = dice_lines(result).splitlines()[0]
+    first_short = "".join(text for text, _ in dice_parts(result)[0])
 
     assert first_long.startswith("Die 1: raw ")
     assert first_short.startswith("1: ")
-    assert len(describe_dice(result).splitlines()) == len(dice_lines(result).splitlines())
+    assert len(describe_dice(result).splitlines()) == len(dice_parts(result))
     assert first_long.endswith(first_short.rsplit(" ", 1)[1])
 
 

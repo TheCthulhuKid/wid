@@ -18,12 +18,13 @@ from textual.widgets import (
     TextArea,
 )
 
-from wid.formatting import BONUS_LABELS
+from wid.formatting import BONUS_LABELS, POWER_LABELS
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     MANIFESTATION_LIMIT,
     OLDHEART_MAX_POOL,
     RESOURCES_MAX,
+    SCARED_MAX,
     STANDING_LABELS,
     STANDING_START,
     BonusKind,
@@ -53,10 +54,6 @@ class BonusButton(Button):
 
 # Heckboy characters always have one reliable and one erratic power, in this order.
 POWERS = (PowerMode.RELIABLE, PowerMode.ERRATIC)
-POWER_LABELS = {
-    PowerMode.RELIABLE: "Reliable power (+1 die / +1 strain)",
-    PowerMode.ERRATIC: "Erratic power (+2 dice / +2 strain)",
-}
 
 
 class PowerName(Input):
@@ -281,7 +278,9 @@ class RollOptions(Horizontal):
     def compose(self) -> ComposeResult:
         with Vertical(id="fear-field", classes="field"):
             yield Label("Scared")
-            yield Select([(str(n), n) for n in range(4)], value=0, allow_blank=False, id="fear")
+            yield Select(
+                [(str(n), n) for n in range(SCARED_MAX + 1)], value=0, allow_blank=False, id="fear"
+            )
         with Vertical(classes="field", id="assisted-field"):
             yield Label("Assisted")
             yield Checkbox(id="assisted", tooltip="Assisted: +1 die; hits on 4+")

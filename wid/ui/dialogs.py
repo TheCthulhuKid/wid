@@ -5,7 +5,7 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Static
 
-from wid.formatting import NEW_GAME_QUESTION, SPEND_EFFECTS
+from wid.formatting import NEW_GAME_QUESTION, SPEND_LABELS
 from wid.rolls import RESOURCES_MAX, ResourceEffect
 
 
@@ -46,8 +46,8 @@ class SpendResources(ModalScreen[ResourceEffect | None]):
     def compose(self) -> ComposeResult:
         with Vertical(id="spend-dialog"):
             yield Label(f"Spend {RESOURCES_MAX} Resources on:")
-            for effect, label in SPEND_EFFECTS.items():
-                yield Button(label.capitalize(), id=f"spend-{effect.value}")
+            for effect, label in SPEND_LABELS.items():
+                yield Button(label, id=f"spend-{effect.value}")
             yield Button("Cancel", id="cancel-spend")
 
     def action_cancel(self) -> None:

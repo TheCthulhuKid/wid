@@ -67,7 +67,7 @@
       <div class="row">
         <label class="field narrow">Scared
           <select name="fear" data-action="update">
-            {% for level in range(4) %}<option {% if level == game.fear_level %}selected{% endif %}>{{ level }}</option>{% endfor %}
+            {% for level in range(scared_max + 1) %}<option {% if level == game.fear_level %}selected{% endif %}>{{ level }}</option>{% endfor %}
           </select>
         </label>
         <label class="tick"><input type="checkbox" name="assisted" data-action="update" {% if game.assisted %}checked{% endif %}> Assisted</label>
@@ -84,7 +84,7 @@
       {% if kit.has_powers %}
       <div class="kit-controls powers">
         <label class="tick"><input type="radio" name="power" value="none" data-action="update" {% if game.power == PowerMode.NONE %}checked{% endif %}> No power</label>
-        {% for mode, label in ((PowerMode.RELIABLE, "Reliable power (+1 die, +1 strain)"), (PowerMode.ERRATIC, "Erratic power (+2 dice, +2 strain)")) %}
+        {% for mode, label in power_labels.items() %}
         <div class="row named">
           <label class="field grow">{{ label }}
             <input name="power-name-{{ loop.index0 }}" value="{{ session.power_names[loop.index0] }}">
@@ -142,10 +142,9 @@
         <div class="row">
           <label class="field grow">Spend {{ resources_max }} Resources on
             <select name="effect">
-              <option value="{{ ResourceEffect.EXTRA_DIE }}">+1d6 on the next test</option>
-              <option value="{{ ResourceEffect.AUTO_PASS }}">Automatically pass an obstacle</option>
-              <option value="{{ ResourceEffect.CRAFT_ITEM }}">Craft an item</option>
-              <option value="{{ ResourceEffect.RECOVER_STRAIN }}">Recover 1d6 strain</option>
+              {% for effect, label in spend_labels.items() %}
+              <option value="{{ effect }}">{{ label }}</option>
+              {% endfor %}
             </select>
           </label>
           <button formaction="/actions/spend-resources" {% if session.resources != resources_max %}disabled{% endif %}>Spend</button>

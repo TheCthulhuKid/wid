@@ -137,14 +137,6 @@ class RollerApp(SessionActions, App):
     def history(self) -> list[HistoryEntry]:
         return self.game.history
 
-    @property
-    def tested_attribute(self) -> str:
-        return self.game.tested_attribute
-
-    @tested_attribute.setter
-    def tested_attribute(self, attribute: str) -> None:
-        self.game.tested_attribute = attribute
-
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal(id="workspace"):

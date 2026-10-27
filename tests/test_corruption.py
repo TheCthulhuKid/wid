@@ -82,7 +82,7 @@ def test_gaining_corruption_by_hand_checks_and_shows_manifestations():
             app.query_one("#manifestation-name-0", Input).value = "Scaly arm"
             await pilot.pause()
             assert app.session.manifestations == ("Scaly arm",)
-            app.tested_attribute = "Depravity"
+            app.game.tested_attribute = "Depravity"
             app.update_preview()
             assert "Depravity +1d6, Hospitality -1d6" in text(app, "#pool")
             await click(app, pilot, "#remove-manifestation")

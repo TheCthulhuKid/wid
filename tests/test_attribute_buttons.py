@@ -35,6 +35,6 @@ def test_changing_kit_relabels_the_attributes():
             await change_genre(app, pilot, Genre.OLDHEART)
             labels = [text(app, f"#attribute-label-{index}") for index in range(3)]
             assert labels == list(PROFILES[Genre.OLDHEART].attributes)
-            assert app.tested_attribute == "Depravity"
+            assert app.game.tested_attribute == "Depravity"
 
     asyncio.run(scenario())
