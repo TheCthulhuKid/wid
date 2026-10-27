@@ -77,10 +77,10 @@ GitHub Actions:
   `ruff format --check`).
 - `.github/workflows/release.yml` builds and smoke-tests the Windows zip, and builds and
   self-tests the Linux x86_64 (on Ubuntu 22.04, for the widest glibc support) and macOS arm64
-  archives, on every push to `main`, uploading each as a build artifact. Pushing a tag such as
-  `v0.2.0` also attaches every archive and checksum to a draft GitHub release, which you
-  publish yourself; the file names, `wid --version` and the Windows file properties all take
-  their version from that tag. Without a tag, the `publish` job is skipped.
+  archives, on every pull request and every push to `main`, uploading each as a build artifact.
+  Pushing a tag such as `v0.2.0` also attaches every archive and checksum to a draft GitHub
+  release, which you publish yourself; the file names, `wid --version` and the Windows file
+  properties all take their version from that tag. Without a tag, the `publish` job is skipped.
 
 To release, tag the commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
 Both workflows check out the full history (`fetch-depth: 0`) so the tag is visible to
