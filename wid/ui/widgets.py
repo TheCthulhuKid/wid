@@ -18,11 +18,13 @@ from textual.widgets import (
     TextArea,
 )
 
-from wid.formatting import BONUS_LABELS
+from wid.formatting import BONUS_LABELS, POWER_LABELS
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     MANIFESTATION_LIMIT,
+    OLDHEART_MAX_POOL,
     RESOURCES_MAX,
+    SCARED_MAX,
     STANDING_LABELS,
     STANDING_START,
     BonusKind,
@@ -52,10 +54,6 @@ class BonusButton(Button):
 
 # Heckboy characters always have one reliable and one erratic power, in this order.
 POWERS = (PowerMode.RELIABLE, PowerMode.ERRATIC)
-POWER_LABELS = {
-    PowerMode.RELIABLE: "Reliable power (+1 die / +1 strain)",
-    PowerMode.ERRATIC: "Erratic power (+2 dice / +2 strain)",
-}
 
 
 class PowerName(Input):
@@ -130,9 +128,6 @@ class SacrificeButton(Button):
 # Muscle, which sets the number of Tech slots, is ranked 1 to 3.
 TECH_SLOTS = 3
 
-LOCKED_NOTE = "Locked: boxes before a marked wound stay marked until that wound is cleared."
-NOT_READY_NOTE = "Mark all the strain before this wound first."
-
 
 class StrainBox(Checkbox):
     """One of the twelve strain boxes."""
@@ -145,11 +140,7 @@ class StrainBox(Checkbox):
     def sync(self, tracker: StrainTracker) -> None:
         """Show the tracker's state; boxes that cannot change are disabled and say why."""
         self.value = tracker.boxes[self.index]
-        note = None
-        if self.index in tracker.locked_boxes:
-            note = LOCKED_NOTE
-        elif not self.value and not tracker.markable(self.index):
-            note = NOT_READY_NOTE
+        note = tracker.lock_reason(self.index)
         self.disabled = note is not None
         self.tooltip = note or self.description
 
@@ -287,7 +278,9 @@ class RollOptions(Horizontal):
     def compose(self) -> ComposeResult:
         with Vertical(id="fear-field", classes="field"):
             yield Label("Scared")
-            yield Select([(str(n), n) for n in range(4)], value=0, allow_blank=False, id="fear")
+            yield Select(
+                [(str(n), n) for n in range(SCARED_MAX + 1)], value=0, allow_blank=False, id="fear"
+            )
         with Vertical(classes="field", id="assisted-field"):
             yield Label("Assisted")
             yield Checkbox(id="assisted", tooltip="Assisted: +1 die; hits on 4+")
@@ -447,6 +440,6 @@ class RollerGroup(VerticalScroll):
         yield Static(id="resources")
         with Vertical(id="reroll-controls"):
             yield Label("Oldheart: select dice from the current test")
-            for index in range(7):
+            for index in range(OLDHEART_MAX_POOL):
                 yield RerollDie(index)
             yield Button("Reroll selected", id="reroll_button", disabled=True)

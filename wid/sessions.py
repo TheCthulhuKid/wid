@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, StringConstraints, model_validator
 
@@ -14,9 +15,13 @@ def session_file_path(value: str | Path, *, label: str = "session file") -> Path
     if not value:
         raise ValueError(f"Choose a {label} path")
     try:
-        return Path(value).expanduser()
+        path = Path(value).expanduser()
     except RuntimeError as error:
         raise ValueError("Could not determine the path's home directory") from error
+    # Checked first, so a folder is never offered as a file to replace.
+    if path.is_dir():
+        raise ValueError("That path is a folder; add a file name.")
+    return path
 
 
 class CharacterDetails(FrozenModel):
@@ -25,8 +30,32 @@ class CharacterDetails(FrozenModel):
     nature: str = ""
 
 
+SaveData = dict[str, Any]
+
+
+def note_succumbed_checks(data: SaveData) -> SaveData:
+    """Version 2 notes on each manifestation check whether the character had already succumbed.
+
+    Version 1 checks have no note, and its default (not succumbed) is how they were worded then.
+    """
+    return data
+
+
+# Each function turns a save file of the version it is keyed by into the next version's data.
+# A change to the save format bumps ``SavedSession.version`` and adds one function here.
+UPGRADES: dict[int, Callable[[SaveData], SaveData]] = {1: note_succumbed_checks}
+
+
+def upgrade_step(step: Callable[[SaveData], SaveData], data: SaveData, version: int) -> SaveData:
+    """Run one upgrade; a file it cannot handle is refused rather than crashing a front end."""
+    try:
+        return step(data)
+    except Exception as error:
+        raise ValueError(f"This file could not be upgraded from save format {version}.") from error
+
+
 class SavedSession(FrozenModel):
-    version: Literal[1] = 1
+    version: Literal[2] = 2
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
     session: RollSession
     draft: RollRequest
@@ -35,6 +64,29 @@ class SavedSession(FrozenModel):
     history: tuple[HistoryEntry, ...] = ()
     reroll_indices: tuple[Index, ...] = ()
     item_target: Index | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def upgrade(cls, data: Any) -> Any:
+        """Bring an older save file up to the current version, one step at a time.
+
+        A file from a newer wid, or with a version no wid wrote, is refused with a message that
+        says so, instead of pydantic's "Input should be 2".
+        """
+        if not isinstance(data, dict):
+            return data
+        current = cls.model_fields["version"].default
+        version = data.get("version", current)
+        # Python counts true as 1, and JSON can hold 1.0; wid never writes either.
+        if type(version) is int:
+            while (step := UPGRADES.get(version)) is not None:
+                data = {**upgrade_step(step, data, version), "version": version + 1}
+                version += 1
+            if version == current:
+                return data
+            if version > current:
+                raise ValueError("This file was saved by a newer wid. Update wid to load it.")
+        raise ValueError(f"This file has an unknown save format version ({version!r}).")
 
     @model_validator(mode="after")
     def validate_state(self) -> Self:
@@ -130,10 +182,7 @@ class SavedSession(FrozenModel):
             raise ValueError("Reroll selection is outside the current result")
 
     def save(self, path: Path, *, overwrite: bool = False) -> None:
-        candidate = SavedSession.model_validate(self.model_dump())
-        write_text(
-            session_file_path(path), candidate.model_dump_json(indent=2), overwrite=overwrite
-        )
+        write_text(session_file_path(path), self.model_dump_json(indent=2), overwrite=overwrite)
 
     @classmethod
     def load(cls, path: Path) -> Self:

@@ -1,25 +1,15 @@
 import asyncio
 
-from helpers import change_genre, click
-from test_rolls import ScriptedRandom
+import pytest
+from helpers import ScriptedRandom, change_genre, click, start_game, text
 from textual.command import CommandPalette
-from textual.widgets import Checkbox, Collapsible, Input, Select, Static
+from textual.widgets import Checkbox, Collapsible, Input, Select
 
 from wid.profiles import Genre
 from wid.rolls import BonusKind
 from wid.ui.app import RollerApp
 
-
-def text(app, selector):
-    return str(app.query_one(selector, Static).content)
-
-
-async def start_game(app, pilot, ranks=None):
-    if ranks is not None:
-        for index, rank in enumerate(ranks):
-            app.query_one(f"#attribute-rank-{index}", Select).value = rank
-    await click(app, pilot, "#start-game")
-    assert app.session.attributes is not None
+pytestmark = pytest.mark.ui
 
 
 async def apply_item(app, pilot, index=0):
@@ -59,7 +49,7 @@ def test_the_game_starts_only_with_unique_ranks():
             assert "Set attributes" in text(app, "#feedback")
             app.query_one("#attribute-rank-0", Select).value = 3
             await click(app, pilot, "#start-game")
-            assert "only once" in text(app, "#feedback")
+            assert text(app, "#feedback") == "Each attribute rank (1–3) can appear only once"
             assert app.session.attributes is None
             await start_game(app, pilot, (3, 1, 2))
             assert app.query_one("#attribute-rank-0", Select).disabled

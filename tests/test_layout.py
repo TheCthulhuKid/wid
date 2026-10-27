@@ -1,12 +1,12 @@
 import asyncio
 
 import pytest
-from helpers import reveal
-from test_rollerapp import start_game, text
-from test_rolls import ScriptedRandom
+from helpers import ScriptedRandom, reveal, start_game, text
 from textual.widgets import Button, RichLog, Select
 
 from wid.ui.app import RollerApp
+
+pytestmark = pytest.mark.ui
 
 
 @pytest.mark.parametrize("size", [(80, 24), (140, 45)])

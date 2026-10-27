@@ -20,7 +20,8 @@ class HistoryEntry(FrozenModel):
     notice: str = ""
     action: str = ""
     result: RollResult | None = None
-    charged: bool = True  # False for items, which cost no resources
+    # False when a bonus, Tech or an undo changes a roll that was already paid for.
+    charged: bool = True
     total_strain: Count = 0
     total_corruption: Count = 0
     tech_pieces: tuple[TechPiece, ...] | None = None

@@ -2,13 +2,12 @@ import asyncio
 from random import Random
 
 import pytest
-from helpers import change_genre, click
-from test_rollerapp import start_game, text
-from test_rolls import ScriptedRandom
+from helpers import ScriptedRandom, change_genre, click, start_game, text
 from textual.widgets import Input, Select
 
+from wid.formatting import check_summary
 from wid.profiles import Genre
-from wid.rolls import RollRequest, manifestation_check
+from wid.rolls import OLDHEART_MAX_POOL, RollRequest, manifestation_check
 from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
 
@@ -28,38 +27,39 @@ def test_corruption_is_gained_with_a_check_until_the_character_succumbs(session_
     session.add_manifestation()
     session.add_corruption(1, rng=ScriptedRandom([1]))
     assert session.succumbed
-    session.add_corruption(1, rng=ScriptedRandom([1]))
+    check = session.add_corruption(1, rng=ScriptedRandom([1]))
     assert len(session.manifestations) == 3
+    assert check_summary(check).endswith("no effect: the character has already succumbed")
     with pytest.raises(ValueError, match="Core WiD has no Corruption"):
         session_factory().add_corruption(1, rng=Random(0))
 
 
 def test_manifestations_change_depravity_and_hospitality_pools():
-    def pool(attribute, manifestations, fear=0):
+    def pool(attribute, manifestations, fear=0, assisted=False):
         request = RollRequest(
-            profile_id=KIT, attribute=attribute, manifestations=manifestations, fear_level=fear
+            profile_id=KIT,
+            attribute=attribute,
+            manifestations=manifestations,
+            fear_level=fear,
+            assisted=assisted,
         )
-        return request.pool_size()
+        return request.pool_size
 
     assert pool("Depravity", 2) == 6
     assert pool("Hospitality", 2) == 2
     assert pool("Fitness", 2) == 4
     assert pool("Hospitality", 3, fear=3) == 1
+    assert pool("Depravity", 3, assisted=True) == OLDHEART_MAX_POOL
 
 
-def test_manifestations_are_saved_and_belong_to_oldheart(tmp_path, saved_session_factory):
-    saved = saved_session_factory(KIT)
-    saved.session.set_manifestation_name(0, "Milky eye")
-    path = tmp_path / "oldheart.json"
-    saved.save(path)
-    assert SavedSession.load(path).session.manifestations == ("Milky eye",)
-
+def test_manifestations_belong_to_oldheart(saved_session_factory):
     data = saved_session_factory().model_dump()
     data["session"]["manifestations"] = ("Scales",)
     with pytest.raises(ValueError, match="Only Oldheart can have manifestations"):
         SavedSession.model_validate(data)
 
 
+@pytest.mark.ui
 def test_gaining_corruption_by_hand_checks_and_shows_manifestations():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([1, 1]))
@@ -75,7 +75,7 @@ def test_gaining_corruption_by_hand_checks_and_shows_manifestations():
             app.query_one("#manifestation-name-0", Input).value = "Scaly arm"
             await pilot.pause()
             assert app.session.manifestations == ("Scaly arm",)
-            app.tested_attribute = "Depravity"
+            app.game.tested_attribute = "Depravity"
             app.update_preview()
             assert "Depravity +1d6, Hospitality -1d6" in text(app, "#pool")
             await click(app, pilot, "#remove-manifestation")

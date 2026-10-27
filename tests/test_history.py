@@ -1,34 +1,21 @@
-from random import Random
-
 import pytest
 from pydantic import ValidationError
 
 from wid.history import HistoryEntry
 from wid.profiles import Genre
-from wid.sessions import SavedSession
 
 
 def test_notice_renders_as_its_text():
     assert str(HistoryEntry(notice="Switched kit")) == "Switched kit"
 
 
-def test_entry_needs_exactly_one_kind(saved_session_factory):
+def test_an_entry_is_either_a_notice_or_an_action_with_its_result(saved_session_factory):
     result = saved_session_factory().session.current_result
 
-    with pytest.raises(ValidationError):
-        HistoryEntry()
     with pytest.raises(ValidationError, match="either a notice or a result"):
         HistoryEntry(notice="x", result=result)
-
-
-def test_notice_cannot_carry_action_fields():
     with pytest.raises(ValidationError, match="cannot set"):
         HistoryEntry(notice="Switched kit", total_strain=1)
-
-
-def test_result_entry_needs_an_action(saved_session_factory):
-    result = saved_session_factory().session.current_result
-
     with pytest.raises(ValidationError, match="needs an action"):
         HistoryEntry(result=result)
 
@@ -54,29 +41,3 @@ def test_uncharged_entry_reports_no_cost(saved_session_factory):
     )
 
     assert "Strain +0 (session 1)" in str(entry)
-
-
-def test_structured_history_round_trips(tmp_path, saved_session_factory):
-    saved = saved_session_factory(Genre.OLDHEART)
-    result = saved.session.current_result
-    entry = HistoryEntry(action="Roll", result=result, total_corruption=1, expertise_name="Fencing")
-    saved = saved.model_copy(update={"history": (*saved.history, entry)})
-    path = tmp_path / "game.json"
-
-    saved.save(path)
-    loaded = SavedSession.load(path)
-
-    assert loaded.history == saved.history
-    assert [str(item) for item in loaded.history] == [str(item) for item in saved.history]
-    assert "Corruption +" in str(loaded.history[-1])
-    assert result.dice == loaded.history[-1].result.dice
-
-
-def test_rendering_after_reroll_uses_rolled_dice(saved_session_factory):
-    saved = saved_session_factory(Genre.OLDHEART)
-    before = HistoryEntry(action="Roll", result=saved.session.current_result)
-    saved.session.reroll({1}, rng=Random(9))
-
-    after = HistoryEntry(action="Reroll", result=saved.session.current_result)
-
-    assert str(before) != str(after)

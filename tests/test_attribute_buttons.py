@@ -1,12 +1,13 @@
 import asyncio
 
-from helpers import change_genre, click
-from test_rollerapp import start_game, text
-from test_rolls import ScriptedRandom
+import pytest
+from helpers import ScriptedRandom, change_genre, click, start_game, text
 from textual.widgets import Button
 
 from wid.profiles import PROFILES, Genre
 from wid.ui.app import RollerApp
+
+pytestmark = pytest.mark.ui
 
 
 def test_each_attribute_button_rolls_its_rank_and_ctrl_r_repeats_it():
@@ -34,6 +35,6 @@ def test_changing_kit_relabels_the_attributes():
             await change_genre(app, pilot, Genre.OLDHEART)
             labels = [text(app, f"#attribute-label-{index}") for index in range(3)]
             assert labels == list(PROFILES[Genre.OLDHEART].attributes)
-            assert app.tested_attribute == "Depravity"
+            assert app.game.tested_attribute == "Depravity"
 
     asyncio.run(scenario())

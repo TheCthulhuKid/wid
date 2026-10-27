@@ -23,6 +23,10 @@ jobs:
       - name: Tests with coverage
         run: uv run --no-sync python -m pytest --cov -n 8
 
+      # The installed command, started headless as a release build is, on every push.
+      - name: Self-test
+        run: uv run --no-sync wid --self-test
+
   quality:
     runs-on: ubuntu-latest
     steps:

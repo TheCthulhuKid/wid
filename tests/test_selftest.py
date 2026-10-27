@@ -7,9 +7,8 @@ import pytest
 from wid import selftest
 from wid.cli import main
 
-pytestmark = pytest.mark.ui
 
-
+@pytest.mark.ui
 def test_every_check_passes_without_touching_the_users_config(capsys):
     assert selftest.run_self_test() == 0
 
@@ -19,6 +18,7 @@ def test_every_check_passes_without_touching_the_users_config(capsys):
     assert list(Path(os.environ["XDG_CONFIG_HOME"]).iterdir()) == []
 
 
+@pytest.mark.ui
 def test_a_failing_check_is_reported(capsys):
     async def broken(app, pilot, folder):
         selftest.require(False, "boom")

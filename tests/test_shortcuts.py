@@ -1,12 +1,14 @@
 import asyncio
 
-from helpers import reveal
-from test_rollerapp import start_game
+import pytest
+from helpers import reveal, start_game
 from textual.widgets import Input, Select, TabbedContent
 from textual.widgets.tabbed_content import ContentTabs
 
 from wid.profiles import Genre
 from wid.ui.app import RollerApp
+
+pytestmark = pytest.mark.ui
 
 
 def run(scenario, size=(100, 45)):

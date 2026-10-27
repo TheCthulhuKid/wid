@@ -1,10 +1,13 @@
 import asyncio
 
+import pytest
 from textual.widgets import Static
 
 from wid.settings import Settings, load_settings, save_settings
 from wid.ui.app import RollerApp
 from wid.ui.themes import DANGER, DANGER_THEME, HIGHLIGHT
+
+pytestmark = pytest.mark.ui
 
 
 def run(settings_path, scenario):

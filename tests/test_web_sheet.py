@@ -1,14 +1,10 @@
-from fastapi.testclient import TestClient
-from test_rolls import ScriptedRandom
+from helpers import ScriptedRandom, act, browser
 from textual.color import Color
 
 from wid.game import Game
 from wid.profiles import PROFILES, Genre
 from wid.ui.outcomes import MIN_CONTRAST, contrast_ratio
-from wid.web.app import create_app
 from wid.web.view import COLOURS
-
-PAGE = {"HX-Request": "true"}
 
 # A control only one kit has, as it appears in the sheet, and the profile flag that shows it.
 KIT_CONTROLS = {
@@ -18,16 +14,6 @@ KIT_CONTROLS = {
     'formaction="/actions/standing"': "has_standing",
     'formaction="/actions/spend-resources"': "has_resources",
 }
-
-
-def browser(game):
-    client = TestClient(create_app(game, "token"), base_url="http://127.0.0.1")
-    client.get("/?token=token")
-    return client
-
-
-def act(client, action, **fields):
-    return client.post(f"/actions/{action}", data=fields, headers=PAGE)
 
 
 def test_each_kit_shows_only_its_own_controls():
@@ -46,7 +32,6 @@ def test_an_item_and_a_kit_change_through_the_routes():
     sheet = act(
         client,
         "apply-bonus",
-        sheet="1",
         kind="appropriate_item",
         die="1",
         **{"name-appropriate_item": "Sword"},
@@ -57,8 +42,8 @@ def test_an_item_and_a_kit_change_through_the_routes():
     act(client, "change-kit", **{"confirm-genre": "oldheart"})
     assert game.session.profile_id == Genre.OLDHEART
     assert game.history == []
-    # The question counts what was typed since the sheet was drawn (review issue 2).
-    asked = act(client, "new-character", sheet="1", **{"character-name": "Bo"}).text
+    # The question counts what was typed since the sheet was drawn.
+    asked = act(client, "new-character", **{"character-name": "Bo"}).text
     assert "Start a new character?" in asked
 
 
@@ -74,19 +59,22 @@ def test_outcome_and_button_colours_stay_readable_in_light_and_dark():
 
 def test_the_notes_preview_renders_markdown_without_raw_html():
     client = browser(Game())
-    sheet = act(
-        client, "update", sheet="1", notes="# Plan <b>x</b>", **{"notes-preview": "on"}
-    ).text
+    notes = "# Plan <b>x</b>\n\n[Map](https://example.com)"
+    sheet = act(client, "update", notes=notes, **{"notes-preview": "on"}).text
     assert "<h1>Plan &lt;b&gt;x&lt;/b&gt;</h1>" in sheet
+    assert 'href="https://example.com" target="_blank"' in sheet
 
 
 def test_bad_fields_are_refused_without_breaking_the_page_or_losing_typing():
-    # Review issues 4 and 6.
     game = Game()
     client = browser(game)
-    refused = act(client, "update", sheet="1", fear="7", notes="Keep this")
+    refused = act(client, "update", fear="7", notes="Keep this")
     assert refused.status_code == 200
     assert "Scared" in refused.text
     assert game.fear_level == 0
     assert game.notes == "Keep this"
     assert client.get("/").status_code == 200
+    game.start_game((1, 2, 3))
+    game.roll()
+    act(client, "update", die="9")
+    assert game.item_target is None

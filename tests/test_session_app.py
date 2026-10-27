@@ -1,27 +1,22 @@
 import asyncio
 from random import Random
 
-from helpers import change_genre, click
-from test_rollerapp import start_game, text
-from textual.widgets import Button, Checkbox, Input, Select
+import pytest
+from helpers import change_genre, click, load_game, start_game, text
+from textual.widgets import Button, Checkbox, Input, Select, TextArea
 
+from wid.formatting import QUIT_QUESTION
 from wid.profiles import Genre
 from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
 
-
-async def load_game(app, pilot):
-    await click(app, pilot, "#load-session")
-    assert (
-        app.screen.query_one("#load-path", Input).value
-        == app.query_one("#session-path", Input).value
-    )
-    await pilot.click("#submit-load")
-    await pilot.pause()
+pytestmark = pytest.mark.ui
 
 
 def test_a_saved_game_loads_with_its_draft_and_history(tmp_path):
     path = tmp_path / "oldheart.json"
+    details = {"name": "Ada 🎲", "looks": "Red coat", "nature": "Curious"}
+    notes = "# Ada\n\n**Keep** the map.\n"
 
     async def scenario():
         app = RollerApp(rng=Random(4))
@@ -29,6 +24,9 @@ def test_a_saved_game_loads_with_its_draft_and_history(tmp_path):
             await change_genre(app, pilot, Genre.OLDHEART)
             await start_game(app, pilot, (3, 1, 2))
             await pilot.press("ctrl+r")
+            for field, value in details.items():
+                app.query_one(f"#character-{field}", Input).value = value
+            app.query_one("#session-notes", TextArea).load_text(notes)
             app.query_one("#fear", Select).value = 3
             app.query_one("#reroll-die-1", Checkbox).value = True
             app.query_one("#session-name", Input).value = "A dangerous evening"
@@ -48,29 +46,9 @@ def test_a_saved_game_loads_with_its_draft_and_history(tmp_path):
             assert loaded.query_one("#fear", Select).value == 3
             assert loaded.selected_dice() == {1}
             assert loaded.sub_title == "A dangerous evening"
-
-    asyncio.run(scenario())
-
-
-def test_heckboy_power_names_are_saved_and_loaded(tmp_path):
-    path = tmp_path / "heckboy.json"
-
-    async def scenario():
-        app = RollerApp(rng=Random(1))
-        async with app.run_test(size=(100, 40)) as pilot:
-            await change_genre(app, pilot, Genre.HECKBOY)
-            await start_game(app, pilot)
-            app.query_one("#power-name-0", Input).value = "Hellfire"
-            app.query_one("#session-name", Input).value = "Heck"
-            app.query_one("#session-path", Input).value = str(path)
-            await pilot.pause()
-            await click(app, pilot, "#save-session")
-
-        loaded = RollerApp(rng=Random(2))
-        async with loaded.run_test(size=(100, 40)) as pilot:
-            loaded.query_one("#session-path", Input).value = str(path)
-            await load_game(loaded, pilot)
-            assert loaded.query_one("#power-name-0", Input).value == "Hellfire"
+            for field, value in details.items():
+                assert loaded.query_one(f"#character-{field}", Input).value == value
+            assert loaded.query_one("#session-notes", TextArea).text == notes
 
     asyncio.run(scenario())
 
@@ -98,6 +76,11 @@ def test_load_and_save_ask_before_replacing(tmp_path, saved_session_factory):
             await click(app, pilot, "#save-session")
             await pilot.click("#confirm-session")
             assert SavedSession.load(path).name == "Replacement"
+            await pilot.press("ctrl+r")
+            await pilot.press("ctrl+q")
+            assert app.screen.message == QUIT_QUESTION
+            await pilot.click("#cancel-session")
+            assert app.is_running
 
     asyncio.run(scenario())
 

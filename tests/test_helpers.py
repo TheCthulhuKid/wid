@@ -1,8 +1,11 @@
 import asyncio
 
+import pytest
 from helpers import reveal
 from textual.app import App
 from textual.widgets import Checkbox, Collapsible, Input, TabbedContent, TabPane
+
+pytestmark = pytest.mark.ui
 
 
 class Sample(App):

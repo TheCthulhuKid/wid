@@ -6,8 +6,6 @@ from itertools import groupby
 from wid.history import HistoryEntry
 from wid.sessions import CharacterDetails
 
-NO_HISTORY = "No actions recorded."
-
 
 def fence_for(text: str) -> str:
     """A code fence longer than any run of backticks inside ``text``."""
@@ -36,8 +34,6 @@ def history_markdown(
     details = [value for value in (character.name, character.looks, character.nature) if value]
     if details:
         lines += ["Character: " + ", ".join(" ".join(value.split()) for value in details), ""]
-    if not entries:
-        return "\n".join([*lines, NO_HISTORY, ""])
     for index, entry in enumerate(entries, start=1):
         text = str(entry)
         fence = fence_for(text)

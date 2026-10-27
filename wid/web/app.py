@@ -4,14 +4,17 @@ Three checks guard every request, because save and export can write files:
 
 - the Host header must be ``127.0.0.1`` or ``localhost``, against DNS rebinding;
 - the per-launch token, which arrives once in the URL ``wid --web`` opens and is then kept in a
-  ``SameSite=Strict`` cookie, so another site cannot borrow the player's session;
-- actions must carry htmx's ``HX-Request`` header. Browsers only let another origin add a custom
-  header after a CORS check, which this app never grants. That matters because SameSite treats
-  every ``localhost`` port as the same site, so the cookie alone would not stop a page served
-  by some other local program.
+  ``SameSite=Strict`` cookie, so another site cannot borrow the player's session. The cookie is
+  named after the token, because browsers share cookies across ports: with one name, a second
+  ``wid --web`` would replace the first one's cookie and lock its page out;
+- actions must carry the ``HX-Request`` header that ``sheet.js`` adds. Browsers only let another
+  origin add a custom header after a CORS check, which this app never grants. That matters
+  because SameSite treats every ``localhost`` port as the same site, so the cookie alone would
+  not stop a page served by some other local program.
 """
 
 import asyncio
+import hashlib
 import re
 import secrets
 from pathlib import Path
@@ -22,16 +25,20 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.templating import Jinja2Templates
 
-from wid.game import Game
+from wid.game import Game, player_message
 from wid.web.forms import ACTIONS, NeedsConfirmation, SheetForm, collect
 from wid.web.view import COLOURS, css_variables, sheet_context
 
 HOSTS = ["127.0.0.1", "localhost"]
-TOKEN_COOKIE = "wid_token"
 HERE = Path(__file__).parent
 # The page's colours as CSS variables, worked out once (only page.html uses them).
 COLOUR_VARIABLES = {scheme: css_variables(colours) for scheme, colours in COLOURS.items()}
 TEMPLATES = Jinja2Templates(directory=HERE / "templates")
+
+
+def token_cookie(token: str) -> str:
+    """The cookie that holds this launch's token; a hash of it, so the name gives nothing away."""
+    return f"wid_token_{hashlib.sha256(token.encode()).hexdigest()[:16]}"
 
 
 def matches(offered: str, token: str) -> bool:
@@ -64,6 +71,7 @@ def create_app(game: Game, token: str) -> FastAPI:
     app = FastAPI(title="wid", docs_url=None, redoc_url=None, openapi_url=None)
     # Requests are handled concurrently, so one action finishes before the next one starts.
     lock = asyncio.Lock()
+    cookie = token_cookie(token)
 
     @app.middleware("http")
     async def require_token(request: Request, call_next) -> Response:
@@ -71,9 +79,9 @@ def create_app(game: Game, token: str) -> FastAPI:
         if offered is not None and matches(offered, token):
             # Swap the token in the address for a cookie, so it does not stay in the URL bar.
             response = RedirectResponse("/", status_code=303)
-            response.set_cookie(TOKEN_COOKIE, token, httponly=True, samesite="strict")
+            response.set_cookie(cookie, token, httponly=True, samesite="strict")
             return response
-        if not matches(request.cookies.get(TOKEN_COOKIE, ""), token):
+        if not matches(request.cookies.get(cookie, ""), token):
             return PlainTextResponse("Open wid from the address it printed when it started.", 403)
         if request.method != "GET" and request.headers.get("HX-Request") != "true":
             return PlainTextResponse("Actions only come from the wid page.", 403)
@@ -105,7 +113,7 @@ def create_app(game: Game, token: str) -> FastAPI:
             except NeedsConfirmation as question:
                 message, ask = "", question
             except ValueError as error:
-                message = str(error)
+                message = player_message(error)
             return render(
                 request,
                 "sheet.html",

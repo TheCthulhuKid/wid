@@ -26,7 +26,7 @@ checkout: after updating, rebuild it with `uv tool install --force --reinstall .
 uv sync --locked --group dev
 uv run wid                 # or .venv/bin/python -m wid
 uv run wid --web           # the browser version: 127.0.0.1:8765 or a free port
-uv run pytest              # 4 workers, about 80 seconds; -m "not ui" for the quick domain tests
+uv run pytest              # a worker per core: about 60 s on 16 cores, 4 s with -m "not ui"
 uv run pytest --cov        # as CI runs it: fails below 80% coverage of wid/
 uv run ruff check .
 uv run ruff format --check .
@@ -35,7 +35,9 @@ uv run ruff format --check .
 Tests run offline and headless (Textual's test runner). They cover the usual path of each
 feature, one domain test and, where there is a screen, one app test, rather than every edge
 case. UI tests click through `click` and `reveal` in `tests/helpers.py`, which wait until a
-widget has settled on screen. Shared fixtures are in
+widget has settled on screen. Every test that starts the app carries the `ui` marker
+(`pytestmark` for a whole module, `@pytest.mark.ui` otherwise), so mark a new one too. Shared
+helpers live in `tests/helpers.py`, never in another test module. Shared fixtures are in
 `tests/conftest.py`; save tests use `tmp_path`, and an autouse fixture points
 `XDG_CONFIG_HOME` at a temporary directory so no test touches your real settings.
 
@@ -71,7 +73,8 @@ environment without the dev group, so run `uv sync --locked --group dev` afterwa
 GitHub Actions:
 
 - `.github/workflows/ci.yml` runs two jobs on Linux for every push: the tests (8 workers,
-  with coverage) and the quality checks (`ruff check` and `ruff format --check`).
+  with coverage, then `wid --self-test`) and the quality checks (`ruff check` and
+  `ruff format --check`).
 - `.github/workflows/release.yml` builds and smoke-tests the Windows zip, and builds and
   self-tests the Linux x86_64 (on Ubuntu 22.04, for the widest glibc support) and macOS arm64
   archives, on every push to `main`, uploading each as a build artifact. Pushing a tag such as
@@ -96,17 +99,18 @@ wid/
 ├── game.py             # One sitting: the state and actions every front end drives
 ├── export.py           # Markdown text of the action history
 ├── history.py          # Structured action history entries and their text rendering
-├── sessions.py         # Versioned JSON snapshots and atomic local storage
-├── storage.py          # Atomic file writes shared by saves
+├── sessions.py         # The versioned save format and the session file path rules
+├── storage.py          # Atomic file writes for saves, exports and settings
 ├── selftest.py         # `wid --self-test`: the app checked headless, for release builds
 ├── settings.py         # Remembered preferences in a small JSON file
-└── ui/
-    ├── app.py          # Textual front end: shows the game, passes actions to it
-    ├── sessions.py     # Save, load, export and new-character dialogs
-    ├── widgets.py      # Character, options, session, and result widgets
-    ├── dialogs.py      # Confirmation screens
-    ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
-    └── roller.tcss     # Bundled interface styles
+├── ui/
+│   ├── app.py          # Textual front end: shows the game, passes actions to it
+│   ├── sessions.py     # Save, load, export and new-character dialogs
+│   ├── widgets.py      # Character, options, session, and result widgets
+│   ├── dialogs.py      # Confirmation screens
+│   ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
+│   ├── themes.py       # The default danger theme: cream paper, lavender fields, red highlights
+│   └── roller.tcss     # Bundled interface styles
 └── web/
     ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser with a token
     ├── app.py          # FastAPI app: the page, POST /actions/<name>, and the safety checks
@@ -128,7 +132,9 @@ the game before each action (`collect`), then redraws from it (`refresh_sheet`),
 front end only needs the same two steps; the browser version does them per request (each action
 posts the whole sheet, `collect` copies it in, the action runs, the sheet comes back). Every web
 request must come from `127.0.0.1` or `localhost`, carry the per-launch token cookie, and, for
-actions, htmx's `HX-Request` header (see `wid/web/app.py` for why each check is needed).
+actions, the `HX-Request` header that `sheet.js` adds (see `wid/web/app.py` for why each check
+is needed). The cookie is named after its token, so two `wid --web` games can run at once in one
+browser.
 Persistence depends on the models, not the interface.
 Package initializers do not import the application.
 
@@ -138,14 +144,20 @@ Package initializers do not import the application.
 The terminal and the browser version read and write the same files.
 A file holds the session name, character details, notes, genre, attribute ranks, the roll
 options, item and expertise names, the Heckboy power names and the power chosen for the next
-roll, the Tech slots and their names, the Oldheart manifestations, the Ball Season Standing, the This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their names, cumulative
-power strain, Corruption, the current dice and result, selected reroll dice, and the full
-history. Loading never rolls dice, charges resources or refills Tech. Window layout, the
-Edit/Preview choice and the random generator's state are not saved, and the theme lives in the
-settings file instead.
+roll, the Tech slots and their names, the Oldheart manifestations, the Ball Season Standing, the
+This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their
+names, cumulative power strain, Corruption, the current dice and result, the dice selected for a
+reroll and the die chosen for an item, and the full history. Loading never rolls dice, charges
+resources or refills Tech. Window layout, the Edit/Preview choice, the undo history for bonuses
+and the random generator's state are not saved, and the theme lives in the settings file
+instead. So **Undo** is unavailable right after a load, until the next bonus.
 
-- The format is versioned (`version: 1`); files from an unknown version, a marked wound with an
-  unmarked box before it, or invalid values are rejected without replacing the current game.
+- The format is versioned (`version: 2`); files from an unknown version, a marked wound with an
+  unmarked box before it, or invalid values are rejected without replacing the current game. A
+  file from a newer wid says so and asks the player to update.
+- A change to the save format bumps `version` on `SavedSession` and adds one function to
+  `UPGRADES` in `wid/sessions.py`, keyed by the old version, that turns an old file's data into
+  the new version's. Loading runs the steps in turn, so files of every earlier version still load.
 - A save goes to a temporary file that is renamed into place, so a failed write never leaves a
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.

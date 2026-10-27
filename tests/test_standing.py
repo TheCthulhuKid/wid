@@ -24,19 +24,14 @@ def test_standing_starts_reputable_and_stays_on_the_track(session_factory):
         session_factory().set_standing(0)
 
 
-def test_standing_is_saved_and_belongs_to_ball_season(tmp_path, saved_session_factory):
-    saved = saved_session_factory(Genre.BALL_SEASON)
-    saved.session.set_standing(0)
-    path = tmp_path / "ball.json"
-    saved.save(path)
-    assert SavedSession.load(path).session.standing == 0
-
+def test_standing_belongs_to_ball_season(saved_session_factory):
     data = saved_session_factory().model_dump()
     data["session"]["standing"] = 0
     with pytest.raises(ValueError, match="Only Ball Season can have Standing"):
         SavedSession.model_validate(data)
 
 
+@pytest.mark.ui
 def test_track_moves_by_keys_and_clicks_for_ball_season_only():
     async def scenario():
         app = RollerApp()

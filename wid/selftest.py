@@ -16,7 +16,7 @@ from textual.widgets import Markdown, TabbedContent, TextArea
 from wid.game import Game
 from wid.settings import load_settings
 from wid.ui.app import RollerApp
-from wid.web.app import TOKEN_COOKIE, create_app
+from wid.web.app import create_app, token_cookie
 from wid.web.server import HOST, listening_socket
 
 Check = Callable[[RollerApp, object, Path], Awaitable[None]]
@@ -110,7 +110,7 @@ async def check_browser(app: RollerApp, pilot, folder: Path) -> None:
         require(server.started, "the web server did not start")
         opened = await http_get(port, f"/?token={token}")
         require(opened.startswith("HTTP/1.1 303"), "the address with the token was not accepted")
-        cookie = f"{TOKEN_COOKIE}={token}"
+        cookie = f"{token_cookie(token)}={token}"
         page = await http_get(port, "/", cookie)
         require(page.startswith("HTTP/1.1 200") and "Roll" in page, "the page was not served")
         style = await http_get(port, "/static/sheet.css", cookie)

@@ -9,6 +9,7 @@ from wid.rolls import (
     BonusKind,
     ManifestationCheck,
     Outcome,
+    PowerMode,
     ResourceEffect,
     ResourceSpend,
     RollRequest,
@@ -17,6 +18,7 @@ from wid.rolls import (
     StrainTracker,
     TechPiece,
     TechState,
+    standing_label,
 )
 
 BONUS_LABELS = {
@@ -55,10 +57,6 @@ def dice_parts(result: RollResult) -> list[list[Part]]:
             ]
         )
     return lines
-
-
-def dice_lines(result: RollResult) -> str:
-    return "\n".join(_plain(line) for line in dice_parts(result))
 
 
 def summary_parts(result: RollResult) -> list[Part]:
@@ -108,7 +106,10 @@ def tech_strengths(pieces: tuple[TechPiece, ...]) -> str:
 
 def check_summary(check: ManifestationCheck) -> str:
     """The dice of a manifestation check and what they mean."""
-    outcome = "a manifestation!" if check.triggered else "no manifestation"
+    if check.succumbed:
+        outcome = "no effect: the character has already succumbed"
+    else:
+        outcome = "a manifestation!" if check.triggered else "no manifestation"
     dice = " + ".join(str(die) for die in check.dice)
     return (
         f"Manifestation check: {dice} = {check.total} against Corruption {check.score}, {outcome}"
@@ -132,12 +133,22 @@ def resources_reminder(result: RollResult) -> str:
     return "Extra hits can be spent to gain Resources."
 
 
+POWER_LABELS = {
+    PowerMode.RELIABLE: "Reliable power (+1 die, +1 strain)",
+    PowerMode.ERRATIC: "Erratic power (+2 dice, +2 strain)",
+}
+
 SPEND_EFFECTS = {
     ResourceEffect.EXTRA_DIE: "+1d6 on the next test to confront a Danger or defend against it",
     ResourceEffect.AUTO_PASS: "automatically pass an obstacle that does not involve a Danger",
     ResourceEffect.CRAFT_ITEM: "craft an item; name it under Crafted item",
     ResourceEffect.RECOVER_STRAIN: "recover 1d6 strain",
 }
+
+
+# The effects as choices on screen. They start lower case to fit the middle of a history line,
+# and str.capitalize would lower "Crafted item" as well.
+SPEND_LABELS = {effect: text[0].upper() + text[1:] for effect, text in SPEND_EFFECTS.items()}
 
 
 def spend_summary(spend: ResourceSpend, pool: int) -> str:
@@ -148,7 +159,7 @@ def spend_summary(spend: ResourceSpend, pool: int) -> str:
     return f"{text}. Resources reset to {pool}."
 
 
-# What the front ends ask before replacing something.
+# What the front ends ask before replacing or losing something.
 NEW_GAME_QUESTION = (
     "A genre kit lasts the whole game, so changing it starts a new game: the character, "
     "history, notes and file path are cleared. Unsaved changes will be lost."
@@ -157,6 +168,7 @@ NEW_CHARACTER_QUESTION = (
     "Start a new character? This clears the character, ranks, items, strain and the current "
     "roll. The history, notes and file path stay."
 )
+QUIT_QUESTION = "Quit? Unsaved changes will be lost."
 
 
 def replace_question(kind: str, path: object) -> str:
@@ -176,6 +188,11 @@ def strain_counts(tracker: StrainTracker) -> str:
     return f"{text} — Defeat" if tracker.defeated else text
 
 
+def strain_notice(change: str, tracker: StrainTracker) -> str:
+    """History line for a strain change, such as ``Took 1 strain: 3 strain, 1 wound.``"""
+    return f"{change}: {strain_counts(tracker)}."
+
+
 def strain_summary(tracker: StrainTracker) -> str:
     """Title of the collapsible strain section, so the state shows while it is folded away."""
     return f"Strain tracker: {strain_counts(tracker)}"
@@ -184,8 +201,17 @@ def strain_summary(tracker: StrainTracker) -> str:
 def strain_status(tracker: StrainTracker) -> str:
     """The hint under the strain boxes, or Defeat with its name once it is marked."""
     if not tracker.defeated:
-        return "Mark strain as it is taken. A wound needs the strain before it marked first."
+        return "Mark strain as it is taken. Mark all the strain before a wound first."
     return f"Defeat — character ended. {tracker.names[2]}".rstrip()
+
+
+def standing_notice(standing: int) -> str:
+    # Three dots share the label Reputable, so the dot says which one.
+    return f"Standing moved to {standing_label(standing)} (dot {standing + 1})."
+
+
+def resources_notice(amount: int, pool: int) -> str:
+    return f"Resources {amount:+d}: {pool} in the pool."
 
 
 def corruption_status(session: RollSession) -> str:
@@ -201,7 +227,7 @@ def corruption_status(session: RollSession) -> str:
 
 def pool_line(request: RollRequest) -> str:
     """The dice the next test rolls and why, such as ``Pool: 4d6 — hits on 5+``."""
-    text = f"Pool: {request.pool_size()}d6 — hits on {request.hit_threshold}+"
+    text = f"Pool: {request.pool_size}d6 — hits on {request.hit_threshold}+"
     if request.resource_die:
         text += " (includes the Resources die)"
     attributes = PROFILES[request.profile_id].attributes

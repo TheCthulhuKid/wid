@@ -7,8 +7,18 @@
 <title>We're in Danger</title>
 <style>
   :root { {{ light }} }
-  @media (prefers-color-scheme: dark) { :root { {{ dark }} } }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { {{ dark }} } }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; {{ dark }} }
 </style>
+<script>
+  // Light or dark as the player last chose in this browser, set before the page is drawn so it
+  // never flashes the other colours. Without a choice, the system setting decides.
+  try {
+    const theme = localStorage.getItem("wid-theme");
+    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  } catch {}
+</script>
 <link rel="stylesheet" href="/static/sheet.css">
 <script src="/static/sheet.js" defer></script>
 </head>

@@ -2,7 +2,12 @@ from pathlib import Path
 
 from textual.widgets import Input, Select
 
-from wid.formatting import NEW_CHARACTER_QUESTION, load_question, replace_question
+from wid.formatting import (
+    NEW_CHARACTER_QUESTION,
+    QUIT_QUESTION,
+    load_question,
+    replace_question,
+)
 from wid.game import Game
 from wid.profiles import Genre
 from wid.sessions import SavedSession
@@ -10,7 +15,7 @@ from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
 
 
 class SessionActions:
-    """The save, load, export and new-character dialogs mixed into ``RollerApp``.
+    """The save, load, export, new-character and quit dialogs mixed into ``RollerApp``.
 
     The game does the work; these methods only ask the player to confirm and show the outcome.
     """
@@ -84,6 +89,25 @@ class SessionActions:
         message = self.game.new_character()
         self.show_game()
         self.feedback(message)
+
+    async def action_quit(self) -> None:
+        """Ctrl+Q, which asks first when quitting would lose unsaved changes."""
+        # Pressed again while the question is open, it would stack a second copy.
+        if isinstance(self.screen, ConfirmSessionAction) and self.screen.message == QUIT_QUESTION:
+            return
+        # An open dialog covers the fields, and the action that opened it took them already.
+        if self.screen is self.screen_stack[0]:
+            self.collect()
+        if self.game.has_unsaved_state():
+            self.push_screen(ConfirmSessionAction(QUIT_QUESTION, "Quit"), self.finish_quit)
+        else:
+            self.exit()
+
+    def finish_quit(self, confirmed: bool) -> None:
+        if confirmed:
+            self.exit()
+        else:
+            self.feedback("Quit canceled; the game is still open.")
 
     def action_load_session(self) -> None:
         if self.pending_genre is not None:

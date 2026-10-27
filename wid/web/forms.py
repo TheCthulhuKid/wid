@@ -13,9 +13,9 @@ from wid.formatting import (
     load_question,
     replace_question,
 )
-from wid.game import Game
+from wid.game import Game, NameField
 from wid.profiles import Genre
-from wid.rolls import SCARED_MAX, BonusKind, PowerMode, ResourceEffect
+from wid.rolls import BonusKind, PowerMode, ResourceEffect
 from wid.sessions import CharacterDetails
 
 
@@ -29,6 +29,13 @@ class NeedsConfirmation(Exception):
         self.action = action
         self.flag = flag
         self.value = value
+
+
+def as_number(name: str, value: str) -> int:
+    try:
+        return int(value)
+    except ValueError:
+        raise ValueError(f"{name} must be a number") from None
 
 
 class SheetForm:
@@ -49,10 +56,10 @@ class SheetForm:
         return self.get(name) or ""
 
     def number(self, name: str) -> int:
-        return int(self.text(name))
+        return as_number(name, self.text(name))
 
     def numbers(self, name: str) -> list[int]:
-        return [int(value) for value in self.fields.get(name, [])]
+        return [as_number(name, value) for value in self.fields.get(name, [])]
 
     def ticked(self, name: str) -> bool:
         return name in self.fields
@@ -94,29 +101,31 @@ def collect(game: Game, form: SheetForm) -> None:
     take("session-path", lambda value: setattr(game, "path", value))
     take("notes", lambda value: setattr(game, "notes", value))
     for kind in BonusKind:
-        take(f"name-{kind}", lambda value, kind=kind: session.set_bonus_name(kind, value))
+        take(f"name-{kind}", lambda value, kind=kind: game.rename("bonus", kind, value))
     # The counts come from the character, so a kit's slots exist only where it has them (Tech in
     # Second Contact, manifestations in Oldheart), and the page sends only its kit's fields.
-    take_numbered(form, "power-name", len(session.power_names), session.set_power_name)
-    manifestations = len(session.manifestations)
-    take_numbered(form, "manifestation-name", manifestations, session.set_manifestation_name)
-    tech_slots = len(session.tech.pieces) if session.tech else 0
-    take_numbered(form, "tech-name", tech_slots, session.set_tech_name)
-    take_numbered(form, "strain-name", len(session.strain.names), session.set_strain_name)
+    slots: dict[NameField, int] = {
+        "power": len(session.power_names),
+        "manifestation": len(session.manifestations),
+        "tech": len(session.tech.pieces) if session.tech else 0,
+        "strain": len(session.strain.names),
+    }
+    for field, count in slots.items():
+        take_numbered(
+            form,
+            f"{field}-name",
+            count,
+            lambda index, value, field=field: game.rename(field, index, value),
+        )
 
-    fear = int(form.get("fear") or game.fear_level)
-    if not 0 <= fear <= SCARED_MAX:
-        raise ValueError(f"Scared runs from 0 to {SCARED_MAX}")
-    power = PowerMode(form.get("power") or game.power)
-    die = form.get("die")
-    item_target = int(die) if die is not None else game.item_target
-    reroll = tuple(form.numbers("reroll"))
-    if any(index < 0 for index in (*reroll, item_target or 0)):
-        raise ValueError("That die is outside the dice pool")
-    game.fear_level, game.power = fear, power
-    game.item_target, game.reroll_selection = item_target, reroll
-    game.assisted = form.ticked("assisted")
-    game.expertise = form.ticked("expertise")
+    game.set_test_options(
+        fear_level=form.number("fear") if form.get("fear") else game.fear_level,
+        assisted=form.ticked("assisted"),
+        expertise=form.ticked("expertise"),
+        power=PowerMode(form.get("power") or game.power),
+        reroll=form.numbers("reroll"),
+        item_target=form.number("die") if form.get("die") is not None else game.item_target,
+    )
 
 
 def change_kit(game: Game, form: SheetForm) -> str:

@@ -1,5 +1,5 @@
 import pytest
-from test_rolls import ScriptedRandom
+from helpers import ScriptedRandom
 
 from wid.game import Game
 from wid.profiles import Genre
@@ -38,6 +38,15 @@ def test_bonuses_are_offered_once_named_and_logged_without_a_cost():
     assert "Appropriate Item Sword: +1 to die 2" in str(game.history[-1])
 
 
+def test_strain_and_standing_changes_are_logged():
+    game = started(Genre.BALL_SEASON)
+    game.take_strain()
+    assert str(game.history[-1]) == "Took 1 strain: 1 strain, 0 wounds."
+    game.set_standing(4)
+    assert str(game.history[-1]) == "Standing moved to Scandalous (dot 5)."
+    assert game.set_standing(4) == ""
+
+
 def test_new_character_keeps_history_and_file_but_a_new_kit_starts_over():
     game = started()
     game.notes = "Keep the map"
@@ -52,7 +61,7 @@ def test_new_character_keeps_history_and_file_but_a_new_kit_starts_over():
     assert game.change_kit(Genre.OLDHEART) == "New Oldheart game started."
     assert (game.history, game.notes, game.path) == ([], "", "")
     assert not game.has_unsaved_state()
-    # Review issue 5: a typed session name would be lost too.
+    # A typed session name would be lost too.
     game.name = "Friday"
     assert game.has_unsaved_state()
 
@@ -62,9 +71,12 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     game.roll("Depravity")
     game.fear_level = 2
     game.reroll_selection = (1,)
-    game.name = "Friday"
     game.path = str(tmp_path / "game.json")
+    with pytest.raises(ValueError, match="Name the session before saving."):
+        game.save()
+    game.name = "Friday"
     assert game.save() == f"Saved Friday to {game.path}."
+    assert not game.has_unsaved_state()
     with pytest.raises(FileExistsError) as error:
         game.save()
     assert error.value.filename == game.path
@@ -76,8 +88,18 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     assert loaded.session.model_dump() == game.session.model_dump()
     assert (loaded.fear_level, loaded.reroll_selection) == (2, (1,))
     assert loaded.history == game.history
+    assert not loaded.has_unsaved_state()
+    loaded.roll()
+    assert loaded.has_unsaved_state()
     with pytest.raises(ValueError, match="Could not load session"):
         loaded.read_save(str(tmp_path / "missing.json"))
+    loaded.name, loaded.path = "Friday", str(tmp_path)
+    with pytest.raises(ValueError, match="That path is a folder; add a file name."):
+        loaded.save()
+    loaded.path = str(tmp_path / "nope" / "game.json")
+    with pytest.raises(ValueError) as error:
+        loaded.save()
+    assert str(error.value) == f"Could not save session: No such file or directory: {loaded.path}"
 
 
 def test_export_writes_markdown_beside_the_session_file(tmp_path):

@@ -1,6 +1,7 @@
 from random import Random
 
 import pytest
+from helpers import ScriptedRandom
 from pydantic import ValidationError
 
 from wid.profiles import PROFILES, Genre
@@ -14,14 +15,6 @@ from wid.rolls import (
 )
 
 
-class ScriptedRandom(Random):
-    def __init__(self, faces):
-        self.faces = iter(faces)
-
-    def randint(self, a, b):
-        return next(self.faces)
-
-
 def configured_session(genre=Genre.CORE, ranks=None):
     session = RollSession(profile_id=genre)
     session.configure_attributes(ranks or tuple(range(1, len(PROFILES[genre].attributes) + 1)))
@@ -29,9 +22,9 @@ def configured_session(genre=Genre.CORE, ranks=None):
 
 
 def test_pool_size_and_hit_threshold():
-    assert RollRequest().pool_size() == 4
+    assert RollRequest().pool_size == 4
     assisted = RollRequest(assisted=True, fear_level=2)
-    assert assisted.pool_size() == 3
+    assert assisted.pool_size == 3
     assert assisted.hit_threshold == 4
     assert RollRequest().hit_threshold == 5
 

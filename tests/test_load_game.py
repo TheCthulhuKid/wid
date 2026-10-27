@@ -1,9 +1,12 @@
 import asyncio
 
-from test_rollerapp import start_game, text
+import pytest
+from helpers import start_game, text
 from textual.widgets import Button, Input
 
 from wid.ui.app import RollerApp
+
+pytestmark = pytest.mark.ui
 
 
 def test_load_game_opens_a_prompt_with_the_session_path(tmp_path, saved_session_factory):

@@ -1,12 +1,11 @@
 import asyncio
 
 import pytest
-from test_rollerapp import start_game
-from test_rolls import ScriptedRandom
+from helpers import ScriptedRandom, start_game
 from textual.color import Color
 from textual.widgets import Static
 
-from wid.formatting import dice_lines, summarize
+from wid.formatting import dice_parts, summarize
 from wid.rolls import Outcome
 from wid.ui.app import RollerApp
 from wid.ui.outcomes import (
@@ -69,10 +68,12 @@ def test_coloured_text_is_the_same_text_the_log_uses(saved_session_factory):
         "text-error": "#FF0000",
     }
 
-    assert dice_content(result, variables).plain == dice_lines(result)
+    lines = ("".join(text for text, _ in line) for line in dice_parts(result))
+    assert dice_content(result, variables).plain == "\n".join(lines)
     assert summary_content(result, variables).plain == summarize(result)
 
 
+@pytest.mark.ui
 def test_changing_theme_recolours_the_shown_result_without_changing_its_text():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([1, 4, 6, 6]))

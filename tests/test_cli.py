@@ -28,6 +28,7 @@ def test_installed_command_entry_point():
     assert entry_point.load() is main
 
 
+@pytest.mark.ui
 def test_app_starts_outside_project_directory(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 

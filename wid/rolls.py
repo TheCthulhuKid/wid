@@ -9,6 +9,7 @@ from pydantic import (
     PrivateAttr,
     StrictBool,
     TypeAdapter,
+    ValidationError,
     model_validator,
 )
 
@@ -37,6 +38,11 @@ class BonusKind(StrEnum):
     INAPPROPRIATE_ITEM = "inappropriate_item"
     # This Isn't Happening only, once crafted with Resources.
     CRAFTED_ITEM = "crafted_item"
+
+
+def bonus_words(kind: BonusKind) -> str:
+    """The bonus as it reads inside a sentence, such as "appropriate item"."""
+    return kind.value.replace("_", " ")
 
 
 class ResourceEffect(StrEnum):
@@ -74,6 +80,9 @@ def roll_d6(rng: Random) -> int:
 MANIFESTATION_LIMIT = 3
 # Dice each manifestation adds to (or takes from) tests of these attributes.
 MANIFESTATION_EFFECTS = {"Depravity": 1, "Hospitality": -1}
+# The largest pool Oldheart can roll, so the terminal has a reroll box for every die: the base 4,
+# plus 1 for Assisted, plus a Depravity die per manifestation. Powers and Resources are other kits'.
+OLDHEART_MAX_POOL = 4 + 1 + MANIFESTATION_EFFECTS["Depravity"] * MANIFESTATION_LIMIT
 
 
 class ManifestationCheck(FrozenModel):
@@ -81,6 +90,8 @@ class ManifestationCheck(FrozenModel):
 
     dice: tuple[Annotated[int, Field(strict=True, ge=1, le=6)], ...] = Field(min_length=1)
     score: Annotated[int, Field(strict=True, ge=1)]
+    # Made after the character succumbed, so a manifestation adds nothing.
+    succumbed: bool = False
 
     @property
     def total(self) -> int:
@@ -91,8 +102,11 @@ class ManifestationCheck(FrozenModel):
         return self.total <= self.score
 
 
-def manifestation_check(amount: int, score: int, rng: Random) -> ManifestationCheck:
-    return ManifestationCheck(dice=tuple(roll_d6(rng) for _ in range(amount)), score=score)
+def manifestation_check(
+    amount: int, score: int, rng: Random, *, succumbed: bool = False
+) -> ManifestationCheck:
+    dice = tuple(roll_d6(rng) for _ in range(amount))
+    return ManifestationCheck(dice=dice, score=score, succumbed=succumbed)
 
 
 class RollRequest(FrozenModel):
@@ -112,6 +126,7 @@ class RollRequest(FrozenModel):
     def manifestation_dice(self) -> int:
         return MANIFESTATION_EFFECTS.get(self.attribute, 0) * self.manifestations
 
+    @property
     def pool_size(self) -> int:
         pool = 4 - self.fear_level + int(self.assisted) + self.power.cost + int(self.resource_die)
         # Whatever takes dice away, a test always rolls at least one.
@@ -176,7 +191,7 @@ class RollResult(FrozenModel):
 
     @model_validator(mode="after")
     def validate_pool(self) -> Self:
-        if len(self.dice) != self.request.pool_size():
+        if len(self.dice) != self.request.pool_size:
             raise ValueError("Result must contain the complete dice pool")
         return self
 
@@ -269,6 +284,8 @@ def standing_label(standing: int) -> str:
 
 # The last box of each row: two wounds, then Defeat. Each is preceded by three strain boxes.
 STRAIN_ENDINGS = (3, 7, 11)
+LOCKED_NOTE = "Locked: boxes before a marked wound stay marked until that wound is cleared."
+NOT_READY_NOTE = "Mark all the strain before this wound first."
 
 
 class StrainTracker(FrozenModel):
@@ -292,18 +309,21 @@ class StrainTracker(FrozenModel):
         marked = [ending for ending in STRAIN_ENDINGS if self.boxes[ending]]
         return frozenset(range(max(marked))) if marked else frozenset()
 
-    def markable(self, index: int) -> bool:
-        """A wound can be marked once every box before it is marked; other boxes always."""
-        return index not in STRAIN_ENDINGS or all(self.boxes[:index])
+    def lock_reason(self, index: int) -> str | None:
+        """Why box ``index`` cannot change now, or None when the player may tick or clear it."""
+        if index in self.locked_boxes:
+            return LOCKED_NOTE
+        # A wound can be marked once every box before it is marked; other boxes always.
+        if not self.boxes[index] and index in STRAIN_ENDINGS and not all(self.boxes[:index]):
+            return NOT_READY_NOTE
+        return None
 
     def set_box(self, index: int, checked: bool) -> Self:
         index = TypeAdapter(Index).validate_python(index)
         if index >= len(self.boxes):
             raise ValueError("Strain box is outside the tracker")
-        if checked and not self.markable(index):
-            raise ValueError("Mark all strain before a wound first")
-        if not checked and index in self.locked_boxes:
-            raise ValueError("Boxes before a marked wound stay marked until that wound is cleared")
+        if checked != self.boxes[index] and (reason := self.lock_reason(index)):
+            raise ValueError(reason)
         boxes = list(self.boxes)
         boxes[index] = checked
         return type(self)(boxes=boxes, names=self.names)
@@ -327,6 +347,13 @@ class StrainTracker(FrozenModel):
                 boxes[index] = True
                 points -= 1
         return type(self)(boxes=boxes, names=self.names)
+
+    def take_by_hand(self) -> Self:
+        """Take 1 strain from the strain button; a strain-costing roll calls ``take`` instead."""
+        # Taking strain starts after the last marked wound, so after Defeat nothing is left.
+        if self.defeated:
+            raise ValueError("Defeat is already marked")
+        return self.take(1)
 
     def recover(self, points: int) -> Self:
         """Unmark up to ``points`` of the newest strain; wounds and locked boxes stay marked."""
@@ -408,6 +435,9 @@ class RollSession(BaseModel):
         return candidate
 
     def set_power_name(self, index: int, name: str) -> None:
+        index = TypeAdapter(Index).validate_python(index)
+        if index >= len(self.power_names):
+            raise ValueError("No such power")
         names = list(self.power_names)
         names[index] = name
         self.power_names = tuple(names)
@@ -415,8 +445,10 @@ class RollSession(BaseModel):
     def set_standing(self, standing: int) -> int:
         if not PROFILES[self.profile_id].has_standing:
             raise ValueError(f"{PROFILES[self.profile_id].name} has no Standing")
-        if type(standing) is not int or not 0 <= standing < len(STANDING_LABELS):
-            raise ValueError("Standing runs from Esteemed (dot 1) to Scandalous (dot 5)")
+        try:
+            standing = TypeAdapter(Standing).validate_python(standing)
+        except ValidationError as error:
+            raise ValueError("Standing runs from Esteemed (dot 1) to Scandalous (dot 5)") from error
         self.standing = standing
         return standing
 
@@ -429,7 +461,7 @@ class RollSession(BaseModel):
     def _named_bonus_result(self, kind: BonusKind) -> RollResult:
         previous = self._current_test()
         if not getattr(self.bonuses, kind.value).strip():
-            raise ValueError(f"Name the {kind.value.replace('_', ' ')} before applying it")
+            raise ValueError(f"Name the {bonus_words(kind)} before applying it")
         return previous
 
     def apply_item(self, kind: BonusKind, index: int) -> RollResult:
@@ -442,7 +474,7 @@ class RollSession(BaseModel):
             raise ValueError(f"Spend {RESOURCES_MAX} Resources to craft an item first")
         previous = self._named_bonus_result(kind)
         if kind in previous.applied_items:
-            raise ValueError(f"The {kind.value.replace('_', ' ')} was already used on this test")
+            raise ValueError(f"The {bonus_words(kind)} was already used on this test")
         dice = raised_die(previous, index, 1)
         candidate = previous.model_copy(
             update={"dice": dice, "applied_items": previous.applied_items | {kind}}
@@ -452,9 +484,8 @@ class RollSession(BaseModel):
     def apply_tech(self, index: int, die: int) -> RollResult:
         """Add a defined piece's strength to one die of the current test, then weaken it by 1."""
         previous = self._current_test()
-        if self.tech is None:
-            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
-        piece = self.tech.piece(index)
+        tech = self._tech()
+        piece = tech.piece(index)
         if not piece.defined:
             raise ValueError(f"Name Tech {index + 1} before using it")
         if piece.strength == 0:
@@ -468,7 +499,7 @@ class RollSession(BaseModel):
             }
         )
         spent = TechPiece(name=piece.name, strength=piece.strength - 1)
-        self.tech = self.tech.with_piece(index, spent)
+        self.tech = tech.with_piece(index, spent)
         return self._replace_result(candidate, tech_slot=index)
 
     def apply_expertise(self) -> RollResult:
@@ -508,6 +539,11 @@ class RollSession(BaseModel):
         if PROFILES[self.profile_id].has_resources:
             self.resources = self.attribute_rank("Charity")
         return candidate
+
+    def _tech(self) -> TechState:
+        if self.tech is None:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
+        return self.tech
 
     def _pool(self) -> int:
         if self.resources is None:
@@ -566,9 +602,10 @@ class RollSession(BaseModel):
         """Gain corruption in one go and make the manifestation check it calls for."""
         self._check_corruption_kit()
         amount = TypeAdapter(Annotated[int, Field(strict=True, ge=1)]).validate_python(amount)
-        check = manifestation_check(amount, self.total_corruption + amount, rng)
+        score = self.total_corruption + amount
+        check = manifestation_check(amount, score, rng, succumbed=self.succumbed)
         self.total_corruption += amount
-        if check.triggered and not self.succumbed:
+        if check.triggered and not check.succumbed:
             self.manifestations = (*self.manifestations, "")
         return check
 
@@ -642,23 +679,21 @@ class RollSession(BaseModel):
         return candidate
 
     def set_tech_name(self, index: int, name: str) -> TechState:
-        if self.tech is None:
-            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
-        piece = self.tech.piece(index)
-        candidate = self.tech.with_piece(index, TechPiece(name=name, strength=piece.strength))
+        tech = self._tech()
+        piece = tech.piece(index)
+        candidate = tech.with_piece(index, TechPiece(name=name, strength=piece.strength))
         self.tech = candidate
         return candidate
 
     def sacrifice_tech(self, index: int) -> TechPiece:
         """Drop a piece to 0 strength to stop a Danger's extermination; returns it as it was."""
-        if self.tech is None:
-            raise ValueError(f"{PROFILES[self.profile_id].name} has no Tech")
-        piece = self.tech.piece(index)
+        tech = self._tech()
+        piece = tech.piece(index)
         if not piece.defined:
             raise ValueError(f"Name Tech {index + 1} before sacrificing it")
         if piece.strength == 0:
             raise ValueError(f"{piece.label(index)} is already at 0")
-        self.tech = self.tech.with_piece(index, TechPiece(name=piece.name, strength=0))
+        self.tech = tech.with_piece(index, TechPiece(name=piece.name, strength=0))
         # An undo would hand strength back to the sacrificed piece.
         self._before_bonus.clear()
         return piece
@@ -667,7 +702,7 @@ class RollSession(BaseModel):
         self.validate_roll_request(request)
         candidate = RollResult(
             request=request,
-            dice=tuple(DieResult(raw=roll_d6(rng)) for _ in range(request.pool_size())),
+            dice=tuple(DieResult(raw=roll_d6(rng)) for _ in range(request.pool_size)),
             strain_delta=request.power.cost,
         )
         next_strain = self.strain.take(candidate.strain_delta)

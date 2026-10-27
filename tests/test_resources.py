@@ -2,10 +2,8 @@ import asyncio
 from random import Random
 
 import pytest
-from helpers import change_genre, click
+from helpers import ScriptedRandom, change_genre, click, start_game, text
 from pydantic import ValidationError
-from test_rollerapp import start_game, text
-from test_rolls import ScriptedRandom
 
 from wid.formatting import resources_reminder, spend_summary
 from wid.profiles import Genre
@@ -101,21 +99,14 @@ def test_reminder_only_for_this_kit_with_extra_hits(full_pool, session_factory):
     assert resources_reminder(core.roll(RollRequest(), rng=ScriptedRandom([6] * 4))) == ""
 
 
-def test_pool_is_saved_and_belongs_to_this_kit(tmp_path, saved_session_factory):
-    saved = saved_session_factory(KIT)
-    saved.session.adjust_resources(3)
-    saved.session.spend_resources(ResourceEffect.EXTRA_DIE, rng=Random(0))
-    path = tmp_path / "resources.json"
-    saved.save(path)
-    restored = SavedSession.load(path).session
-    assert (restored.resources, restored.resource_die) == (3, True)
-
+def test_pool_belongs_to_this_kit(saved_session_factory):
     data = saved_session_factory().model_dump()
     data["session"]["resources"] = 3
     with pytest.raises(ValueError, match="Only This Isn't Happening can have Resources"):
         SavedSession.model_validate(data)
 
 
+@pytest.mark.ui
 def test_resource_controls_spend_and_roll_one_die():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([4]))

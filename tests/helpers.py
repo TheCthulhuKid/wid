@@ -1,11 +1,27 @@
 import sys
+from random import Random
 
 import pytest
+from fastapi.testclient import TestClient
 from textual.errors import NoWidget
 from textual.widget import Widget
-from textual.widgets import Collapsible, Select, TabbedContent, TabPane
+from textual.widgets import Collapsible, Input, Select, Static, TabbedContent, TabPane
 
 from wid.ui.dialogs import ConfirmReset
+from wid.web.app import create_app
+
+# The header the browser page sends with every action (see wid/web/app.py).
+PAGE = {"HX-Request": "true"}
+
+
+class ScriptedRandom(Random):
+    """A random source that rolls the given faces in order."""
+
+    def __init__(self, faces):
+        self.faces = iter(faces)
+
+    def randint(self, a, b):
+        return next(self.faces)
 
 
 async def reveal(app, pilot, selector: str) -> Widget:
@@ -48,6 +64,31 @@ async def click(app, pilot, selector: str) -> None:
     await pilot.pause()
 
 
+def text(app, selector):
+    """The text a Static widget shows."""
+    return str(app.query_one(selector, Static).content)
+
+
+async def start_game(app, pilot, ranks=None):
+    """Set the attribute ranks, if given, and press Start game."""
+    if ranks is not None:
+        for index, rank in enumerate(ranks):
+            app.query_one(f"#attribute-rank-{index}", Select).value = rank
+    await click(app, pilot, "#start-game")
+    assert app.session.attributes is not None
+
+
+async def load_game(app, pilot):
+    """Open Load game, check it offers the session path, and load that file."""
+    await click(app, pilot, "#load-session")
+    assert (
+        app.screen.query_one("#load-path", Input).value
+        == app.query_one("#session-path", Input).value
+    )
+    await pilot.click("#submit-load")
+    await pilot.pause()
+
+
 async def change_genre(app, pilot, genre) -> None:
     """Switch the genre kit, confirming the new game if the app asks."""
     app.query_one("#genre", Select).value = genre
@@ -55,6 +96,18 @@ async def change_genre(app, pilot, genre) -> None:
     if isinstance(app.screen, ConfirmReset):
         await pilot.click("#confirm-reset")
         await pilot.pause()
+
+
+def browser(game):
+    """A browser signed in to the game, as if it opened the address ``wid --web`` printed."""
+    client = TestClient(create_app(game, "token"), base_url="http://127.0.0.1")
+    client.get("/?token=token")
+    return client
+
+
+def act(client, action, **fields):
+    """Post an action with the sheet's fields, as the page does for every button."""
+    return client.post(f"/actions/{action}", data={"sheet": "1", **fields}, headers=PAGE)
 
 
 # Windows has no POSIX permission bits, umask or ``~user`` lookup; tests of those are skipped there.
