@@ -93,6 +93,13 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     assert loaded.has_unsaved_state()
     with pytest.raises(ValueError, match="Could not load session"):
         loaded.read_save(str(tmp_path / "missing.json"))
+    loaded.name, loaded.path = "Friday", str(tmp_path)
+    with pytest.raises(ValueError, match="That path is a folder; add a file name."):
+        loaded.save()
+    loaded.path = str(tmp_path / "nope" / "game.json")
+    with pytest.raises(ValueError) as error:
+        loaded.save()
+    assert str(error.value) == f"Could not save session: No such file or directory: {loaded.path}"
 
 
 def test_export_writes_markdown_beside_the_session_file(tmp_path):

@@ -15,9 +15,13 @@ def session_file_path(value: str | Path, *, label: str = "session file") -> Path
     if not value:
         raise ValueError(f"Choose a {label} path")
     try:
-        return Path(value).expanduser()
+        path = Path(value).expanduser()
     except RuntimeError as error:
         raise ValueError("Could not determine the path's home directory") from error
+    # Checked first, so a folder is never offered as a file to replace.
+    if path.is_dir():
+        raise ValueError("That path is a folder; add a file name.")
+    return path
 
 
 class CharacterDetails(FrozenModel):

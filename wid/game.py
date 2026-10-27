@@ -7,7 +7,6 @@ appended here, so front ends only display ``Game.history``. Saving and exporting
 front end can ask before calling again with ``overwrite=True``.
 """
 
-import errno
 from collections.abc import Callable
 from pathlib import Path
 from random import Random
@@ -38,12 +37,6 @@ from wid.rolls import (
 from wid.sessions import CharacterDetails, SavedSession, session_file_path
 from wid.storage import write_text
 
-
-def file_exists(path: Path) -> FileExistsError:
-    """The error naming ``path``: the one from storage names its temporary file instead."""
-    return FileExistsError(errno.EEXIST, "File exists", str(path))
-
-
 type NameField = Literal["bonus", "power", "manifestation", "tech", "strain"]
 
 # The session setter for each name the player types; the slot is the bonus kind for bonuses
@@ -61,6 +54,9 @@ def player_message(error: Exception) -> str:
     """The reason to show the player: pydantic's first message, without its prefix."""
     if isinstance(error, ValidationError):
         return error.errors()[0]["msg"].removeprefix("Value error, ")
+    # An OS error reads "No such file or directory: game.json", without Python's "[Errno 2]".
+    if isinstance(error, OSError) and error.strerror:
+        return f"{error.strerror}: {error.filename}" if error.filename else error.strerror
     return str(error)
 
 
@@ -331,8 +327,8 @@ class Game:
                 item_target=self.item_target if session.current_result is not None else None,
             )
             saved.save(path, overwrite=overwrite)
-        except FileExistsError as error:
-            raise file_exists(path) from error
+        except FileExistsError:
+            raise
         except (OSError, ValueError) as error:
             raise ValueError(f"Could not save session: {player_message(error)}") from error
         self.name = saved.name
@@ -386,8 +382,8 @@ class Game:
         try:
             path = session_file_path(text, label="history file")
             write_text(path, markdown, overwrite=overwrite)
-        except FileExistsError as error:
-            raise file_exists(path) from error
+        except FileExistsError:
+            raise
         except (OSError, ValueError) as error:
             raise ValueError(f"Could not export history: {player_message(error)}") from error
         return f"Exported {len(self.history)} history entries to {path}."

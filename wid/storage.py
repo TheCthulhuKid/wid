@@ -8,8 +8,20 @@ from tempfile import NamedTemporaryFile
 def write_text(path: Path, text: str, *, overwrite: bool = False) -> None:
     """Write ``text`` to ``path`` through a temporary file in the same directory.
 
-    With ``overwrite=False`` an existing file raises ``FileExistsError`` and is left alone.
+    With ``overwrite=False`` an existing file raises ``FileExistsError`` and is left alone. Every
+    ``OSError`` names ``path``, not the temporary file, so the player sees the file they chose.
     """
+    try:
+        _write_via_temporary(path, text, overwrite=overwrite)
+    except OSError as error:
+        # Only errors from the system carry a number; anything else keeps its own message.
+        if error.errno is None:
+            raise
+        # OSError picks the matching subclass (FileExistsError, say) from the error number.
+        raise OSError(error.errno, error.strerror, str(path)) from error
+
+
+def _write_via_temporary(path: Path, text: str, *, overwrite: bool) -> None:
     temporary = None
     try:
         with NamedTemporaryFile(
