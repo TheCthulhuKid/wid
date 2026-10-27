@@ -150,6 +150,9 @@ load, until the next bonus.
 
 - The format is versioned (`version: 1`); files from an unknown version, a marked wound with an
   unmarked box before it, or invalid values are rejected without replacing the current game.
+- A change to the save format bumps `version` on `SavedSession` and adds one function to
+  `UPGRADES` in `wid/sessions.py`, keyed by the old version, that turns an old file's data into
+  the new version's. Loading runs the steps in turn, so files of every earlier version still load.
 - A save goes to a temporary file that is renamed into place, so a failed write never leaves a
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.

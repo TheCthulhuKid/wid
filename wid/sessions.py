@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, StringConstraints, model_validator
 
@@ -25,6 +26,11 @@ class CharacterDetails(FrozenModel):
     nature: str = ""
 
 
+# Each function turns a save file of the version it is keyed by into the next version's data.
+# A change to the save format bumps ``SavedSession.version`` and adds one function here.
+UPGRADES: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {}
+
+
 class SavedSession(FrozenModel):
     version: Literal[1] = 1
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
@@ -35,6 +41,21 @@ class SavedSession(FrozenModel):
     history: tuple[HistoryEntry, ...] = ()
     reroll_indices: tuple[Index, ...] = ()
     item_target: Index | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def upgrade(cls, data: Any) -> Any:
+        """Bring an older save file up to the current version, one step at a time.
+
+        Unknown versions pass through unchanged, so the ``version`` field still rejects them.
+        """
+        if not isinstance(data, dict):
+            return data
+        version = data.get("version")
+        while (step := UPGRADES.get(version)) is not None:
+            version += 1
+            data = {**step(data), "version": version}
+        return data
 
     @model_validator(mode="after")
     def validate_state(self) -> Self:
