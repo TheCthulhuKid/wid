@@ -34,6 +34,7 @@ class NeedsConfirmation(Exception):
         *,
         confirm: str = "Replace",
         cancel: str = "Cancel",
+        carry: dict[str, str] | None = None,
     ):
         super().__init__(question)
         self.question = question
@@ -42,6 +43,8 @@ class NeedsConfirmation(Exception):
         self.value = value
         self.confirm = confirm
         self.cancel = cancel
+        # Fields the page no longer holds that the confirmed action needs again (an upload).
+        self.carry = carry or {}
 
 
 def as_number(name: str, value: str) -> int:
@@ -54,8 +57,9 @@ def as_number(name: str, value: str) -> int:
 class SheetForm:
     """The URL-encoded fields of one request.
 
-    Browsers send simple forms URL-encoded, so the standard library reads them; only file
-    uploads would need a multipart parser.
+    Browsers send simple forms URL-encoded, so the standard library reads them. An uploaded save
+    comes as text too: the page reads the file and sends it in a field, so no multipart parser
+    is needed.
     """
 
     def __init__(self, body: bytes):
@@ -183,6 +187,15 @@ def load(game: Game, form: SheetForm) -> str:
     return game.load(saved, path)
 
 
+def upload(game: Game, form: SheetForm) -> str:
+    text = form.text("session-file")
+    saved = game.read_save_text(text)
+    if game.has_unsaved_state() and not form.ticked("confirm"):
+        question = load_question(saved.name)
+        raise NeedsConfirmation(question, "upload", "confirm", carry={"session-file": text})
+    return game.load(saved, None)
+
+
 def export(game: Game, form: SheetForm) -> str:
     try:
         return game.export_history(form.text("export-path"), overwrite=form.ticked("overwrite"))
@@ -224,5 +237,6 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     "update": lambda game, form: "",
     "save": save,
     "load": load,
+    "upload": upload,
     "export": export,
 }

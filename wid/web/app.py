@@ -46,10 +46,13 @@ def matches(offered: str, token: str) -> bool:
     return secrets.compare_digest(offered.encode(), token.encode())
 
 
-def download_name(game: Game) -> str:
+def attachment(text: str, media_type: str, name: str) -> Response:
+    """A download of ``text`` saved as ``name``."""
     # The name goes into a response header, which only carries ASCII, so anything else
     # (a quote, a line break, a letter like 日) becomes "_".
-    return re.sub(r"[^A-Za-z0-9._-]", "_", Path(game.default_export_path()).name)
+    filename = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return Response(text, media_type=media_type, headers=headers)
 
 
 def render(
@@ -136,12 +139,17 @@ def create_app(game: Game, token: str, *, greeting: str = "") -> FastAPI:
                 text = game.history_text()
             except ValueError as error:
                 return PlainTextResponse(str(error), 404)
-            filename = download_name(game)
-        disposition = f'attachment; filename="{filename}"'
-        return Response(
-            text,
-            media_type="text/markdown; charset=utf-8",
-            headers={"Content-Disposition": disposition},
-        )
+            name = Path(game.default_export_path()).name
+        return attachment(text, "text/markdown; charset=utf-8", name)
+
+    @app.get("/session.json")
+    async def download_save() -> Response:
+        async with lock:
+            try:
+                text = game.save_text()
+            except ValueError as error:
+                return PlainTextResponse(str(error), 404)
+            name = game.save_file_name()
+        return attachment(text, "application/json", name)
 
     return app

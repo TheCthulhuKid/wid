@@ -259,6 +259,12 @@
         <button formaction="/actions/load">Load game</button>
       </div>
       <div class="row named">
+        <label class="field grow">Upload a save
+          <input type="file" accept=".json,application/json" data-upload>
+        </label>
+        {% if session.attributes %}<a class="button" href="/session.json" download>Download save</a>{% endif %}
+      </div>
+      <div class="row named">
         <label class="field grow">History file
           <input name="export-path" value="{{ export_path }}">
         </label>
@@ -314,6 +320,7 @@
   {#- Shown as a modal by sheet.js; the confirm button sends the action again with its flag set. -#}
   <dialog class="ask" data-ask aria-labelledby="ask-question">
     <p id="ask-question">{{ ask.question }}</p>
+    {% for name, value in ask.carry.items() %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
     <div class="row">
       <button class="primary" formaction="/actions/{{ ask.action }}" name="{{ ask.flag }}" value="{{ ask.value }}">{{ ask.confirm }}</button>
       <button type="button" data-close>{{ ask.cancel }}</button>

@@ -411,15 +411,34 @@ class Game:
         """Read a session file without changing the game, so the player can confirm first."""
         try:
             path = session_file_path(text)
-            return SavedSession.load(path), path
+            contents = path.read_text(encoding="utf-8")
         except (OSError, ValueError) as error:
             raise ValueError(f"Could not load session: {player_message(error)}") from error
+        return self.read_save_text(contents), path
 
-    def load(self, saved: SavedSession, path: Path) -> str:
+    def read_save_text(self, text: str) -> SavedSession:
+        """Read a save from its text, such as a file uploaded in the browser."""
+        try:
+            return SavedSession.model_validate_json(text)
+        except ValueError as error:
+            raise ValueError(f"Could not load session: {player_message(error)}") from error
+
+    def load(self, saved: SavedSession, path: Path | None) -> str:
+        """Take over ``saved``; ``path`` is the file it came from, None for an uploaded one."""
         self.take_over(saved)
-        self.path = str(path)
+        self.path = str(path) if path is not None else ""
         self.saved_snapshot = self.snapshot()
-        return f"Loaded {saved.name} from {path}."
+        return f"Loaded {saved.name} from {path}." if path is not None else f"Loaded {saved.name}."
+
+    def save_text(self) -> str:
+        """The game as a save file holds it, for the browser to download."""
+        if self.session.attributes is None:
+            raise ValueError("Start the game before downloading a save.")
+        return self.saved_session(self.name.strip() or UNNAMED).model_dump_json(indent=2)
+
+    def save_file_name(self) -> str:
+        """The session file's name, or one made from the session name, for a download."""
+        return Path(self.path.strip()).name or f"{self.name.strip() or 'session'}.json"
 
     def take_over(self, saved: SavedSession) -> None:
         """Replace this game with ``saved``: the sheet, history, name, notes and options."""

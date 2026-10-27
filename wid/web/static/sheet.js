@@ -76,9 +76,21 @@ document.addEventListener("submit", (event) => {
   send(button ? button.formAction : event.target.action, new FormData(event.target, button));
 });
 
+// A save chosen in the upload box is read here and sent as text with the sheet, so the game
+// needs no file upload handling. The box has no name, so the file itself is not sent.
+async function upload(file) {
+  const data = new FormData(sheet());
+  data.set("session-file", await file.text());
+  send("/actions/upload", data);
+}
+
 // Selects and boxes marked data-action send the sheet as soon as they change.
 document.addEventListener("change", (event) => {
   const control = event.target;
+  if (control.dataset.upload !== undefined && control.files.length) {
+    upload(control.files[0]);
+    return;
+  }
   if (!control.dataset.action || !sheet().contains(control)) return;
   if (pending) {
     missed = true;

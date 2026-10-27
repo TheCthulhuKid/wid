@@ -185,6 +185,8 @@ The browser sheet has the same game controls as the terminal, with these differe
   **Repeat roll** or **Ctrl+R** rolls the last attribute again.
 - **Save session** and **Load game** use the **Session file** box. **Export history** writes the
   Markdown to the **History file** box; **Download history** saves it through the browser.
+- **Download save** saves the game through the browser, and **Upload a save** opens a save you
+  pick, asking first if you would lose anything unsaved. Neither needs a path typed in.
 - When something would be replaced or lost, a small box asks first, as in the terminal.
   Closing or reloading the page with unsaved changes asks too.
 - The colours follow your browser's light or dark setting. **Colours** in the title band switches

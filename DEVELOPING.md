@@ -113,7 +113,7 @@ wid/
 │   └── roller.tcss     # Bundled interface styles
 └── web/
     ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser with a token
-    ├── app.py          # FastAPI app: the page, POST /actions/<name>, and the safety checks
+    ├── app.py          # FastAPI app: the page, POST /actions/<name>, downloads, safety checks
     ├── forms.py        # The posted sheet fields copied into the game, and the action table
     ├── view.py         # Colours (light and dark), the notes preview, the template context
     ├── templates/      # Jinja2 page and sheet: one form, each button posts to its action
