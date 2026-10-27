@@ -47,15 +47,21 @@ class SavedSession(FrozenModel):
     def upgrade(cls, data: Any) -> Any:
         """Bring an older save file up to the current version, one step at a time.
 
-        Unknown versions pass through unchanged, so the ``version`` field still rejects them.
+        A file from a newer wid, or with a version no wid wrote, is refused with a message that
+        says so, instead of pydantic's "Input should be 1".
         """
         if not isinstance(data, dict):
             return data
-        version = data.get("version")
+        current = cls.model_fields["version"].default
+        version = data.get("version", current)
         while (step := UPGRADES.get(version)) is not None:
             version += 1
             data = {**step(data), "version": version}
-        return data
+        if version == current:
+            return data
+        if isinstance(version, int) and version > current:
+            raise ValueError("This file was saved by a newer wid. Update wid to load it.")
+        raise ValueError(f"This file has an unknown save format version ({version!r}).")
 
     @model_validator(mode="after")
     def validate_state(self) -> Self:

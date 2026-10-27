@@ -149,7 +149,8 @@ saved, and the theme lives in the settings file instead. So **Undo** is unavaila
 load, until the next bonus.
 
 - The format is versioned (`version: 1`); files from an unknown version, a marked wound with an
-  unmarked box before it, or invalid values are rejected without replacing the current game.
+  unmarked box before it, or invalid values are rejected without replacing the current game. A
+  file from a newer wid says so and asks the player to update.
 - A change to the save format bumps `version` on `SavedSession` and adds one function to
   `UPGRADES` in `wid/sessions.py`, keyed by the old version, that turns an old file's data into
   the new version's. Loading runs the steps in turn, so files of every earlier version still load.

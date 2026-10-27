@@ -47,6 +47,9 @@ def test_invalid_or_corrupt_files_are_rejected(tmp_path, saved_session_factory):
     path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match="assigned attribute rank"):
         SavedSession.load(path)
+    data["version"] = 2
+    with pytest.raises(ValueError, match="saved by a newer wid"):
+        SavedSession.model_validate(data)
 
 
 def test_notes_are_saved_and_older_saves_load_without_them(tmp_path, saved_session_factory):
