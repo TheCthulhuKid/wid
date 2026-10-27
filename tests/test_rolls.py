@@ -89,8 +89,6 @@ def test_tech_is_applied_after_the_roll_and_weakens_by_one():
     assert session.tech.pieces[1].strength == 2
     with pytest.raises(ValueError, match="Drone was already used on this test"):
         session.apply_tech(1, 0)
-    session.undo_bonus()
-    assert session.tech.pieces[1].strength == 3
 
 
 def test_sacrifice_zeroes_a_named_piece():

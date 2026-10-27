@@ -7,11 +7,11 @@ appended here, so front ends only display ``Game.history``. Saving and exporting
 front end can ask before calling again with ``overwrite=True``.
 """
 
-from collections.abc import Callable, Iterable
-from contextlib import suppress
+from collections.abc import Callable, Iterable, Iterator
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from random import Random
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from pydantic import ValidationError
 
@@ -64,6 +64,17 @@ def player_message(error: Exception) -> str:
 
 # A save needs a name; the recovery copy of a game that has none uses this one.
 UNNAMED = "Unsaved game"
+# How many changes Undo can take back.
+UNDO_LIMIT = 50
+
+
+class Before(NamedTuple):
+    """The game just before a change, and the change's name for "Undid the last ..."."""
+
+    change: str
+    session: RollSession
+    # What the change may have reset: the tested attribute, the one-test options and the picks.
+    options: tuple[Any, ...]
 
 
 class Game:
@@ -94,6 +105,8 @@ class Game:
         # Choices about the current result, kept so a save can restore them.
         self.reroll_selection: tuple[int, ...] = ()
         self.item_target: int | None = None
+        # A new sheet has nothing to take back.
+        self.undo_stack: list[Before] = []
 
     @property
     def profile(self) -> WiDProfile:
@@ -182,30 +195,33 @@ class Game:
 
     def roll(self, attribute: str | None = None) -> str:
         """Test ``attribute``, or the last tested one again; one-test options are then cleared."""
-        if attribute is not None:
-            self.session.attribute_rank(attribute)
-            self.tested_attribute = attribute
-        result = self.session.roll(self.draft_request(), rng=self.rng)
-        self.log_result(result, "Roll")
-        self.assisted = self.expertise = False
-        self.power = PowerMode.NONE
+        with self.undoable("roll"):
+            if attribute is not None:
+                self.session.attribute_rank(attribute)
+                self.tested_attribute = attribute
+            result = self.session.roll(self.draft_request(), rng=self.rng)
+            self.log_result(result, "Roll")
+            self.assisted = self.expertise = False
+            self.power = PowerMode.NONE
         return ""
 
     def reroll(self, indices: set[int]) -> str:
-        result = self.session.reroll(indices, rng=self.rng)
-        self.log_result(result, f"Reroll dice {', '.join(str(i + 1) for i in sorted(indices))}")
+        with self.undoable("reroll"):
+            result = self.session.reroll(indices, rng=self.rng)
+            self.log_result(result, f"Reroll dice {', '.join(str(i + 1) for i in sorted(indices))}")
         return check_summary(result.manifestation_check)
 
     def apply_bonus(self, kind: BonusKind, die: int) -> str:
         """Expertise adds a hit; an item adds 1 to ``die``."""
         name = getattr(self.session.bonuses, kind)
-        if kind == BonusKind.EXPERTISE:
-            result = self.session.apply_expertise()
-            action = f"Expertise {name}: +1 hit"
-        else:
-            result = self.session.apply_item(kind, die)
-            action = f"{BONUS_LABELS[kind]} {name}: +1 to die {die + 1}"
-        self.log_result(result, action, charged=False)
+        with self.undoable("bonus"):
+            if kind == BonusKind.EXPERTISE:
+                result = self.session.apply_expertise()
+                action = f"Expertise {name}: +1 hit"
+            else:
+                result = self.session.apply_item(kind, die)
+                action = f"{BONUS_LABELS[kind]} {name}: +1 to die {die + 1}"
+            self.log_result(result, action, charged=False)
         return ""
 
     def bonus_available(self, kind: BonusKind) -> bool:
@@ -221,11 +237,12 @@ class Game:
         return kind not in result.applied_items
 
     def apply_tech(self, index: int, die: int) -> str:
-        result = self.session.apply_tech(index, die)
-        piece = self.session.tech.pieces[index]
-        # Using a piece weakens it by 1, so the bonus it just gave was one more than it has left.
-        action = f"Tech {piece.label(index)}: +{piece.strength + 1} to die {die + 1}"
-        self.log_result(result, action, charged=False)
+        with self.undoable("Tech use"):
+            result = self.session.apply_tech(index, die)
+            piece = self.session.tech.pieces[index]
+            # Using a piece weakens it by 1, so the bonus it gave was one more than it has left.
+            action = f"Tech {piece.label(index)}: +{piece.strength + 1} to die {die + 1}"
+            self.log_result(result, action, charged=False)
         return ""
 
     def tech_usable(self, index: int) -> bool:
@@ -237,61 +254,69 @@ class Game:
             and index not in result.applied_tech
         )
 
-    def undo_bonus(self) -> str:
-        result = self.session.undo_bonus()
-        self.log_result(result, "Undo last bonus", charged=False)
-        return ""
-
     def set_strain_box(self, index: int, marked: bool) -> str:
-        self.session.strain = self.session.strain.set_box(index, marked)
+        with self.undoable("strain change"):
+            self.session.strain = self.session.strain.set_box(index, marked)
         change = "Marked" if marked else "Cleared"
         return self.notice(strain_notice(f"{change} strain box {index + 1}", self.session.strain))
 
     def take_strain(self) -> str:
-        self.session.strain = self.session.strain.take_by_hand()
+        with self.undoable("strain change"):
+            self.session.strain = self.session.strain.take_by_hand()
         return self.notice(strain_notice("Took 1 strain", self.session.strain))
 
     def take_wound(self) -> str:
-        self.session.strain = self.session.strain.take_wound()
+        with self.undoable("strain change"):
+            self.session.strain = self.session.strain.take_wound()
         return self.notice(strain_notice("Took a wound", self.session.strain))
 
     def start_scenario(self) -> str:
-        tech = self.session.start_scenario()
+        with self.undoable("new scenario"):
+            tech = self.session.start_scenario()
         return self.notice(f"New scenario: {len(tech.pieces)} empty Tech slot(s).")
 
     def sacrifice_tech(self, index: int) -> str:
-        piece = self.session.sacrifice_tech(index)
+        with self.undoable("sacrifice"):
+            piece = self.session.sacrifice_tech(index)
         return self.notice(f"Sacrificed {piece.label(index)}: strength {piece.strength} → 0.")
 
     def adjust_resources(self, amount: int) -> str:
-        pool = self.session.adjust_resources(amount)
+        with self.undoable("Resources change"):
+            pool = self.session.adjust_resources(amount)
         return self.notice(resources_notice(amount, pool))
 
     def spend_resources(self, effect: ResourceEffect) -> str:
-        spend = self.session.spend_resources(effect, rng=self.rng)
+        with self.undoable("Resources spend"):
+            spend = self.session.spend_resources(effect, rng=self.rng)
         return self.notice(spend_summary(spend, self.session.resources))
 
     def lose_crafted_item(self) -> str:
-        self.session.lose_crafted_item()
+        with self.undoable("lost crafted item"):
+            self.session.lose_crafted_item()
         return self.notice("Lost the crafted item; its slot is free again.")
 
     def gain_corruption(self, amount: int) -> str:
-        check = self.session.add_corruption(amount, rng=self.rng)
+        with self.undoable("Corruption gain"):
+            check = self.session.add_corruption(amount, rng=self.rng)
         return self.notice(f"Gained {amount} Corruption. {check_summary(check)}")
 
     def add_manifestation(self) -> str:
-        self.session.add_manifestation()
+        with self.undoable("manifestation change"):
+            self.session.add_manifestation()
         return self.notice("Manifestation added by hand.")
 
     def remove_manifestation(self) -> str:
-        self.session.remove_manifestation()
+        with self.undoable("manifestation change"):
+            self.session.remove_manifestation()
         return self.notice("Manifestation removed by hand.")
 
     def set_standing(self, standing: int) -> str:
-        before = self.session.standing
-        standing = self.session.set_standing(standing)
-        # Clicking the dot already chosen moves nothing, so there is nothing to log.
-        return self.notice(standing_notice(standing)) if standing != before else ""
+        # Clicking the dot already chosen moves nothing, so there is nothing to log or undo.
+        if standing == self.session.standing:
+            return ""
+        with self.undoable("Standing change"):
+            standing = self.session.set_standing(standing)
+        return self.notice(standing_notice(standing))
 
     def roll_one_die(self) -> str:
         return self.notice(f"Rolled 1d6: {roll_d6(self.rng)}.")
@@ -411,6 +436,55 @@ class Game:
         self.power = draft.power
         self.reroll_selection = saved.reroll_indices
         self.item_target = saved.item_target
+        self.undo_stack = []
+
+    def options(self) -> tuple[Any, ...]:
+        return (
+            self.tested_attribute,
+            self.assisted,
+            self.expertise,
+            self.power,
+            self.reroll_selection,
+            self.item_target,
+        )
+
+    @contextmanager
+    def undoable(self, change: str) -> Iterator[None]:
+        """Run a change to the sheet so Undo can take it back; a refused change adds nothing."""
+        before = Before(change, self.session.model_copy(deep=True), self.options())
+        yield
+        self.undo_stack = [*self.undo_stack, before][-UNDO_LIMIT:]
+
+    @property
+    def can_undo(self) -> bool:
+        return bool(self.undo_stack)
+
+    def undo(self) -> str:
+        """Take back the last change to the sheet; the history keeps it and notes the undo.
+
+        A roll taken back is not given back to the dice: rolling again gives new faces.
+        """
+        if not self.undo_stack:
+            raise ValueError("There is nothing to undo.")
+        before = self.undo_stack.pop()
+        shown = self.session.current_result
+        self.session = before.session
+        message = f"Undid the last {before.change}."
+        result = self.session.current_result
+        # When the dice change back, the history shows them as they are again.
+        if result is not None and result != shown:
+            self.log_result(result, message, charged=False)
+        else:
+            self.notice(message)
+        (
+            self.tested_attribute,
+            self.assisted,
+            self.expertise,
+            self.power,
+            self.reroll_selection,
+            self.item_target,
+        ) = before.options
+        return message
 
     def keep_recovery(self) -> str:
         """Bring the recovery copy in step with the game, after any change.

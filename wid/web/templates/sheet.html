@@ -166,7 +166,6 @@
             {% else %}<option>Roll first</option>{% endif %}
           </select>
         </label>
-        <button formaction="/actions/undo-bonus" {% if not session.can_undo_bonus %}disabled{% endif %}>Undo</button>
       </div>
 
       {% if kit.uses_items %}
@@ -298,6 +297,7 @@
     <div class="row">
       <button formaction="/actions/roll" title="Roll the last attribute again (Ctrl+R)" {% if not session.attributes %}disabled{% endif %}>Repeat roll</button>
       <button formaction="/actions/roll-d6">Roll 1d6</button>
+      <button formaction="/actions/undo" title="Take back the last change" {% if not game.can_undo %}disabled{% endif %}>Undo</button>
     </div>
     <h2>History</h2>
     {% if history %}

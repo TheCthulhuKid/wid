@@ -200,7 +200,7 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
         BonusKind(form.text("kind")), form.number("die")
     ),
     "apply-tech": lambda game, form: game.apply_tech(form.number("index"), form.number("die")),
-    "undo-bonus": lambda game, form: game.undo_bonus(),
+    "undo": lambda game, form: game.undo(),
     "strain-box": lambda game, form: game.set_strain_box(
         form.number("index"), form.ticked("marked")
     ),

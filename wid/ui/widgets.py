@@ -378,7 +378,6 @@ class ItemsGroup(Vertical):
         with Horizontal(id="item-target-row"):
             yield Label("Apply to die")
             yield Select([("Roll first", -1)], value=-1, allow_blank=False, id="item-target")
-            yield Button("Undo", id="undo-bonus", disabled=True)
         with Vertical(id="item-rows"):
             for kind in (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM):
                 label = BONUS_LABELS[kind]
@@ -439,6 +438,7 @@ class RollerGroup(VerticalScroll):
         yield Static("Roll a test to see individual outcomes.", id="dice", markup=False)
         yield Static(id="summary")
         yield Static(id="resources")
+        yield Button("Undo", id="undo", disabled=True, tooltip="Take back the last change")
         with Vertical(id="reroll-controls"):
             yield Label("Oldheart: select dice from the current test")
             for index in range(OLDHEART_MAX_POOL):

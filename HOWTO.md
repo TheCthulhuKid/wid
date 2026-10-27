@@ -31,20 +31,25 @@ lists every die as *hit*, *miss* or *fumble* (green, yellow, red) with the total
 **Roll 1d6** (beside **Show log**) rolls a single die outside a test, for anything the game asks
 you to roll, and writes the result to the history.
 
+**Undo** (under the result) takes back the last change to the sheet: a roll, a reroll, an item,
+expertise or Tech bonus, strain, Standing, Resources, Corruption or a manifestation. Press it
+again for the one before, up to 50 changes. The history keeps what happened and notes each undo.
+An undone roll is not rolled back into the dice: rolling again gives new numbers. Loading a
+game, starting a new character or changing the kit starts with nothing to undo.
+
 ## Items and expertise
 
 Type a name for each item under **Items** (**Appropriate Item** and **Inappropriate Item**).
 Second Contact has no items: Tech replaces them, so the section is called **Tech** there and holds
-your Tech slots instead (below). **Apply to die** and **Undo** work the same way for Tech.
+your Tech slots instead (below). **Apply to die** works the same way for Tech.
 After a roll:
 
 1. Choose a die in **Apply to die**.
 2. Press **+1 value** beside the item you are using.
 
 Each item adds +1 to a single die, once per roll; its button greys out until your next roll. Use
-the other item on the same die or another. **Undo** (beside **Apply to die**) takes back the last
-item or expertise bonus and frees it again; press it again for the one before. A new roll clears
-it. For expertise, name it and press **+1 hit** (or tick **Expertise** before rolling). Buttons
+the other item on the same die or another. **Undo** takes back the last bonus and frees it
+again. For expertise, name it and press **+1 hit** (or tick **Expertise** before rolling). Buttons
 stay greyed out until the name is filled in and there is a roll to change.
 
 ## Genre kits
@@ -76,7 +81,7 @@ The die gets the piece's strength, and the piece loses 1 for next time. You can 
 on one test, each once. At 0 a piece is depleted and its buttons grey out. **Undo** takes a use
 back and returns the strength. To stop a Danger's extermination, press **Sacrifice** on a named
 piece that still works: its strength drops to 0 and the history notes it. At the start of each
-scenario, press **New scenario** to empty every slot again.
+scenario, press **New scenario** to empty every slot again. **Undo** takes either back too.
 
 **Standing (Ball Season).** A five-dot track: **Esteemed** on the left, **Scandalous** on the
 right, and **Reputable** for the three dots in between. You start on the centre dot. Click a dot,

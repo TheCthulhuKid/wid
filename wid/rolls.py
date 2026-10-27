@@ -6,7 +6,6 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    PrivateAttr,
     StrictBool,
     TypeAdapter,
     ValidationError,
@@ -421,10 +420,9 @@ class RollSession(BaseModel):
     item_crafted: bool = False
     # Oldheart: one optional name per manifestation, oldest first.
     manifestations: tuple[str, ...] = Field(default=(), max_length=MANIFESTATION_LIMIT)
+
     # Results before each bonus, newest last, with the Tech slot the bonus spent, if any.
     # Not saved; cleared by a roll and by anything else that changes the Tech.
-    _before_bonus: list[tuple[RollResult, int | None]] = PrivateAttr(default_factory=list)
-
     @model_validator(mode="after")
     def validate_attributes(self) -> Self:
         if self.attributes is not None and self.attributes.profile_id != self.profile_id:
@@ -503,7 +501,7 @@ class RollSession(BaseModel):
         )
         spent = TechPiece(name=piece.name, strength=piece.strength - 1)
         self.tech = tech.with_piece(index, spent)
-        return self._replace_result(candidate, tech_slot=index)
+        return self._replace_result(candidate)
 
     def apply_expertise(self) -> RollResult:
         previous = self._named_bonus_result(BonusKind.EXPERTISE)
@@ -513,24 +511,9 @@ class RollSession(BaseModel):
         candidate = previous.model_copy(update={"request": request})
         return self._replace_result(candidate)
 
-    def _replace_result(self, candidate: RollResult, *, tech_slot: int | None = None) -> RollResult:
-        self._before_bonus.append((self.current_result, tech_slot))
+    def _replace_result(self, candidate: RollResult) -> RollResult:
         self.current_result = candidate
         return candidate
-
-    @property
-    def can_undo_bonus(self) -> bool:
-        return bool(self._before_bonus)
-
-    def undo_bonus(self) -> RollResult:
-        if not self._before_bonus:
-            raise ValueError("No bonus to undo")
-        self.current_result, tech_slot = self._before_bonus.pop()
-        if tech_slot is not None:
-            piece = self.tech.pieces[tech_slot]
-            restored = TechPiece(name=piece.name, strength=piece.strength + 1)
-            self.tech = self.tech.with_piece(tech_slot, restored)
-        return self.current_result
 
     def configure_attributes(self, ranks: tuple[int, ...]) -> AttributeSetup:
         if self.attributes is not None:
@@ -677,8 +660,6 @@ class RollSession(BaseModel):
             pieces=(TechPiece(strength=science + culture),) * self.attribute_rank("Muscle"),
         )
         self.tech = candidate
-        # An undo would hand strength back to a slot that has been emptied.
-        self._before_bonus.clear()
         return candidate
 
     def set_tech_name(self, index: int, name: str) -> TechState:
@@ -697,8 +678,6 @@ class RollSession(BaseModel):
         if piece.strength == 0:
             raise ValueError(f"{piece.label(index)} is already at 0")
         self.tech = tech.with_piece(index, TechPiece(name=piece.name, strength=0))
-        # An undo would hand strength back to the sacrificed piece.
-        self._before_bonus.clear()
         return piece
 
     def roll(self, request: RollRequest, *, rng: Random) -> RollResult:
@@ -713,7 +692,6 @@ class RollSession(BaseModel):
         if request.resource_die:
             self.resource_die = False
         self.total_strain += candidate.strain_delta
-        self._before_bonus.clear()
         self.current_result = candidate
         return candidate
 
@@ -748,6 +726,5 @@ class RollSession(BaseModel):
             applied_tech=previous.applied_tech,
             manifestation_check=self.add_corruption(len(indices), rng=rng),
         )
-        self._before_bonus.clear()
         self.current_result = candidate
         return candidate

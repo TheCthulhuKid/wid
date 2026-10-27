@@ -92,7 +92,7 @@ SECTION_NAMES = ("strain", "items")
 GAME_BUTTONS: dict[str, Callable[[Game], str]] = {
     "take-strain": Game.take_strain,
     "take-wound": Game.take_wound,
-    "undo-bonus": Game.undo_bonus,
+    "undo": Game.undo,
     "new-scenario": Game.start_scenario,
     "resources-down": lambda game: game.adjust_resources(-1),
     "resources-up": lambda game: game.adjust_resources(1),
@@ -336,6 +336,7 @@ class RollerApp(SessionActions, App):
             self.show_result(result)
         self.update_preview()
         self.write_new_history()
+        self.query_one("#undo", Button).disabled = not self.game.can_undo
         # Every change ends here, so this is where the recovery copy follows the game.
         if warning := self.game.keep_recovery():
             self.feedback(warning)
@@ -454,7 +455,6 @@ class RollerApp(SessionActions, App):
         selector.disabled = result is None
         for kind in BonusKind:
             self.query_one(f"#apply-{kind}", Button).disabled = not self.game.bonus_available(kind)
-        self.query_one("#undo-bonus", Button).disabled = not self.session.can_undo_bonus
         self.update_tech_controls()
 
     def selected_dice(self) -> set[int]:

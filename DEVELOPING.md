@@ -148,9 +148,9 @@ roll, the Tech slots and their names, the Oldheart manifestations, the Ball Seas
 This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their
 names, cumulative power strain, Corruption, the current dice and result, the dice selected for a
 reroll and the die chosen for an item, and the full history. Loading never rolls dice, charges
-resources or refills Tech. Window layout, the Edit/Preview choice, the undo history for bonuses
-and the random generator's state are not saved, and the theme lives in the settings file
-instead. So **Undo** is unavailable right after a load, until the next bonus.
+resources or refills Tech. Window layout, the Edit/Preview choice, the undo history and the
+random generator's state are not saved, and the theme lives in the settings file instead. So
+**Undo** has nothing to take back right after a load, until the next change.
 
 - The format is versioned (`version: 2`); files from an unknown version, a marked wound with an
   unmarked box before it, or invalid values are rejected without replacing the current game. A

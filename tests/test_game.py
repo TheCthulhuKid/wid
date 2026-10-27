@@ -38,6 +38,25 @@ def test_bonuses_are_offered_once_named_and_logged_without_a_cost():
     assert "Appropriate Item Sword: +1 to die 2" in str(game.history[-1])
 
 
+def test_undo_takes_back_the_last_changes_in_turn():
+    game = started()
+    game.rename("bonus", BonusKind.APPROPRIATE_ITEM, "Sword")
+    game.assisted = True
+    game.roll()
+    rolled = game.session.current_result
+    game.apply_bonus(BonusKind.APPROPRIATE_ITEM, 0)
+    game.take_strain()
+    assert game.undo() == "Undid the last strain change."
+    assert not any(game.session.strain.boxes)
+    game.undo()
+    assert game.session.current_result == rolled
+    assert game.undo() == "Undid the last roll."
+    assert (game.session.current_result, game.assisted) == (None, True)
+    assert str(game.history[-1]) == "Undid the last roll."
+    with pytest.raises(ValueError, match="nothing to undo"):
+        game.undo()
+
+
 def test_strain_and_standing_changes_are_logged():
     game = started(Genre.BALL_SEASON)
     game.take_strain()
