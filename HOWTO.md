@@ -182,8 +182,8 @@ The browser sheet has the same game controls as the terminal, with these differe
   Markdown to the **History file** box; **Download history** saves it through the browser.
 - When something would be replaced or lost, a small box asks first, as in the terminal.
   Closing or reloading the page with unsaved changes asks too.
-- The colours follow your browser's light or dark setting. **Dark mode** (or **Light mode**) in
-  the title band switches them, and the browser remembers your choice.
+- The colours follow your browser's light or dark setting. **Colours** in the title band switches
+  between Auto (your browser's setting), Light and Dark, and the browser remembers your choice.
 
 Games saved in the browser open in the terminal, and the other way round. If the page says to
 open wid from the address it printed, use the address shown in the window: it carries a key that

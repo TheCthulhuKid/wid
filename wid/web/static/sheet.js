@@ -139,18 +139,22 @@ function heading(notes) {
   return value.slice(start, stop).split("\n").map((line) => `# ${line}`).join("\n");
 }
 
-// The light or dark switch: the opposite of what shows now, remembered in this browser only.
+// The colours switch: Auto (the browser's setting), then the opposite of that setting, then the
+// same as it, then Auto again, so the first click always changes what shows. The choice is
+// remembered in this browser only.
 function toggleTheme() {
   const root = document.documentElement;
-  const dark = root.dataset.theme
-    ? root.dataset.theme === "dark"
-    : window.matchMedia("(prefers-color-scheme: dark)").matches;
-  root.dataset.theme = dark ? "light" : "dark";
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const order = ["auto", systemDark ? "light" : "dark", systemDark ? "dark" : "light"];
+  const next = order[(order.indexOf(root.dataset.theme || "auto") + 1) % order.length];
   try {
-    localStorage.setItem("wid-theme", root.dataset.theme);
+    if (next === "auto") localStorage.removeItem("wid-theme");
+    else localStorage.setItem("wid-theme", next);
   } catch {
     // Storage can be blocked; the switch still holds until the page is reloaded.
   }
+  if (next === "auto") delete root.dataset.theme;
+  else root.dataset.theme = next;
 }
 
 document.addEventListener("click", (event) => {

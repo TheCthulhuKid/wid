@@ -13,7 +13,7 @@
 </style>
 <script>
   // Light or dark as the player last chose in this browser, set before the page is drawn so it
-  // never flashes the other colours. Without a choice, the system setting decides.
+  // never flashes the other colours. Without a choice (Auto), the system setting decides.
   try {
     const theme = localStorage.getItem("wid-theme");
     if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
