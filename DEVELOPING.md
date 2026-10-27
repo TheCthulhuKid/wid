@@ -92,7 +92,7 @@ Both workflows check out the full history (`fetch-depth: 0`) so the tag is visib
 wid/
 ├── __init__.py         # Lightweight package marker
 ├── __main__.py         # python -m wid
-├── cli.py              # Installed wid command (--version, --help, --self-test, --web)
+├── cli.py              # Installed wid command: a save to open, --web, --self-test, --version
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines

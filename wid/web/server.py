@@ -42,8 +42,10 @@ def open_socket(port: int | None) -> socket.socket:
         return listening_socket(0)
 
 
-def serve(*, port: int | None = None, open_browser: bool = True) -> int:
-    """Run until Ctrl+C and return the process exit code."""
+def serve(
+    *, port: int | None = None, open_browser: bool = True, open_path: str | None = None
+) -> int:
+    """Run until Ctrl+C and return the process exit code; ``open_path`` is a save to open."""
     try:
         sock = open_socket(port)
     except OSError as error:
@@ -57,7 +59,9 @@ def serve(*, port: int | None = None, open_browser: bool = True) -> int:
     if open_browser:
         webbrowser.open(url)
     game = Game(recovery_path=recovery_path())
-    server = uvicorn.Server(uvicorn.Config(create_app(game, token), log_level="warning"))
+    greeting = game.open_file(open_path) if open_path else ""
+    app = create_app(game, token, greeting=greeting)
+    server = uvicorn.Server(uvicorn.Config(app, log_level="warning"))
     with sock:
         try:
             server.run(sockets=[sock])

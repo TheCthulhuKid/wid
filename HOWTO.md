@@ -148,9 +148,14 @@ folded away. A wound is not counted as strain.
 A save includes everything on screen: kit, ranks, options, items, Tech, strain, Corruption,
 notes, character details and the history.
 
+To open a save as wid starts, name it: `wid game.json`, or `wid --web game.json` for the
+browser. On Windows you can also right-click a save, choose **Open with** and pick `wid.exe`.
+If the file cannot be opened, wid starts an empty game and says why.
+
 While a game has unsaved changes, wid also keeps a recovery copy of it beside its settings. If
 wid closes without a save (a crash, or a closed window), the next start asks whether to
-**Restore** that game or **Start fresh**. A restored game still needs saving. **Start fresh**
+**Restore** that game or **Start fresh** (**Keep the opened game** if you named a save to open).
+A restored game still needs saving. **Start fresh**
 keeps the copy until the new game has something to lose, and quitting with Ctrl+Q after saying
 you will lose your changes removes it. Two games running at once share the one copy, so it
 holds whichever changed last.

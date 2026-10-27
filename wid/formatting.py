@@ -170,9 +170,14 @@ NEW_CHARACTER_QUESTION = (
 )
 QUIT_QUESTION = "Quit? Unsaved changes will be lost."
 RECOVERY_QUESTION = (
-    "wid closed last time with unsaved changes, and kept a copy. Restore that game, or start "
-    "fresh? Starting fresh keeps the copy until the new game has something to lose."
+    "wid closed last time with unsaved changes, and kept a copy. Restore that game? If not, the "
+    "copy stays until this game has something to lose."
 )
+
+
+def recovery_decline(opened: bool) -> str:
+    """The button that leaves the recovery copy: for a fresh game, or for a file just opened."""
+    return "Keep the opened game" if opened else "Start fresh"
 
 
 def replace_question(kind: str, path: object) -> str:

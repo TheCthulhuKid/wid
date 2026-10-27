@@ -124,6 +124,7 @@ class RollerApp(SessionActions, App):
         rng: Random | None = None,
         settings_path: Path | None = None,
         recovery_path: Path | None = None,
+        open_path: str | None = None,
     ):
         super().__init__()
         self.settings_path = settings_path
@@ -131,6 +132,8 @@ class RollerApp(SessionActions, App):
         self.register_theme(DANGER)
         self.layout: dict[str, object] = {}
         self.game = Game(rng=rng, recovery_path=recovery_path)
+        # A save named on the command line, opened once the screen is up.
+        self.open_path = open_path
         # How many history entries the log shows, so only new ones are written.
         self.logged = 0
         self.pending_genre: Genre | None = None
@@ -250,6 +253,10 @@ class RollerApp(SessionActions, App):
         self.set_short_mode(self.size.height < SHORT_HEIGHT)
         self.restore_layout()
         self.refresh_sheet()
+        if self.open_path:
+            message = self.game.open_file(self.open_path)
+            self.show_game()
+            self.feedback(message)
         self.offer_recovery()
 
     def restore_theme(self) -> None:

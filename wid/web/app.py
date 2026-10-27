@@ -66,7 +66,8 @@ def render(
     return TEMPLATES.TemplateResponse(request, template, context | COLOUR_VARIABLES)
 
 
-def create_app(game: Game, token: str) -> FastAPI:
+def create_app(game: Game, token: str, *, greeting: str = "") -> FastAPI:
+    """The app for ``game``; ``greeting`` is shown once, on the first page (a file opened, say)."""
     # No interactive API docs: this app serves one local player, not API clients.
     app = FastAPI(title="wid", docs_url=None, redoc_url=None, openapi_url=None)
     # Requests are handled concurrently, so one action finishes before the next one starts.
@@ -93,8 +94,10 @@ def create_app(game: Game, token: str) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     async def page(request: Request) -> Response:
+        nonlocal greeting
         async with lock:
-            return render(request, "page.html", game, "", ask=recovery_question(game))
+            message, greeting = greeting, ""
+            return render(request, "page.html", game, message, ask=recovery_question(game))
 
     @app.post("/actions/{name}", response_class=HTMLResponse)
     async def act(name: str, request: Request) -> Response:

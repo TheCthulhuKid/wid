@@ -7,6 +7,7 @@ from wid.formatting import (
     QUIT_QUESTION,
     RECOVERY_QUESTION,
     load_question,
+    recovery_decline,
     replace_question,
 )
 from wid.game import Game, player_message
@@ -115,7 +116,8 @@ class SessionActions:
     def offer_recovery(self) -> None:
         """On start, offer back the game an earlier run closed without saving."""
         if self.game.recovery_available():
-            question = ConfirmSessionAction(RECOVERY_QUESTION, "Restore", "Start fresh")
+            decline = recovery_decline(opened=bool(self.game.path))
+            question = ConfirmSessionAction(RECOVERY_QUESTION, "Restore", decline)
             self.push_screen(question, self.finish_recovery)
 
     def finish_recovery(self, confirmed: bool) -> None:

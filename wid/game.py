@@ -473,6 +473,14 @@ class Game:
         self.saved_snapshot = None
         return "Restored the game wid had kept; save it to keep it for good."
 
+    def open_file(self, text: str) -> str:
+        """Load the save named on the command line; one that cannot be loaded says why instead."""
+        try:
+            saved, path = self.read_save(text)
+        except ValueError as error:
+            return str(error)
+        return self.load(saved, path)
+
     def default_export_path(self) -> str:
         """The session file's path with a .md ending, or a plain name when none is set."""
         path = Path(self.path.strip())

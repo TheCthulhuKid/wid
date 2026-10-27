@@ -12,6 +12,7 @@ from wid.formatting import (
     NEW_GAME_QUESTION,
     RECOVERY_QUESTION,
     load_question,
+    recovery_decline,
     replace_question,
 )
 from wid.game import Game, NameField
@@ -155,8 +156,9 @@ def recovery_question(game: Game) -> NeedsConfirmation | None:
     """On opening the page, offer back the game an earlier run closed without saving."""
     if not game.recovery_available():
         return None
+    decline = recovery_decline(opened=bool(game.path))
     return NeedsConfirmation(
-        RECOVERY_QUESTION, "restore", "confirm", confirm="Restore", cancel="Start fresh"
+        RECOVERY_QUESTION, "restore", "confirm", confirm="Restore", cancel=decline
     )
 
 

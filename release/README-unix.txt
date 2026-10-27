@@ -3,6 +3,7 @@ wid - a terminal dice roller for We're in Danger
 HOW TO RUN
   1. Unpack the download anywhere you like:   tar -xzf wid-VERSION-SYSTEM-ARCH.tar.gz
   2. Open a terminal, go to the unpacked folder and run:   ./wid
+     To open a saved game straight away:   ./wid game.json
   Starting takes a second or two while the program unpacks itself.
 
 MACOS: "WID CANNOT BE OPENED" OR "NOT VERIFIED"
