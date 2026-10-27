@@ -50,6 +50,9 @@ def test_invalid_or_corrupt_files_are_rejected(tmp_path, saved_session_factory):
     data["version"] = 2
     with pytest.raises(ValueError, match="saved by a newer wid"):
         SavedSession.model_validate(data)
+    data["version"] = [1]
+    with pytest.raises(ValueError, match="unknown save format version"):
+        SavedSession.model_validate(data)
 
 
 def test_notes_are_saved_and_older_saves_load_without_them(tmp_path, saved_session_factory):

@@ -26,9 +26,18 @@ class CharacterDetails(FrozenModel):
     nature: str = ""
 
 
+SaveData = dict[str, Any]
 # Each function turns a save file of the version it is keyed by into the next version's data.
 # A change to the save format bumps ``SavedSession.version`` and adds one function here.
-UPGRADES: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {}
+UPGRADES: dict[int, Callable[[SaveData], SaveData]] = {}
+
+
+def upgrade_step(step: Callable[[SaveData], SaveData], data: SaveData, version: int) -> SaveData:
+    """Run one upgrade; a file it cannot handle is refused rather than crashing a front end."""
+    try:
+        return step(data)
+    except Exception as error:
+        raise ValueError(f"This file could not be upgraded from save format {version}.") from error
 
 
 class SavedSession(FrozenModel):
@@ -54,13 +63,15 @@ class SavedSession(FrozenModel):
             return data
         current = cls.model_fields["version"].default
         version = data.get("version", current)
-        while (step := UPGRADES.get(version)) is not None:
-            version += 1
-            data = {**step(data), "version": version}
-        if version == current:
-            return data
-        if isinstance(version, int) and version > current:
-            raise ValueError("This file was saved by a newer wid. Update wid to load it.")
+        # Python counts true as 1, and JSON can hold 1.0; wid never writes either.
+        if type(version) is int:
+            while (step := UPGRADES.get(version)) is not None:
+                data = {**upgrade_step(step, data, version), "version": version + 1}
+                version += 1
+            if version == current:
+                return data
+            if version > current:
+                raise ValueError("This file was saved by a newer wid. Update wid to load it.")
         raise ValueError(f"This file has an unknown save format version ({version!r}).")
 
     @model_validator(mode="after")
