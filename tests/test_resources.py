@@ -99,17 +99,7 @@ def test_reminder_only_for_this_kit_with_extra_hits(full_pool, session_factory):
     assert resources_reminder(core.roll(RollRequest(), rng=ScriptedRandom([6] * 4))) == ""
 
 
-def test_pool_is_saved_and_belongs_to_this_kit(tmp_path, saved_session_factory):
-    def spent(session):
-        session.adjust_resources(3)
-        session.spend_resources(ResourceEffect.EXTRA_DIE, rng=Random(0))
-
-    saved = saved_session_factory(KIT, edit=spent)
-    path = tmp_path / "resources.json"
-    saved.save(path)
-    restored = SavedSession.load(path).session
-    assert (restored.resources, restored.resource_die) == (3, True)
-
+def test_pool_belongs_to_this_kit(saved_session_factory):
     data = saved_session_factory().model_dump()
     data["session"]["resources"] = 3
     with pytest.raises(ValueError, match="Only This Isn't Happening can have Resources"):

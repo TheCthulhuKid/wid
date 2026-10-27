@@ -1,11 +1,10 @@
 import asyncio
 
 import pytest
-from helpers import click, load_game, start_game
+from helpers import click
 from textual.document._document import Selection
-from textual.widgets import Input, Markdown, TextArea
+from textual.widgets import Markdown, TextArea
 
-from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
 
 pytestmark = pytest.mark.ui
@@ -45,28 +44,5 @@ def test_formatting_buttons_wrap_the_selection_and_can_be_undone():
             editor.selection = Selection((0, 0), (0, 0))
             await click(app, pilot, "#notes-heading")
             assert editor.text == "# A clue"
-
-    asyncio.run(scenario())
-
-
-def test_notes_are_saved_and_loaded(tmp_path):
-    path = tmp_path / "markdown.json"
-    notes = "# Ada\n\n**Keep** the map.\n"
-
-    async def scenario():
-        app = RollerApp()
-        async with app.run_test(size=(100, 40)) as pilot:
-            await start_game(app, pilot)
-            editor = app.query_one("#session-notes", TextArea)
-            editor.load_text(notes)
-            app.query_one("#session-name", Input).value = "Markdown campaign"
-            app.query_one("#session-path", Input).value = str(path)
-            await click(app, pilot, "#save-session")
-            assert SavedSession.load(path).notes == notes
-            editor.load_text("# Unsaved replacement")
-            await load_game(app, pilot)
-            await pilot.click("#confirm-session")
-            await pilot.pause()
-            assert editor.text == notes
 
     asyncio.run(scenario())

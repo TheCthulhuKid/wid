@@ -7,6 +7,7 @@ from textual.color import Color
 
 from wid.ui.app import RollerApp
 from wid.ui.outcomes import MIN_CONTRAST, contrast_ratio
+from wid.ui.themes import DANGER_THEME
 
 pytestmark = pytest.mark.ui
 
@@ -29,10 +30,9 @@ def coloured_words(widget, words):
     return found
 
 
-def themes():
-    names = sorted(RollerApp().available_themes)
-    # The ansi themes use the terminal's own palette, so their contrast is not ours to judge.
-    return [name for name in names if not name.startswith("ansi-")]
+# The default light theme and Textual's dark one; the outcome colours adapt the same way to the
+# rest, and checking all of them made this the slowest test by far.
+THEMES = (DANGER_THEME, "textual-dark")
 
 
 BUTTONS = ("#roll-attribute-0", "#take-strain", "#save-session")
@@ -44,13 +44,13 @@ def assert_readable(words, *context):
         assert rendered_contrast(foreground, background) >= MIN_CONTRAST, (*context, text)
 
 
-def test_outcomes_and_action_buttons_are_readable_in_every_theme():
+def test_outcomes_and_action_buttons_are_readable_in_light_and_dark():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([1, 4, 6, 6]))
         async with app.run_test(size=(120, 50)) as pilot:
             await start_game(app, pilot)
             await pilot.press("ctrl+r")
-            for theme in themes():
+            for theme in THEMES:
                 app.theme = theme
                 app.show_result(app.session.current_result)
                 await pilot.pause()

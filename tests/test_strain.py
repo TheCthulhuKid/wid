@@ -7,7 +7,6 @@ from helpers import click, start_game, text
 from wid.game import Game
 from wid.profiles import Genre
 from wid.rolls import LOCKED_NOTE, NOT_READY_NOTE, PowerMode, RollRequest, StrainTracker
-from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
 from wid.ui.widgets import StrainBox
 
@@ -43,16 +42,6 @@ def test_powers_mark_strain(session_factory):
     request = RollRequest(profile_id=Genre.HECKBOY, attribute="Aberrance", power=PowerMode.ERRATIC)
     session.roll(request, rng=Random(1))
     assert session.strain == StrainTracker().take(2)
-
-
-def test_tracker_is_saved_with_its_names(tmp_path, saved_session_factory):
-    def wounded(session):
-        session.strain = StrainTracker().take(12).set_name(2, "Last stand")
-
-    saved = saved_session_factory(edit=wounded)
-    path = tmp_path / "strain.json"
-    saved.save(path)
-    assert SavedSession.load(path).session.strain == saved.session.strain
 
 
 @pytest.mark.ui

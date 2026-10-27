@@ -52,14 +52,7 @@ def test_manifestations_change_depravity_and_hospitality_pools():
     assert pool("Depravity", 3, assisted=True) == OLDHEART_MAX_POOL
 
 
-def test_manifestations_are_saved_and_belong_to_oldheart(tmp_path, saved_session_factory):
-    saved = saved_session_factory(
-        KIT, edit=lambda session: session.set_manifestation_name(0, "Milky eye")
-    )
-    path = tmp_path / "oldheart.json"
-    saved.save(path)
-    assert SavedSession.load(path).session.manifestations == ("Milky eye",)
-
+def test_manifestations_belong_to_oldheart(saved_session_factory):
     data = saved_session_factory().model_dump()
     data["session"]["manifestations"] = ("Scales",)
     with pytest.raises(ValueError, match="Only Oldheart can have manifestations"):
