@@ -1,12 +1,14 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
+from functools import partial
 from operator import attrgetter
 from pathlib import Path
 from random import Random
 from typing import ClassVar
 
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, SystemCommand
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Resize
+from textual.screen import Screen
 from textual.widgets import (
     Button,
     Checkbox,
@@ -612,6 +614,12 @@ class RollerApp(SessionActions, App):
         elif (handler := APP_BUTTONS.get(button.id)) is not None:
             handler(self)
 
+    def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
+        """The command palette (Ctrl+P): Textual's own commands, then the game's main actions."""
+        yield from super().get_system_commands(screen)
+        for title, help_text, handler in PALETTE_COMMANDS:
+            yield SystemCommand(title, help_text, partial(handler, self))
+
     def copy_result(self) -> None:
         """Copy the shown result as text, for pasting into a chat; most terminals pass it on."""
         result = self.session.current_result
@@ -702,6 +710,20 @@ TYPED_BUTTONS: dict[type[Button], Callable[[RollerApp, Button], None]] = {
 }
 
 # The other buttons, by id, that open a dialog or need more than one game call.
+# The game's actions in the command palette, beside the buttons that run the same handlers.
+PALETTE_COMMANDS: tuple[tuple[str, str, Callable[[RollerApp], object]], ...] = (
+    ("Save session", "Save the game to the session file", RollerApp.action_save_session),
+    ("Load game", "Open a saved game", RollerApp.action_load_session),
+    (
+        "Export history",
+        "Write the sheet, notes and history to a Markdown file",
+        RollerApp.action_export_history,
+    ),
+    ("New character", "Start a new character in the same kit", RollerApp.action_new_character),
+    ("Undo", "Take back the last change to the sheet", lambda app: app.act(app.game.undo)),
+    ("Copy result", "Copy the dice as text", RollerApp.copy_result),
+)
+
 APP_BUTTONS: dict[str, Callable[[RollerApp], None]] = {
     "copy-result": RollerApp.copy_result,
     "save-session": RollerApp.action_save_session,
