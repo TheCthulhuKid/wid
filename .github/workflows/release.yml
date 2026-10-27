@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+  # The builds and the Windows smoke test also run on pull requests, so a change that breaks
+  # them is found before it reaches main. Only a tag publishes (see the publish job).
+  pull_request:
   workflow_dispatch:
 
 permissions:

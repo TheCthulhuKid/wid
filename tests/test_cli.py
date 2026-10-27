@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from wid.cli import main, package_version
+from wid.settings import recovery_path
 from wid.ui.app import RollerApp
 
 ENTRY_SCRIPT = Path(__file__).resolve().parents[1] / "release" / "wid_entry.py"
@@ -15,9 +16,9 @@ ENTRY_SCRIPT = Path(__file__).resolve().parents[1] / "release" / "wid_entry.py"
 
 def test_main_launches_roller_app():
     with patch("wid.ui.app.RollerApp") as app:
-        main([])
+        main(["game.json"])
 
-    app.assert_called_once_with()
+    app.assert_called_once_with(recovery_path=recovery_path(), open_path="game.json")
     app.return_value.run.assert_called_once_with()
 
 

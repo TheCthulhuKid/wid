@@ -10,7 +10,9 @@ from urllib.parse import parse_qs
 from wid.formatting import (
     NEW_CHARACTER_QUESTION,
     NEW_GAME_QUESTION,
+    RECOVERY_QUESTION,
     load_question,
+    recovery_decline,
     replace_question,
 )
 from wid.game import Game, NameField
@@ -23,12 +25,26 @@ class NeedsConfirmation(Exception):
     """An action that would replace something; the sheet asks, then sends ``action`` again
     with ``flag`` set to ``value`` (the browser's version of the terminal's confirmations)."""
 
-    def __init__(self, question: str, action: str, flag: str, value: str = "1"):
+    def __init__(
+        self,
+        question: str,
+        action: str,
+        flag: str,
+        value: str = "1",
+        *,
+        confirm: str = "Replace",
+        cancel: str = "Cancel",
+        carry: dict[str, str] | None = None,
+    ):
         super().__init__(question)
         self.question = question
         self.action = action
         self.flag = flag
         self.value = value
+        self.confirm = confirm
+        self.cancel = cancel
+        # Fields the page no longer holds that the confirmed action needs again (an upload).
+        self.carry = carry or {}
 
 
 def as_number(name: str, value: str) -> int:
@@ -41,8 +57,9 @@ def as_number(name: str, value: str) -> int:
 class SheetForm:
     """The URL-encoded fields of one request.
 
-    Browsers send simple forms URL-encoded, so the standard library reads them; only file
-    uploads would need a multipart parser.
+    Browsers send simple forms URL-encoded, so the standard library reads them. An uploaded save
+    comes as text too: the page reads the file and sends it in a field, so no multipart parser
+    is needed.
     """
 
     def __init__(self, body: bytes):
@@ -139,6 +156,16 @@ def change_kit(game: Game, form: SheetForm) -> str:
     return game.change_kit(genre)
 
 
+def recovery_question(game: Game) -> NeedsConfirmation | None:
+    """On opening the page, offer back the game an earlier run closed without saving."""
+    if not game.recovery_available():
+        return None
+    decline = recovery_decline(opened=bool(game.path))
+    return NeedsConfirmation(
+        RECOVERY_QUESTION, "restore", "confirm", confirm="Restore", cancel=decline
+    )
+
+
 def new_character(game: Game, form: SheetForm) -> str:
     if not form.ticked("confirm") and game.has_unsaved_state():
         raise NeedsConfirmation(NEW_CHARACTER_QUESTION, "new-character", "confirm")
@@ -160,6 +187,15 @@ def load(game: Game, form: SheetForm) -> str:
     return game.load(saved, path)
 
 
+def upload(game: Game, form: SheetForm) -> str:
+    text = form.text("session-file")
+    saved = game.read_save_text(text)
+    if game.has_unsaved_state() and not form.ticked("confirm"):
+        question = load_question(saved.name)
+        raise NeedsConfirmation(question, "upload", "confirm", carry={"session-file": text})
+    return game.load(saved, None)
+
+
 def export(game: Game, form: SheetForm) -> str:
     try:
         return game.export_history(form.text("export-path"), overwrite=form.ticked("overwrite"))
@@ -177,7 +213,7 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
         BonusKind(form.text("kind")), form.number("die")
     ),
     "apply-tech": lambda game, form: game.apply_tech(form.number("index"), form.number("die")),
-    "undo-bonus": lambda game, form: game.undo_bonus(),
+    "undo": lambda game, form: game.undo(),
     "strain-box": lambda game, form: game.set_strain_box(
         form.number("index"), form.ticked("marked")
     ),
@@ -193,6 +229,7 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     "remove-manifestation": lambda game, form: game.remove_manifestation(),
     "standing": lambda game, form: game.set_standing(form.number("standing")),
     "roll-d6": lambda game, form: game.roll_one_die(),
+    "restore": lambda game, form: game.restore_recovery(),
     "new-character": new_character,
     "change-kit": change_kit,
     # Shows the sheet again with the fields taken in, for changes such as Scared or the notes
@@ -200,5 +237,6 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     "update": lambda game, form: "",
     "save": save,
     "load": load,
+    "upload": upload,
     "export": export,
 }

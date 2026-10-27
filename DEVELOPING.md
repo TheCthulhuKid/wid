@@ -77,10 +77,10 @@ GitHub Actions:
   `ruff format --check`).
 - `.github/workflows/release.yml` builds and smoke-tests the Windows zip, and builds and
   self-tests the Linux x86_64 (on Ubuntu 22.04, for the widest glibc support) and macOS arm64
-  archives, on every push to `main`, uploading each as a build artifact. Pushing a tag such as
-  `v0.2.0` also attaches every archive and checksum to a draft GitHub release, which you
-  publish yourself; the file names, `wid --version` and the Windows file properties all take
-  their version from that tag. Without a tag, the `publish` job is skipped.
+  archives, on every pull request and every push to `main`, uploading each as a build artifact.
+  Pushing a tag such as `v0.2.0` also attaches every archive and checksum to a draft GitHub
+  release, which you publish yourself; the file names, `wid --version` and the Windows file
+  properties all take their version from that tag. Without a tag, the `publish` job is skipped.
 
 To release, tag the commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
 Both workflows check out the full history (`fetch-depth: 0`) so the tag is visible to
@@ -92,13 +92,13 @@ Both workflows check out the full history (`fetch-depth: 0`) so the tag is visib
 wid/
 ├── __init__.py         # Lightweight package marker
 ├── __main__.py         # python -m wid
-├── cli.py              # Installed wid command (--version, --help, --self-test, --web)
+├── cli.py              # Installed wid command: a save to open, --web, --self-test, --version
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
 ├── game.py             # One sitting: the state and actions every front end drives
-├── export.py           # Markdown text of the action history
-├── history.py          # Structured action history entries and their text rendering
+├── export.py           # Markdown export: the sheet, the notes and the action history
+├── history.py          # Structured action history entries, their text, and dice statistics
 ├── sessions.py         # The versioned save format and the session file path rules
 ├── storage.py          # Atomic file writes for saves, exports and settings
 ├── selftest.py         # `wid --self-test`: the app checked headless, for release builds
@@ -113,7 +113,7 @@ wid/
 │   └── roller.tcss     # Bundled interface styles
 └── web/
     ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser with a token
-    ├── app.py          # FastAPI app: the page, POST /actions/<name>, and the safety checks
+    ├── app.py          # FastAPI app: the page, POST /actions/<name>, downloads, safety checks
     ├── forms.py        # The posted sheet fields copied into the game, and the action table
     ├── view.py         # Colours (light and dark), the notes preview, the template context
     ├── templates/      # Jinja2 page and sheet: one form, each button posts to its action
@@ -148,9 +148,9 @@ roll, the Tech slots and their names, the Oldheart manifestations, the Ball Seas
 This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their
 names, cumulative power strain, Corruption, the current dice and result, the dice selected for a
 reroll and the die chosen for an item, and the full history. Loading never rolls dice, charges
-resources or refills Tech. Window layout, the Edit/Preview choice, the undo history for bonuses
-and the random generator's state are not saved, and the theme lives in the settings file
-instead. So **Undo** is unavailable right after a load, until the next bonus.
+resources or refills Tech. Window layout, the Edit/Preview choice, the undo history and the
+random generator's state are not saved, and the theme lives in the settings file instead. So
+**Undo** has nothing to take back right after a load, until the next change.
 
 - The format is versioned (`version: 2`); files from an unknown version, a marked wound with an
   unmarked box before it, or invalid values are rejected without replacing the current game. A
@@ -161,6 +161,14 @@ instead. So **Undo** is unavailable right after a load, until the next bonus.
 - A save goes to a temporary file that is renamed into place, so a failed write never leaves a
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.
+
+**Recovery file** (JSON): `recovery.json` beside the settings. While the game has unsaved
+changes and has started, `Game.keep_recovery` writes it after every change (the terminal from
+`refresh_sheet`, the browser after each action), in the save format with the typed session name
+and file path beside it. It goes once nothing is unsaved (a save, a load, a new kit) or when
+the player quits after agreeing to lose the changes. On start, an untouched game offers it back;
+**Start fresh** leaves it until the new game writes over it. It is the most recent game, so two
+games running at once take turns in it. A write that fails is reported once and play goes on.
 
 **Settings** (JSON): the theme, the open tab, and whether the strain tracker and items are
 collapsed. They live in `~/.config/wid/settings.json`, `%APPDATA%\wid\settings.json` on

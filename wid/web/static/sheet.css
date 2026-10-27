@@ -1,6 +1,7 @@
 /* The Danger character sheet. Colours come from the variables the page sets on :root
-   (wid/web/view.py), with a dark variant for browsers in dark mode or switched to it. The dice are the one
-   loud element; everything else is a quiet printed sheet: shaded fields, ruled sections. */
+   (wid/web/view.py), with a dark variant for browsers in dark mode or switched to it. The dice
+   are the one loud element; everything else is a quiet printed sheet: shaded fields, ruled
+   sections. */
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -54,17 +55,11 @@ body {
   border-color: var(--band-ink);
 }
 
-/* The toggle names the colours it switches to, so its label follows the same rules as the
-   colours on :root (wid/web/templates/page.html). */
-.when-dark { display: none; }
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .when-light { display: none; }
-  :root:not([data-theme="light"]) .when-dark { display: inline; }
-}
-
-:root[data-theme="dark"] .when-light { display: none; }
-:root[data-theme="dark"] .when-dark { display: inline; }
+/* The switch says which colours are chosen, from the same data-theme attribute that picks the
+   colours on :root (wid/web/templates/page.html); without one, the browser's setting decides. */
+.theme-light, .theme-dark { display: none; }
+:root[data-theme] .theme-auto { display: none; }
+:root[data-theme="light"] .theme-light, :root[data-theme="dark"] .theme-dark { display: inline; }
 
 .columns {
   display: grid;

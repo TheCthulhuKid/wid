@@ -31,20 +31,33 @@ lists every die as *hit*, *miss* or *fumble* (green, yellow, red) with the total
 **Roll 1d6** (beside **Show log**) rolls a single die outside a test, for anything the game asks
 you to roll, and writes the result to the history.
 
+**Show log** (in the browser, the History list) shows the history, headed by how the dice have
+fallen so far: the number of tests, their hits, misses and fumbles as first rolled, and how often
+each pool size came up. Rerolls and bonuses are left out, so no die counts twice.
+
+**Copy result** (under the result) copies the attribute, each die and the totals as plain text,
+ready to paste into a chat. In the terminal it goes through the terminal's clipboard, which most
+terminals pass on (macOS Terminal does not).
+
+**Undo** (under the result) takes back the last change to the sheet: a roll, a reroll, an item,
+expertise or Tech bonus, strain, Standing, Resources, Corruption or a manifestation. Press it
+again for the one before, up to 50 changes. The history keeps what happened and notes each undo.
+An undone roll is not rolled back into the dice: rolling again gives new numbers. Loading a
+game, starting a new character or changing the kit starts with nothing to undo.
+
 ## Items and expertise
 
 Type a name for each item under **Items** (**Appropriate Item** and **Inappropriate Item**).
 Second Contact has no items: Tech replaces them, so the section is called **Tech** there and holds
-your Tech slots instead (below). **Apply to die** and **Undo** work the same way for Tech.
+your Tech slots instead (below). **Apply to die** works the same way for Tech.
 After a roll:
 
 1. Choose a die in **Apply to die**.
 2. Press **+1 value** beside the item you are using.
 
 Each item adds +1 to a single die, once per roll; its button greys out until your next roll. Use
-the other item on the same die or another. **Undo** (beside **Apply to die**) takes back the last
-item or expertise bonus and frees it again; press it again for the one before. A new roll clears
-it. For expertise, name it and press **+1 hit** (or tick **Expertise** before rolling). Buttons
+the other item on the same die or another. **Undo** takes back the last bonus and frees it
+again. For expertise, name it and press **+1 hit** (or tick **Expertise** before rolling). Buttons
 stay greyed out until the name is filled in and there is a roll to change.
 
 ## Genre kits
@@ -56,14 +69,14 @@ Every kit has the same screen. Each adds at most one thing:
 | **Core WiD** | Athleticism, Composure, Reasoning | None |
 | **Heckboy** | Aberrance, Ferocity, Savvy | Two powers (below) |
 | **Second Contact** | Science, Culture, Muscle | **Tech** slots instead of **Items** (below) |
-| **Oldheart** | Depravity, Hospitality, Fitness | **Reroll selected**, Corruption and manifestations (below) |
+| **Oldheart** | Depravity, Hospitality, Fitness | Rerolls, Corruption and manifestations (below) |
 | **Ball Season** | Propriety, Stoutness, Yearning | A **Standing** track (below) |
-| **This Isn't Happening** | Instincts, Endurance, Charity | **Resources** and a **Crafted item** (below) |
+| **This Isn't Happening** | Instincts, Endurance, Charity | **Resources**, a crafted item (below) |
 
 **Powers (Heckboy).** Every Heckboy has a **Reliable power** (+1 die, +1 strain) and an
 **Erratic power** (+2 dice, +2 strain). Type each power's name in its box. Tick **Use** beside one
-before rolling to use it: the pool grows and the strain is added to the tracker for you. Only one power
-can be used per roll, and **Use** unticks itself after the roll.
+before rolling to use it: the pool grows and the strain is added to the tracker for you. Only one
+power can be used per roll, and **Use** unticks itself after the roll.
 
 **Tech (Second Contact).** You get one Tech slot for each rank of Muscle as soon as the game starts.
 A slot stays empty until you use it, and each one starts at Science + Culture. Tech is used after
@@ -76,7 +89,7 @@ The die gets the piece's strength, and the piece loses 1 for next time. You can 
 on one test, each once. At 0 a piece is depleted and its buttons grey out. **Undo** takes a use
 back and returns the strength. To stop a Danger's extermination, press **Sacrifice** on a named
 piece that still works: its strength drops to 0 and the history notes it. At the start of each
-scenario, press **New scenario** to empty every slot again.
+scenario, press **New scenario** to empty every slot again. **Undo** takes either back too.
 
 **Standing (Ball Season).** A five-dot track: **Esteemed** on the left, **Scandalous** on the
 right, and **Reputable** for the three dots in between. You start on the centre dot. Click a dot,
@@ -137,9 +150,10 @@ folded away. A wound is not counted as strain.
   before an existing file is replaced.
 - **Load game**: press it and a box asks for the path; it starts with the one from the Session
   tab. You are asked first if you would lose anything unsaved.
-- **Export history**: writes all the rolls, and every change to strain, Standing and Resources,
-  to a Markdown file you can read or share. The suggested name is your save file's name ending
-  in `.md`.
+- **Export history**: writes a Markdown file you can read or share: your character, a summary of
+  the sheet (ranks, strain, named items and powers, and your kit's Tech, Corruption, Standing or
+  Resources), your notes, then all the rolls and every change to strain, Standing and Resources,
+  and the dice statistics. The suggested name is your save file's name ending in `.md`.
 - **New character**: clears the sheet for a new character in the same kit (after a character
   dies, for example): name, looks, nature, ranks, item and expertise names, strain, Scared and the
   current roll. The history, notes, session name and file path stay. You are asked first if
@@ -148,25 +162,44 @@ folded away. A wound is not counted as strain.
 A save includes everything on screen: kit, ranks, options, items, Tech, strain, Corruption,
 notes, character details and the history.
 
+To open a save as wid starts, name it: `wid game.json`, or `wid --web game.json` for the
+browser. On Windows you can also right-click a save, choose **Open with** and pick `wid.exe`.
+If the file cannot be opened, wid starts an empty game and says why.
+
+While a game has unsaved changes, wid also keeps a recovery copy of it beside its settings. If
+wid closes without a save (a crash, or a closed window), the next start asks whether to
+**Restore** that game or **Start fresh** (**Keep the opened game** if you named a save to open).
+A restored game still needs saving. **Start fresh**
+keeps the copy until the new game has something to lose, and quitting with Ctrl+Q after saying
+you will lose your changes removes it. Two games running at once share the one copy, so it
+holds whichever changed last.
+
 ## Play in the browser
 
 Prefer a web browser to the terminal? Start wid with `wid --web` (from a release download,
-`.\wid.exe --web` on Windows or `./wid --web` on Linux and macOS, in the program's folder). Your browser opens the sheet by itself. The window you started it from
-shows the address and must stay open while you play; press **Ctrl+C** there to stop. Only this
-computer can reach the game.
+`.\wid.exe --web` on Windows or `./wid --web` on Linux and macOS, in the program's folder). Your
+browser opens the sheet by itself. The window you started it from shows the address and must stay
+open while you play; press **Ctrl+C** there to stop. Only this computer can reach the game.
 
-The browser sheet has the same controls in the same order as the terminal, with a few
-differences:
+The browser sheet has the same game controls as the terminal, with these differences:
 
-- **Character** and **Session** are sections on one page instead of tabs.
+- **Character** and **Session** are sections on one page instead of tabs, so there is no **C**
+  or **S**.
+- Nothing folds: the strain tracker, the items and the history are always shown, so there is no
+  **T**, **I** or **Ctrl+L**.
+- The only keys of its own are **Ctrl+R** and **Enter** in a text box, which sends what you
+  typed. There is no **D** theme picker (the colours are below) and no **Ctrl+Q**: close the
+  tab instead.
 - The dice appear on the right (on a phone, straight after the options for the next test).
   **Repeat roll** or **Ctrl+R** rolls the last attribute again.
 - **Save session** and **Load game** use the **Session file** box. **Export history** writes the
   Markdown to the **History file** box; **Download history** saves it through the browser.
+- **Download save** saves the game through the browser, and **Upload a save** opens a save you
+  pick, asking first if you would lose anything unsaved. Neither needs a path typed in.
 - When something would be replaced or lost, a small box asks first, as in the terminal.
   Closing or reloading the page with unsaved changes asks too.
-- The colours follow your browser's light or dark setting. **Dark mode** (or **Light mode**) in
-  the title band switches them, and the browser remembers your choice.
+- The colours follow your browser's light or dark setting. **Colours** in the title band switches
+  between Auto (your browser's setting), Light and Dark, and the browser remembers your choice.
 
 Games saved in the browser open in the terminal, and the other way round. If the page says to
 open wid from the address it printed, use the address shown in the window: it carries a key that
@@ -179,8 +212,9 @@ changes every time wid starts.
 | **Ctrl+R** | Roll again with the last attribute |
 | **C** / **S** | Open the Character / Session tab, then Tab or the arrow keys to move in |
 | **T** / **I** | Fold or unfold the strain tracker / the items (Tech in Second Contact) |
-| **D** | Pick a colour theme (it is remembered; the default is "danger", cream with red highlights) |
+| **D** | Pick a colour theme, which is remembered (the default, "danger", is cream and red) |
 | **Ctrl+L** | Show or hide the history log |
+| **Ctrl+P** | Search the commands: Save session, Load game, Export history, Undo and more |
 | **Tab** / **Shift+Tab** | Move between controls |
 | **Ctrl+Q** | Quit (asks first if anything is unsaved) |
 

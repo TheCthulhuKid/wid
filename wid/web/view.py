@@ -4,19 +4,23 @@ from markdown_it import MarkdownIt
 
 from wid.formatting import (
     BONUS_LABELS,
+    CORRUPTION_AMOUNTS,
     POWER_LABELS,
     SPEND_LABELS,
     corruption_status,
     pool_line,
     resources_line,
     resources_reminder,
+    result_text,
     strain_status,
     strain_summary,
     tech_starting_line,
 )
 from wid.game import Game
+from wid.history import history_statistics
 from wid.profiles import PROFILES
 from wid.rolls import (
+    RANKS,
     RESOURCES_MAX,
     RESOURCES_MIN,
     SCARED_MAX,
@@ -110,12 +114,14 @@ def sheet_context(
         "result": result,
         "resources": resources,
         "reminder": resources_reminder(result) if result is not None else "",
+        "result_text": result_text(result) if result is not None else "",
         "pool": pool_line(game.draft_request(preview=True)),
         "strain_title": strain_summary(session.strain),
         "strain_status": strain_status(session.strain),
         "corruption_status": corruption_status(session),
         "tech_line": tech_starting_line(session.tech),
         "history": [str(entry) for entry in reversed(game.history)],
+        "statistics": history_statistics(game.history),
         "preview": preview,
         "ask": ask,
         # What the player typed stays; the suggestion only fills an empty box.
@@ -130,6 +136,8 @@ def sheet_context(
         "resources_min": RESOURCES_MIN,
         "resources_max": RESOURCES_MAX,
         "scared_max": SCARED_MAX,
+        "ranks": RANKS,
+        "corruption_amounts": CORRUPTION_AMOUNTS,
         "power_labels": POWER_LABELS,
         "spend_labels": SPEND_LABELS,
     }

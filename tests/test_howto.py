@@ -42,8 +42,10 @@ SCREEN_LABELS = [
     "Roll 1d6",
     "Repeat roll",
     "Download history",
-    "Dark mode",
-    "Light mode",
+    "Copy result",
+    "Download save",
+    "Upload a save",
+    "Colours",
     "New scenario",
     "Reroll selected",
     "Take 1 strain",
@@ -95,7 +97,8 @@ def test_every_shortcut_in_the_how_to_is_a_real_binding():
     )
     letters = {letter.lower() for pair in documented for letter in pair if letter}
 
-    assert letters <= keys | {"r", "l", "q"}
+    # Ctrl+R and Ctrl+L are the app's; Ctrl+Q and Ctrl+P (the command palette) are Textual's.
+    assert letters <= keys | {"r", "l", "q", "p"}
     assert {"ctrl+r", "ctrl+l"} <= keys
 
 

@@ -54,18 +54,3 @@ def test_second_contact_has_no_items(session_factory):
     roll_test(session)
     with pytest.raises(ValueError, match="Second Contact has no items"):
         session.apply_item(BonusKind.APPROPRIATE_ITEM, 0)
-
-
-def test_undo_takes_back_bonuses_until_the_next_roll(session_factory):
-    session = session_factory()
-    session.set_bonus_name(BonusKind.APPROPRIATE_ITEM, "Sword")
-    session.set_bonus_name(BonusKind.INAPPROPRIATE_ITEM, "Teacup")
-    original = roll_test(session)
-    session.apply_item(BonusKind.APPROPRIATE_ITEM, 0)
-    session.apply_item(BonusKind.INAPPROPRIATE_ITEM, 1)
-    session.undo_bonus()
-    assert session.undo_bonus() == original
-    assert not session.can_undo_bonus
-    session.apply_item(BonusKind.APPROPRIATE_ITEM, 0)
-    roll_test(session)
-    assert not session.can_undo_bonus

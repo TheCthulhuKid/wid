@@ -38,6 +38,25 @@ def test_bonuses_are_offered_once_named_and_logged_without_a_cost():
     assert "Appropriate Item Sword: +1 to die 2" in str(game.history[-1])
 
 
+def test_undo_takes_back_the_last_changes_in_turn():
+    game = started()
+    game.rename("bonus", BonusKind.APPROPRIATE_ITEM, "Sword")
+    game.assisted = True
+    game.roll()
+    rolled = game.session.current_result
+    game.apply_bonus(BonusKind.APPROPRIATE_ITEM, 0)
+    game.take_strain()
+    assert game.undo() == "Undid the last strain change."
+    assert not any(game.session.strain.boxes)
+    game.undo()
+    assert game.session.current_result == rolled
+    assert game.undo() == "Undid the last roll."
+    assert (game.session.current_result, game.assisted) == (None, True)
+    assert str(game.history[-1]) == "Undid the last roll."
+    with pytest.raises(ValueError, match="nothing to undo"):
+        game.undo()
+
+
 def test_strain_and_standing_changes_are_logged():
     game = started(Genre.BALL_SEASON)
     game.take_strain()
@@ -93,6 +112,8 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     assert loaded.has_unsaved_state()
     with pytest.raises(ValueError, match="Could not load session"):
         loaded.read_save(str(tmp_path / "missing.json"))
+    assert Game().open_file(game.path) == f"Loaded Friday from {game.path}."
+    assert Game().open_file(str(tmp_path / "missing.json")).startswith("Could not load session")
     loaded.name, loaded.path = "Friday", str(tmp_path)
     with pytest.raises(ValueError, match="That path is a folder; add a file name."):
         loaded.save()
@@ -100,6 +121,28 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     with pytest.raises(ValueError) as error:
         loaded.save()
     assert str(error.value) == f"Could not save session: No such file or directory: {loaded.path}"
+
+
+def test_unsaved_changes_are_kept_for_recovery_until_saved(tmp_path):
+    recovery = tmp_path / "recovery.json"
+    game = Game(rng=ScriptedRandom([4] * 8), recovery_path=recovery)
+    game.start_game((1, 2, 3))
+    game.roll()
+    game.path = str(tmp_path / "game.json")
+    assert game.keep_recovery() == ""
+    assert recovery.is_file()
+
+    restored = Game(recovery_path=recovery)
+    assert restored.recovery_available()
+    restored.restore_recovery()
+    assert restored.session.model_dump() == game.session.model_dump()
+    assert (restored.history, restored.name, restored.path) == (game.history, "", game.path)
+    assert restored.has_unsaved_state()
+
+    game.name = "Friday"
+    game.save()
+    game.keep_recovery()
+    assert not recovery.exists()
 
 
 def test_export_writes_markdown_beside_the_session_file(tmp_path):

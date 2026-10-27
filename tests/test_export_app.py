@@ -43,7 +43,8 @@ def test_exports_the_history_to_a_markdown_file(tmp_path):
         app.query_one("#character-name", Input).value = "Ada"
         await export_to(app, pilot, target)
         content = target.read_text(encoding="utf-8")
-        assert content.startswith("# Friday\n\nCharacter: Ada\n\n## 1. Roll\n")
+        assert content.startswith("# Friday\n\nCharacter: Ada\n\n## Sheet\n")
+        assert "\n## 1. Roll\n" in content
         assert text(app, "#feedback") == f"Exported 2 history entries to {target}."
 
     run(scenario)

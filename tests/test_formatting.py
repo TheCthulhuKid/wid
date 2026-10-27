@@ -3,6 +3,7 @@ from wid.formatting import (
     describe_dice,
     dice_parts,
     resources_line,
+    result_text,
     summarize,
 )
 from wid.profiles import Genre
@@ -26,6 +27,10 @@ def test_summary_and_attribute(saved_session_factory):
     assert summarize(result).startswith("Hits: ")
     assert "expertise 1" in summarize(result)
     assert attribute_label(result) == "Athleticism (rank 1)"
+    copied = result_text(result).splitlines()
+    assert copied[0] == "Athleticism (rank 1)"
+    assert copied[1].startswith("Die 1: raw ")
+    assert copied[-1] == summarize(result)
 
 
 def test_resources_line_by_kit(saved_session_factory):

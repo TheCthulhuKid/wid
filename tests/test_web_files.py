@@ -69,3 +69,22 @@ def test_the_history_exports_to_a_file_and_downloads(tmp_path):
     assert download.headers["content-disposition"] == 'attachment; filename="k_mpaign.md"'
     assert download.text == game.history_text()
     assert download.text.startswith("# Friday")
+
+
+def test_a_save_downloads_and_uploads_into_another_game():
+    game = started()
+    game.name = "Friday"
+    download = browser(game).get("/session.json")
+    assert download.headers["content-disposition"] == 'attachment; filename="Friday.json"'
+
+    fresh = Game()
+    assert act(browser(fresh), "upload", **{"session-file": download.text}).status_code == 200
+    assert fresh.session.model_dump() == game.session.model_dump()
+    assert (fresh.name, fresh.path) == ("Friday", "")
+
+    other = started()
+    other_client = browser(other)
+    asked = act(other_client, "upload", **{"session-file": download.text}).text
+    assert "Load Friday? This replaces the current game and history." in asked
+    act(other_client, "upload", confirm="1", **{"session-file": download.text})
+    assert other.name == "Friday"

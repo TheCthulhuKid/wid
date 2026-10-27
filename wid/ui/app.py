@@ -1,12 +1,14 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
+from functools import partial
 from operator import attrgetter
 from pathlib import Path
 from random import Random
 from typing import ClassVar
 
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, SystemCommand
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Resize
+from textual.screen import Screen
 from textual.widgets import (
     Button,
     Checkbox,
@@ -30,12 +32,13 @@ from wid.formatting import (
     pool_line,
     resources_line,
     resources_reminder,
+    result_text,
     strain_status,
     strain_summary,
     tech_starting_line,
 )
 from wid.game import Game, NameField, player_message
-from wid.history import HistoryEntry
+from wid.history import HistoryEntry, history_statistics
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     RESOURCES_MAX,
@@ -92,7 +95,7 @@ SECTION_NAMES = ("strain", "items")
 GAME_BUTTONS: dict[str, Callable[[Game], str]] = {
     "take-strain": Game.take_strain,
     "take-wound": Game.take_wound,
-    "undo-bonus": Game.undo_bonus,
+    "undo": Game.undo,
     "new-scenario": Game.start_scenario,
     "resources-down": lambda game: game.adjust_resources(-1),
     "resources-up": lambda game: game.adjust_resources(1),
@@ -118,13 +121,22 @@ class RollerApp(SessionActions, App):
         ("ctrl+l", "toggle_history", "Log"),
     ]
 
-    def __init__(self, *, rng: Random | None = None, settings_path: Path | None = None):
+    def __init__(
+        self,
+        *,
+        rng: Random | None = None,
+        settings_path: Path | None = None,
+        recovery_path: Path | None = None,
+        open_path: str | None = None,
+    ):
         super().__init__()
         self.settings_path = settings_path
         self.settings = load_settings(settings_path)
         self.register_theme(DANGER)
         self.layout: dict[str, object] = {}
-        self.game = Game(rng=rng)
+        self.game = Game(rng=rng, recovery_path=recovery_path)
+        # A save named on the command line, opened once the screen is up.
+        self.open_path = open_path
         # How many history entries the log shows, so only new ones are written.
         self.logged = 0
         self.pending_genre: Genre | None = None
@@ -166,6 +178,7 @@ class RollerApp(SessionActions, App):
                 yield RollerGroup()
         with Vertical(id="history-panel"):
             yield Label("Action history")
+            yield Static(id="history-statistics", markup=False)
             yield RichLog(id="log", wrap=True, markup=False)
         yield Footer()
 
@@ -244,6 +257,11 @@ class RollerApp(SessionActions, App):
         self.set_short_mode(self.size.height < SHORT_HEIGHT)
         self.restore_layout()
         self.refresh_sheet()
+        if self.open_path:
+            message = self.game.open_file(self.open_path)
+            self.show_game()
+            self.feedback(message)
+        self.offer_recovery()
 
     def restore_theme(self) -> None:
         self.theme = (
@@ -322,6 +340,11 @@ class RollerApp(SessionActions, App):
             self.show_result(result)
         self.update_preview()
         self.write_new_history()
+        self.query_one("#undo", Button).disabled = not self.game.can_undo
+        self.query_one("#copy-result", Button).disabled = self.session.current_result is None
+        # Every change ends here, so this is where the recovery copy follows the game.
+        if warning := self.game.keep_recovery():
+            self.feedback(warning)
 
     def show_game(self) -> None:
         """Show a game that was replaced (loaded, a new character or kit), text fields included."""
@@ -360,6 +383,8 @@ class RollerApp(SessionActions, App):
         for entry in self.history[self.logged :]:
             log.write(str(entry))
         self.logged = len(self.history)
+        statistics = self.query_one("#history-statistics", Static)
+        statistics.update(history_statistics(self.history))
 
     def update_strain_controls(self) -> None:
         tracker = self.session.strain
@@ -437,7 +462,6 @@ class RollerApp(SessionActions, App):
         selector.disabled = result is None
         for kind in BonusKind:
             self.query_one(f"#apply-{kind}", Button).disabled = not self.game.bonus_available(kind)
-        self.query_one("#undo-bonus", Button).disabled = not self.session.can_undo_bonus
         self.update_tech_controls()
 
     def selected_dice(self) -> set[int]:
@@ -593,6 +617,20 @@ class RollerApp(SessionActions, App):
         elif (handler := APP_BUTTONS.get(button.id)) is not None:
             handler(self)
 
+    def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
+        """The command palette (Ctrl+P): Textual's own commands, then the game's main actions."""
+        yield from super().get_system_commands(screen)
+        for title, help_text, handler in PALETTE_COMMANDS:
+            yield SystemCommand(title, help_text, partial(handler, self))
+
+    def copy_result(self) -> None:
+        """Copy the shown result as text, for pasting into a chat; most terminals pass it on."""
+        result = self.session.current_result
+        if result is None:
+            return
+        self.copy_to_clipboard(result_text(result))
+        self.feedback("Copied the result.")
+
     def ask_spend_resources(self) -> None:
         self.push_screen(SpendResources(), self.spend_resources)
 
@@ -675,7 +713,22 @@ TYPED_BUTTONS: dict[type[Button], Callable[[RollerApp, Button], None]] = {
 }
 
 # The other buttons, by id, that open a dialog or need more than one game call.
+# The game's actions in the command palette, beside the buttons that run the same handlers.
+PALETTE_COMMANDS: tuple[tuple[str, str, Callable[[RollerApp], object]], ...] = (
+    ("Save session", "Save the game to the session file", RollerApp.action_save_session),
+    ("Load game", "Open a saved game", RollerApp.action_load_session),
+    (
+        "Export history",
+        "Write the sheet, notes and history to a Markdown file",
+        RollerApp.action_export_history,
+    ),
+    ("New character", "Start a new character in the same kit", RollerApp.action_new_character),
+    ("Undo", "Take back the last change to the sheet", lambda app: app.act(app.game.undo)),
+    ("Copy result", "Copy the dice as text", RollerApp.copy_result),
+)
+
 APP_BUTTONS: dict[str, Callable[[RollerApp], None]] = {
+    "copy-result": RollerApp.copy_result,
     "save-session": RollerApp.action_save_session,
     "export-history": RollerApp.action_export_history,
     "new-character": RollerApp.action_new_character,

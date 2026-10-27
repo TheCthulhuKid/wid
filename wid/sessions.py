@@ -187,3 +187,15 @@ class SavedSession(FrozenModel):
     @classmethod
     def load(cls, path: Path) -> Self:
         return cls.model_validate_json(session_file_path(path).read_text(encoding="utf-8"))
+
+
+class Recovery(FrozenModel):
+    """The game as wid last changed it, kept until it is saved, so a crash loses nothing.
+
+    A save needs a name, so ``game`` may carry a stand-in; ``name`` is the one the player typed,
+    and ``path`` is the session file the game would be saved to.
+    """
+
+    name: str = ""
+    path: str = ""
+    game: SavedSession

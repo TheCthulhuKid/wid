@@ -76,9 +76,21 @@ document.addEventListener("submit", (event) => {
   send(button ? button.formAction : event.target.action, new FormData(event.target, button));
 });
 
+// A save chosen in the upload box is read here and sent as text with the sheet, so the game
+// needs no file upload handling. The box has no name, so the file itself is not sent.
+async function upload(file) {
+  const data = new FormData(sheet());
+  data.set("session-file", await file.text());
+  send("/actions/upload", data);
+}
+
 // Selects and boxes marked data-action send the sheet as soon as they change.
 document.addEventListener("change", (event) => {
   const control = event.target;
+  if (control.dataset.upload !== undefined && control.files.length) {
+    upload(control.files[0]);
+    return;
+  }
   if (!control.dataset.action || !sheet().contains(control)) return;
   if (pending) {
     missed = true;
@@ -139,22 +151,38 @@ function heading(notes) {
   return value.slice(start, stop).split("\n").map((line) => `# ${line}`).join("\n");
 }
 
-// The light or dark switch: the opposite of what shows now, remembered in this browser only.
+// The colours switch: Auto (the browser's setting), then the opposite of that setting, then the
+// same as it, then Auto again, so the first click always changes what shows. The choice is
+// remembered in this browser only.
 function toggleTheme() {
   const root = document.documentElement;
-  const dark = root.dataset.theme
-    ? root.dataset.theme === "dark"
-    : window.matchMedia("(prefers-color-scheme: dark)").matches;
-  root.dataset.theme = dark ? "light" : "dark";
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const order = ["auto", systemDark ? "light" : "dark", systemDark ? "dark" : "light"];
+  const next = order[(order.indexOf(root.dataset.theme || "auto") + 1) % order.length];
   try {
-    localStorage.setItem("wid-theme", root.dataset.theme);
+    if (next === "auto") localStorage.removeItem("wid-theme");
+    else localStorage.setItem("wid-theme", next);
   } catch {
     // Storage can be blocked; the switch still holds until the page is reloaded.
+  }
+  if (next === "auto") delete root.dataset.theme;
+  else root.dataset.theme = next;
+}
+
+// Copy result: the result as text, which the sheet carries on the button.
+async function copyResult(button) {
+  try {
+    await navigator.clipboard.writeText(button.dataset.copy);
+    feedback("Copied the result.");
+  } catch {
+    feedback("The browser did not let wid copy; select the result and copy it instead.");
   }
 }
 
 document.addEventListener("click", (event) => {
   if (event.target.closest("[data-theme-toggle]")) toggleTheme();
+  const copy = event.target.closest("[data-copy]");
+  if (copy) copyResult(copy);
   const close = event.target.closest("[data-close]");
   if (close) close.closest("dialog").close();
   const button = event.target.closest("[data-format]");

@@ -26,7 +26,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.templating import Jinja2Templates
 
 from wid.game import Game, player_message
-from wid.web.forms import ACTIONS, NeedsConfirmation, SheetForm, collect
+from wid.web.forms import ACTIONS, NeedsConfirmation, SheetForm, collect, recovery_question
 from wid.web.view import COLOURS, css_variables, sheet_context
 
 HOSTS = ["127.0.0.1", "localhost"]
@@ -46,10 +46,13 @@ def matches(offered: str, token: str) -> bool:
     return secrets.compare_digest(offered.encode(), token.encode())
 
 
-def download_name(game: Game) -> str:
+def attachment(text: str, media_type: str, name: str) -> Response:
+    """A download of ``text`` saved as ``name``."""
     # The name goes into a response header, which only carries ASCII, so anything else
     # (a quote, a line break, a letter like 日) becomes "_".
-    return re.sub(r"[^A-Za-z0-9._-]", "_", Path(game.default_export_path()).name)
+    filename = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return Response(text, media_type=media_type, headers=headers)
 
 
 def render(
@@ -66,7 +69,8 @@ def render(
     return TEMPLATES.TemplateResponse(request, template, context | COLOUR_VARIABLES)
 
 
-def create_app(game: Game, token: str) -> FastAPI:
+def create_app(game: Game, token: str, *, greeting: str = "") -> FastAPI:
+    """The app for ``game``; ``greeting`` is shown once, on the first page (a file opened, say)."""
     # No interactive API docs: this app serves one local player, not API clients.
     app = FastAPI(title="wid", docs_url=None, redoc_url=None, openapi_url=None)
     # Requests are handled concurrently, so one action finishes before the next one starts.
@@ -93,8 +97,10 @@ def create_app(game: Game, token: str) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     async def page(request: Request) -> Response:
+        nonlocal greeting
         async with lock:
-            return render(request, "page.html", game, "")
+            message, greeting = greeting, ""
+            return render(request, "page.html", game, message, ask=recovery_question(game))
 
     @app.post("/actions/{name}", response_class=HTMLResponse)
     async def act(name: str, request: Request) -> Response:
@@ -114,6 +120,8 @@ def create_app(game: Game, token: str) -> FastAPI:
                 message, ask = "", question
             except ValueError as error:
                 message = player_message(error)
+            if warning := game.keep_recovery():
+                message = f"{message} {warning}".strip()
             return render(
                 request,
                 "sheet.html",
@@ -131,12 +139,17 @@ def create_app(game: Game, token: str) -> FastAPI:
                 text = game.history_text()
             except ValueError as error:
                 return PlainTextResponse(str(error), 404)
-            filename = download_name(game)
-        disposition = f'attachment; filename="{filename}"'
-        return Response(
-            text,
-            media_type="text/markdown; charset=utf-8",
-            headers={"Content-Disposition": disposition},
-        )
+            name = Path(game.default_export_path()).name
+        return attachment(text, "text/markdown; charset=utf-8", name)
+
+    @app.get("/session.json")
+    async def download_save() -> Response:
+        async with lock:
+            try:
+                text = game.save_text()
+            except ValueError as error:
+                return PlainTextResponse(str(error), 404)
+            name = game.save_file_name()
+        return attachment(text, "application/json", name)
 
     return app

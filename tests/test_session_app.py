@@ -6,6 +6,7 @@ from helpers import change_genre, click, load_game, start_game, text
 from textual.widgets import Button, Checkbox, Input, Select, TextArea
 
 from wid.formatting import QUIT_QUESTION
+from wid.game import Game
 from wid.profiles import Genre
 from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
@@ -49,6 +50,26 @@ def test_a_saved_game_loads_with_its_draft_and_history(tmp_path):
             for field, value in details.items():
                 assert loaded.query_one(f"#character-{field}", Input).value == value
             assert loaded.query_one("#session-notes", TextArea).text == notes
+
+    asyncio.run(scenario())
+
+
+def test_a_game_left_unsaved_is_offered_back_on_start(tmp_path):
+    recovery = tmp_path / "recovery.json"
+    left = Game(rng=Random(1), recovery_path=recovery)
+    left.start_game((1, 2, 3))
+    left.roll()
+    left.keep_recovery()
+
+    async def scenario():
+        app = RollerApp(recovery_path=recovery)
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            assert app.screen.query_one("#cancel-session", Button).label.plain == "Start fresh"
+            await pilot.click("#confirm-session")
+            await pilot.pause()
+            assert app.session.model_dump() == left.session.model_dump()
+            assert text(app, "#feedback").startswith("Restored the game")
 
     asyncio.run(scenario())
 

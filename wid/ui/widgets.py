@@ -18,11 +18,12 @@ from textual.widgets import (
     TextArea,
 )
 
-from wid.formatting import BONUS_LABELS, POWER_LABELS
+from wid.formatting import BONUS_LABELS, CORRUPTION_AMOUNTS, POWER_LABELS
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     MANIFESTATION_LIMIT,
     OLDHEART_MAX_POOL,
+    RANKS,
     RESOURCES_MAX,
     SCARED_MAX,
     STANDING_LABELS,
@@ -194,7 +195,7 @@ class AttributeSetup(Vertical):
                 with Horizontal(classes="attribute-row", id=f"attribute-row-{index}"):
                     yield Label(id=f"attribute-label-{index}")
                     yield Select(
-                        [(str(rank), rank) for rank in range(1, 4)],
+                        [(str(rank), rank) for rank in RANKS],
                         value=index + 1,
                         allow_blank=False,
                         id=f"attribute-rank-{index}",
@@ -345,7 +346,7 @@ class KitControls(Vertical):
             yield Label(id="corruption-status")
             with Horizontal(id="corruption-row"):
                 yield Select(
-                    [(str(amount), amount) for amount in range(1, 7)],
+                    [(str(amount), amount) for amount in CORRUPTION_AMOUNTS],
                     value=1,
                     allow_blank=False,
                     id="corruption-amount",
@@ -377,7 +378,6 @@ class ItemsGroup(Vertical):
         with Horizontal(id="item-target-row"):
             yield Label("Apply to die")
             yield Select([("Roll first", -1)], value=-1, allow_blank=False, id="item-target")
-            yield Button("Undo", id="undo-bonus", disabled=True)
         with Vertical(id="item-rows"):
             for kind in (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM):
                 label = BONUS_LABELS[kind]
@@ -438,6 +438,11 @@ class RollerGroup(VerticalScroll):
         yield Static("Roll a test to see individual outcomes.", id="dice", markup=False)
         yield Static(id="summary")
         yield Static(id="resources")
+        with Horizontal(classes="button-row"):
+            yield Button("Undo", id="undo", disabled=True, tooltip="Take back the last change")
+            yield Button(
+                "Copy result", id="copy-result", disabled=True, tooltip="Copy the dice as text"
+            )
         with Vertical(id="reroll-controls"):
             yield Label("Oldheart: select dice from the current test")
             for index in range(OLDHEART_MAX_POOL):

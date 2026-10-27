@@ -1,5 +1,7 @@
 """Structured action history; text is produced only when an entry is rendered."""
 
+from collections import Counter
+from collections.abc import Sequence
 from typing import Annotated, Self
 
 from pydantic import Field, model_validator
@@ -9,6 +11,8 @@ from wid.profiles import PROFILES
 from wid.rolls import FrozenModel, RollResult, TechPiece
 
 Count = Annotated[int, Field(strict=True, ge=0)]
+# The action of an entry for a new test, as opposed to a reroll, bonus or undo that changes one.
+ROLL_ACTION = "Roll"
 
 
 class HistoryEntry(FrozenModel):
@@ -73,3 +77,34 @@ class HistoryEntry(FrozenModel):
         if self.tech_pieces is not None:
             text += f"; Tech remaining {tech_strengths(self.tech_pieces)}"
         return text
+
+
+def history_statistics(entries: Sequence[HistoryEntry]) -> str:
+    """How the dice have fallen: each test's dice as first rolled, and how big the pools were.
+
+    Only new tests count. A reroll's entry repeats the dice it kept, and bonuses and undos repeat
+    a whole result, so counting those would count the same dice twice. Empty with no rolls yet.
+    """
+    rolls = [entry.result for entry in entries if entry.action == ROLL_ACTION and entry.result]
+    if not rolls:
+        return ""
+    totals = [result.totals() for result in rolls]
+    dice = sum(len(result.dice) for result in rolls)
+    hits = sum(total.dice_hits for total in totals)
+    misses = sum(total.misses for total in totals)
+    fumbles = sum(total.fumbles for total in totals)
+    pools = Counter(len(result.dice) for result in rolls)
+    sizes = ", ".join(f"{size}d6 ×{count}" for size, count in sorted(pools.items()))
+    outcomes = ", ".join(
+        (
+            counted(hits, "hit", "hits"),
+            counted(misses, "miss", "misses"),
+            counted(fumbles, "fumble", "fumbles"),
+        )
+    )
+    tests = counted(len(rolls), "test", "tests")
+    return f"{tests}, {counted(dice, 'die', 'dice')} as first rolled: {outcomes}. Pools: {sizes}."
+
+
+def counted(count: int, one: str, many: str) -> str:
+    return f"{count} {one if count == 1 else many}"

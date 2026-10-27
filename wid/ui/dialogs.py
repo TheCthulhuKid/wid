@@ -22,16 +22,17 @@ class ConfirmReset(ModalScreen[bool]):
 
 
 class ConfirmSessionAction(ModalScreen[bool]):
-    def __init__(self, message: str, confirm: str = "Replace"):
+    def __init__(self, message: str, confirm: str = "Replace", cancel: str = "Cancel"):
         super().__init__()
         self.message = message
         self.confirm = confirm
+        self.cancel = cancel
 
     def compose(self) -> ComposeResult:
         with Vertical(id="confirmation"):
             yield Static(self.message, markup=False)
             yield Button(self.confirm, id="confirm-session", variant="warning")
-            yield Button("Cancel", id="cancel-session")
+            yield Button(self.cancel, id="cancel-session")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         event.stop()

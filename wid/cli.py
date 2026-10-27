@@ -22,6 +22,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         prog="wid", description="A dice roller for We're in Danger, in the terminal or a browser."
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {package_version()}")
+    parser.add_argument("session", nargs="?", help="a saved game to open (a .json file)")
     parser.add_argument(
         "--self-test",
         action="store_true",
@@ -48,8 +49,15 @@ def main(argv: Sequence[str] | None = None) -> None:
     if arguments.web:
         from wid.web.server import serve
 
-        raise SystemExit(serve(port=arguments.port, open_browser=not arguments.no_browser))
+        raise SystemExit(
+            serve(
+                port=arguments.port,
+                open_browser=not arguments.no_browser,
+                open_path=arguments.session,
+            )
+        )
     # Imported here so --web and --self-test do not load the terminal interface first.
+    from wid.settings import recovery_path
     from wid.ui.app import RollerApp
 
-    RollerApp().run()
+    RollerApp(recovery_path=recovery_path(), open_path=arguments.session).run()
