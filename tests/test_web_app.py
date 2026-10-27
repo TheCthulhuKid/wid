@@ -1,11 +1,10 @@
 from fastapi.testclient import TestClient
-from test_rolls import ScriptedRandom
+from helpers import PAGE, ScriptedRandom
 
 from wid.game import Game
 from wid.web.app import TOKEN_COOKIE, create_app
 
 TOKEN = "launch-token"
-PAGE = {"HX-Request": "true"}
 
 
 def client(game=None, host="127.0.0.1"):

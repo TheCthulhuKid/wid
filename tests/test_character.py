@@ -1,12 +1,13 @@
 import asyncio
 
-from helpers import click
-from test_rollerapp import start_game
-from test_session_app import load_game
+import pytest
+from helpers import click, load_game, start_game
 from textual.widgets import Input
 
 from wid.sessions import CharacterDetails, SavedSession
 from wid.ui.app import RollerApp
+
+pytestmark = pytest.mark.ui
 
 
 def test_character_details_are_saved_and_loaded(tmp_path):

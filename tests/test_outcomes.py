@@ -1,8 +1,7 @@
 import asyncio
 
 import pytest
-from test_rollerapp import start_game
-from test_rolls import ScriptedRandom
+from helpers import ScriptedRandom, start_game
 from textual.color import Color
 from textual.widgets import Static
 
@@ -73,6 +72,7 @@ def test_coloured_text_is_the_same_text_the_log_uses(saved_session_factory):
     assert summary_content(result, variables).plain == summarize(result)
 
 
+@pytest.mark.ui
 def test_changing_theme_recolours_the_shown_result_without_changing_its_text():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([1, 4, 6, 6]))

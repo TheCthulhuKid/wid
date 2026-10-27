@@ -1,13 +1,14 @@
 import asyncio
 
-from helpers import click
-from test_rollerapp import start_game
-from test_session_app import load_game
+import pytest
+from helpers import click, load_game, start_game
 from textual.document._document import Selection
 from textual.widgets import Input, Markdown, TextArea
 
 from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
+
+pytestmark = pytest.mark.ui
 
 
 def test_preview_renders_markdown_and_keeps_the_source():

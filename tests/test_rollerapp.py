@@ -1,25 +1,15 @@
 import asyncio
 
-from helpers import change_genre, click
-from test_rolls import ScriptedRandom
+import pytest
+from helpers import ScriptedRandom, change_genre, click, start_game, text
 from textual.command import CommandPalette
-from textual.widgets import Checkbox, Collapsible, Input, Select, Static
+from textual.widgets import Checkbox, Collapsible, Input, Select
 
 from wid.profiles import Genre
 from wid.rolls import BonusKind
 from wid.ui.app import RollerApp
 
-
-def text(app, selector):
-    return str(app.query_one(selector, Static).content)
-
-
-async def start_game(app, pilot, ranks=None):
-    if ranks is not None:
-        for index, rank in enumerate(ranks):
-            app.query_one(f"#attribute-rank-{index}", Select).value = rank
-    await click(app, pilot, "#start-game")
-    assert app.session.attributes is not None
+pytestmark = pytest.mark.ui
 
 
 async def apply_item(app, pilot, index=0):

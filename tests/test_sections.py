@@ -1,7 +1,7 @@
 import asyncio
 
-from helpers import click
-from test_rollerapp import start_game
+import pytest
+from helpers import click, start_game
 from textual.widgets import Collapsible
 
 from wid.formatting import strain_summary
@@ -28,6 +28,7 @@ def test_summary_text():
     assert strain_summary(StrainTracker().take(12)) == "Strain tracker: 9 strain, 2 wounds — Defeat"
 
 
+@pytest.mark.ui
 def test_a_folded_section_keeps_its_state_and_its_title_stays_current():
     async def scenario(app, pilot):
         await start_game(app, pilot)

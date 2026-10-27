@@ -1,11 +1,12 @@
 import asyncio
 
-from helpers import click
-from test_rollerapp import start_game, text
-from test_rolls import ScriptedRandom
+import pytest
+from helpers import ScriptedRandom, click, start_game, text
 from textual.widgets import Collapsible, Input
 
 from wid.ui.app import RollerApp
+
+pytestmark = pytest.mark.ui
 
 
 def run(scenario, size, rng=None):

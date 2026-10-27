@@ -1,13 +1,14 @@
 import asyncio
 
-from helpers import reveal
+import pytest
+from helpers import ScriptedRandom, reveal, start_game
 from rich.color import Color as RichColor
-from test_rollerapp import start_game
-from test_rolls import ScriptedRandom
 from textual.color import Color
 
 from wid.ui.app import RollerApp
 from wid.ui.outcomes import MIN_CONTRAST, contrast_ratio
+
+pytestmark = pytest.mark.ui
 
 OUTCOME_TEXT = {"hit", "miss", "fumble"}
 SUMMARY_TEXT = ("Hits:", "Misses:", "Fumbles:")

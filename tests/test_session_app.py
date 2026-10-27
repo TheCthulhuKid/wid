@@ -1,8 +1,8 @@
 import asyncio
 from random import Random
 
-from helpers import change_genre, click
-from test_rollerapp import start_game, text
+import pytest
+from helpers import change_genre, click, load_game, start_game, text
 from textual.widgets import Button, Checkbox, Input, Select
 
 from wid.formatting import QUIT_QUESTION
@@ -10,15 +10,7 @@ from wid.profiles import Genre
 from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
 
-
-async def load_game(app, pilot):
-    await click(app, pilot, "#load-session")
-    assert (
-        app.screen.query_one("#load-path", Input).value
-        == app.query_one("#session-path", Input).value
-    )
-    await pilot.click("#submit-load")
-    await pilot.pause()
+pytestmark = pytest.mark.ui
 
 
 def test_a_saved_game_loads_with_its_draft_and_history(tmp_path):

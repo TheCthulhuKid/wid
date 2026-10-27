@@ -26,7 +26,7 @@ checkout: after updating, rebuild it with `uv tool install --force --reinstall .
 uv sync --locked --group dev
 uv run wid                 # or .venv/bin/python -m wid
 uv run wid --web           # the browser version: 127.0.0.1:8765 or a free port
-uv run pytest              # 4 workers, about 80 seconds; -m "not ui" for the quick domain tests
+uv run pytest              # a worker per core: about 60 s on 16 cores, 4 s with -m "not ui"
 uv run pytest --cov        # as CI runs it: fails below 80% coverage of wid/
 uv run ruff check .
 uv run ruff format --check .
@@ -35,7 +35,9 @@ uv run ruff format --check .
 Tests run offline and headless (Textual's test runner). They cover the usual path of each
 feature, one domain test and, where there is a screen, one app test, rather than every edge
 case. UI tests click through `click` and `reveal` in `tests/helpers.py`, which wait until a
-widget has settled on screen. Shared fixtures are in
+widget has settled on screen. Every test that starts the app carries the `ui` marker
+(`pytestmark` for a whole module, `@pytest.mark.ui` otherwise), so mark a new one too. Shared
+helpers live in `tests/helpers.py`, never in another test module. Shared fixtures are in
 `tests/conftest.py`; save tests use `tmp_path`, and an autouse fixture points
 `XDG_CONFIG_HOME` at a temporary directory so no test touches your real settings.
 

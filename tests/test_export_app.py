@@ -1,12 +1,14 @@
 import asyncio
 from random import Random
 
-from helpers import click
-from test_rollerapp import start_game, text
+import pytest
+from helpers import click, start_game, text
 from textual.widgets import Input
 
 from wid.ui.app import RollerApp
 from wid.ui.dialogs import ExportHistory
+
+pytestmark = pytest.mark.ui
 
 
 def run(scenario, size=(100, 45)):

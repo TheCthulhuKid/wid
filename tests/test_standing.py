@@ -36,6 +36,7 @@ def test_standing_is_saved_and_belongs_to_ball_season(tmp_path, saved_session_fa
         SavedSession.model_validate(data)
 
 
+@pytest.mark.ui
 def test_track_moves_by_keys_and_clicks_for_ball_season_only():
     async def scenario():
         app = RollerApp()

@@ -1,12 +1,13 @@
 import asyncio
 
-from helpers import change_genre, click
-from test_rollerapp import start_game, text
-from test_rolls import ScriptedRandom
+import pytest
+from helpers import ScriptedRandom, change_genre, click, start_game, text
 from textual.widgets import Button
 
 from wid.profiles import PROFILES, Genre
 from wid.ui.app import RollerApp
+
+pytestmark = pytest.mark.ui
 
 
 def test_each_attribute_button_rolls_its_rank_and_ctrl_r_repeats_it():

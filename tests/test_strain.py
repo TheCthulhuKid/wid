@@ -2,8 +2,7 @@ import asyncio
 from random import Random
 
 import pytest
-from helpers import click
-from test_rollerapp import start_game, text
+from helpers import click, start_game, text
 
 from wid.game import Game
 from wid.profiles import Genre
@@ -56,6 +55,7 @@ def test_tracker_is_saved_with_its_names(tmp_path, saved_session_factory):
     assert SavedSession.load(path).session.strain == saved.session.strain
 
 
+@pytest.mark.ui
 def test_strain_buttons_and_locked_boxes():
     async def scenario():
         app = RollerApp()

@@ -1,11 +1,12 @@
 import asyncio
 
-from helpers import click
-from test_rollerapp import start_game, text
-from test_rolls import ScriptedRandom
+import pytest
+from helpers import ScriptedRandom, click, start_game, text
 from textual.widgets import Button, Input, Select
 
 from wid.ui.app import RollerApp
+
+pytestmark = pytest.mark.ui
 
 
 def test_named_items_and_expertise_apply_after_a_roll_and_can_be_undone():

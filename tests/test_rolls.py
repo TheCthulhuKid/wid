@@ -1,6 +1,7 @@
 from random import Random
 
 import pytest
+from helpers import ScriptedRandom
 from pydantic import ValidationError
 
 from wid.profiles import PROFILES, Genre
@@ -12,14 +13,6 @@ from wid.rolls import (
     RollSession,
     TechPiece,
 )
-
-
-class ScriptedRandom(Random):
-    def __init__(self, faces):
-        self.faces = iter(faces)
-
-    def randint(self, a, b):
-        return next(self.faces)
 
 
 def configured_session(genre=Genre.CORE, ranks=None):

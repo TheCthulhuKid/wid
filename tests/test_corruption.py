@@ -2,9 +2,7 @@ import asyncio
 from random import Random
 
 import pytest
-from helpers import change_genre, click
-from test_rollerapp import start_game, text
-from test_rolls import ScriptedRandom
+from helpers import ScriptedRandom, change_genre, click, start_game, text
 from textual.widgets import Input, Select
 
 from wid.profiles import Genre
@@ -66,6 +64,7 @@ def test_manifestations_are_saved_and_belong_to_oldheart(tmp_path, saved_session
         SavedSession.model_validate(data)
 
 
+@pytest.mark.ui
 def test_gaining_corruption_by_hand_checks_and_shows_manifestations():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([1, 1]))

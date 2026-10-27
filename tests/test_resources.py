@@ -2,10 +2,8 @@ import asyncio
 from random import Random
 
 import pytest
-from helpers import change_genre, click
+from helpers import ScriptedRandom, change_genre, click, start_game, text
 from pydantic import ValidationError
-from test_rollerapp import start_game, text
-from test_rolls import ScriptedRandom
 
 from wid.formatting import resources_reminder, spend_summary
 from wid.profiles import Genre
@@ -118,6 +116,7 @@ def test_pool_is_saved_and_belongs_to_this_kit(tmp_path, saved_session_factory):
         SavedSession.model_validate(data)
 
 
+@pytest.mark.ui
 def test_resource_controls_spend_and_roll_one_die():
     async def scenario():
         app = RollerApp(rng=ScriptedRandom([4]))

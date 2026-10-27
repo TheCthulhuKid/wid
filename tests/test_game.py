@@ -1,5 +1,5 @@
 import pytest
-from test_rolls import ScriptedRandom
+from helpers import ScriptedRandom
 
 from wid.game import Game
 from wid.profiles import Genre
@@ -61,7 +61,7 @@ def test_new_character_keeps_history_and_file_but_a_new_kit_starts_over():
     assert game.change_kit(Genre.OLDHEART) == "New Oldheart game started."
     assert (game.history, game.notes, game.path) == ([], "", "")
     assert not game.has_unsaved_state()
-    # Review issue 5: a typed session name would be lost too.
+    # A typed session name would be lost too.
     game.name = "Friday"
     assert game.has_unsaved_state()
 

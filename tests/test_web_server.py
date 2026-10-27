@@ -64,7 +64,7 @@ def test_the_command_line_flags_start_the_server_instead_of_the_terminal():
     with pytest.raises(SystemExit) as refused:
         main(["--port", "9000"])
     assert refused.value.code == 2
-    # Review issue 7: a port outside 0-65535 is a usage error, not a traceback.
+    # A port outside 0-65535 is a usage error, not a traceback.
     with pytest.raises(SystemExit) as refused:
         main(["--web", "--port", "70000"])
     assert refused.value.code == 2
