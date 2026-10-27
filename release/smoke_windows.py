@@ -119,9 +119,13 @@ def run(exe: str) -> int:
         terminal.send("c")
         step("C returns to the Character tab", terminal.wait_for("Looks"))
 
+        # The roll is unsaved, so Ctrl+Q asks first; the Quit button has the focus.
+        terminal.mark()
         terminal.send(CTRL_Q)
+        step("Ctrl+Q asks before losing the roll", terminal.wait_for("Unsaved changes"))
+        terminal.send(ENTER)
         status = terminal.wait_for_exit()
-        step("Ctrl+Q quits with exit code 0", status == 0, f"exit status {status}")
+        step("Enter on Quit exits with code 0", status == 0, f"exit status {status}")
 
         settings = Path(appdata) / "wid" / "settings.json"
         saved = json.loads(settings.read_text(encoding="utf-8")) if settings.is_file() else {}
