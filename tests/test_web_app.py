@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from helpers import PAGE, ScriptedRandom
 
 from wid.game import Game
-from wid.web.app import TOKEN_COOKIE, create_app
+from wid.web.app import create_app, token_cookie
 
 TOKEN = "launch-token"
 
@@ -39,7 +39,13 @@ def test_the_token_is_swapped_for_a_cookie_and_then_required():
     opened = browser.get(f"/?token={TOKEN}", follow_redirects=False)
     assert (opened.status_code, opened.headers["location"]) == (303, "/")
     assert "samesite=strict" in opened.headers["set-cookie"].lower()
-    assert browser.cookies[TOKEN_COOKIE] == TOKEN
+    assert browser.cookies[token_cookie(TOKEN)] == TOKEN
+    assert browser.get("/").status_code == 200
+    # A second wid --web in the same browser does not lock the first one out.
+    second = TestClient(create_app(Game(), "other"), base_url="http://127.0.0.1")
+    second.cookies = browser.cookies
+    second.get("/?token=other")
+    browser.cookies = second.cookies
     assert browser.get("/").status_code == 200
 
 
