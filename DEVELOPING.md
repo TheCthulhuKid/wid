@@ -73,7 +73,8 @@ environment without the dev group, so run `uv sync --locked --group dev` afterwa
 GitHub Actions:
 
 - `.github/workflows/ci.yml` runs two jobs on Linux for every push: the tests (8 workers,
-  with coverage) and the quality checks (`ruff check` and `ruff format --check`).
+  with coverage, then `wid --self-test`) and the quality checks (`ruff check` and
+  `ruff format --check`).
 - `.github/workflows/release.yml` builds and smoke-tests the Windows zip, and builds and
   self-tests the Linux x86_64 (on Ubuntu 22.04, for the widest glibc support) and macOS arm64
   archives, on every push to `main`, uploading each as a build artifact. Pushing a tag such as
