@@ -75,7 +75,8 @@ Checkbox { width: 1fr; height: auto; }
 #feedback { color: $warning; max-height: 5; overflow-y: auto; }
 #pool, #summary, #resources { margin: 1 0; }
 #pool { margin: 0; }
-#history-panel { display: none; height: 6; }
+#history-panel { display: none; height: 7; }
+#history-statistics { height: auto; }
 #log { height: 1fr; border: solid $secondary; }
 Button { min-width: 14; }
 ConfirmReset, ConfirmSessionAction, LoadGame { align: center middle; background: $background 80%; }

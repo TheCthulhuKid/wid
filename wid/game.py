@@ -25,7 +25,7 @@ from wid.formatting import (
     standing_notice,
     strain_notice,
 )
-from wid.history import HistoryEntry
+from wid.history import ROLL_ACTION, HistoryEntry, history_statistics
 from wid.profiles import PROFILES, Genre, WiDProfile
 from wid.rolls import (
     SCARED_MAX,
@@ -201,7 +201,7 @@ class Game:
                 self.session.attribute_rank(attribute)
                 self.tested_attribute = attribute
             result = self.session.roll(self.draft_request(), rng=self.rng)
-            self.log_result(result, "Roll")
+            self.log_result(result, ROLL_ACTION)
             self.assisted = self.expertise = False
             self.power = PowerMode.NONE
         return ""
@@ -595,6 +595,7 @@ class Game:
             self.history,
             sheet=sheet_lines(self.session),
             notes=self.notes,
+            statistics=history_statistics(self.history),
         )
 
     def export_history(self, text: str, *, overwrite: bool = False) -> str:

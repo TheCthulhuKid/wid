@@ -38,7 +38,7 @@ from wid.formatting import (
     tech_starting_line,
 )
 from wid.game import Game, NameField, player_message
-from wid.history import HistoryEntry
+from wid.history import HistoryEntry, history_statistics
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     RESOURCES_MAX,
@@ -178,6 +178,7 @@ class RollerApp(SessionActions, App):
                 yield RollerGroup()
         with Vertical(id="history-panel"):
             yield Label("Action history")
+            yield Static(id="history-statistics", markup=False)
             yield RichLog(id="log", wrap=True, markup=False)
         yield Footer()
 
@@ -382,6 +383,8 @@ class RollerApp(SessionActions, App):
         for entry in self.history[self.logged :]:
             log.write(str(entry))
         self.logged = len(self.history)
+        statistics = self.query_one("#history-statistics", Static)
+        statistics.update(history_statistics(self.history))
 
     def update_strain_controls(self) -> None:
         tracker = self.session.strain

@@ -1,8 +1,10 @@
 import pytest
+from helpers import ScriptedRandom
 from pydantic import ValidationError
 
-from wid.history import HistoryEntry
+from wid.history import ROLL_ACTION, HistoryEntry, history_statistics
 from wid.profiles import Genre
+from wid.rolls import RollRequest, RollSession
 
 
 def test_notice_renders_as_its_text():
@@ -41,3 +43,22 @@ def test_uncharged_entry_reports_no_cost(saved_session_factory):
     )
 
     assert "Strain +0 (session 1)" in str(entry)
+
+
+def test_statistics_count_each_new_test_once():
+    session = RollSession(profile_id=Genre.CORE)
+    session.configure_attributes((1, 2, 3))
+    first = session.roll(RollRequest(), rng=ScriptedRandom([6, 5, 3, 1]))
+    second = session.roll(RollRequest(assisted=True), rng=ScriptedRandom([4, 4, 2, 1, 6]))
+    history = [
+        HistoryEntry(action=ROLL_ACTION, result=first),
+        HistoryEntry(action="Reroll dice 1", result=first),
+        HistoryEntry(action="Appropriate Item Sword: +1 to die 1", result=first, charged=False),
+        HistoryEntry(notice="Took 1 strain: 1 strain, 0 wounds."),
+        HistoryEntry(action=ROLL_ACTION, result=second),
+    ]
+
+    assert history_statistics(history) == (
+        "2 tests, 9 dice as first rolled: 5 hits, 2 misses, 2 fumbles. Pools: 4d6 ×1, 5d6 ×1."
+    )
+    assert history_statistics(history[3:4]) == ""

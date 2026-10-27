@@ -29,8 +29,9 @@ def history_markdown(
     *,
     sheet: Sequence[str] = (),
     notes: str = "",
+    statistics: str = "",
 ) -> str:
-    """The game as Markdown: a title, the character line, the sheet, the notes, then the history.
+    """The game as Markdown: title, character line, sheet, notes, the history, then statistics.
 
     The sheet's lines are a list, and the notes go in as written, since they are Markdown
     already. Each history entry's text goes in a code block so the dice lines keep their layout
@@ -49,4 +50,6 @@ def history_markdown(
         text = str(entry)
         fence = fence_for(text)
         lines += [heading_for(index, entry), "", f"{fence}text", text, fence, ""]
+    if statistics:
+        lines += ["## Statistics", "", statistics, ""]
     return "\n".join(lines)

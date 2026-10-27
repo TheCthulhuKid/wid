@@ -98,7 +98,7 @@ wid/
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
 ├── game.py             # One sitting: the state and actions every front end drives
 ├── export.py           # Markdown export: the sheet, the notes and the action history
-├── history.py          # Structured action history entries and their text rendering
+├── history.py          # Structured action history entries, their text, and dice statistics
 ├── sessions.py         # The versioned save format and the session file path rules
 ├── storage.py          # Atomic file writes for saves, exports and settings
 ├── selftest.py         # `wid --self-test`: the app checked headless, for release builds

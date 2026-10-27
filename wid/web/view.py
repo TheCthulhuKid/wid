@@ -17,6 +17,7 @@ from wid.formatting import (
     tech_starting_line,
 )
 from wid.game import Game
+from wid.history import history_statistics
 from wid.profiles import PROFILES
 from wid.rolls import (
     RANKS,
@@ -120,6 +121,7 @@ def sheet_context(
         "corruption_status": corruption_status(session),
         "tech_line": tech_starting_line(session.tech),
         "history": [str(entry) for entry in reversed(game.history)],
+        "statistics": history_statistics(game.history),
         "preview": preview,
         "ask": ask,
         # What the player typed stays; the suggestion only fills an empty box.

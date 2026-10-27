@@ -307,6 +307,7 @@
       <button type="button" data-copy="{{ result_text }}" title="Copy the dice as text" {% if not result %}disabled{% endif %}>Copy result</button>
     </div>
     <h2>History</h2>
+    {% if statistics %}<p class="hint">{{ statistics }}</p>{% endif %}
     {% if history %}
     <ol class="history" reversed>
       {% for entry in history %}<li><pre>{{ entry }}</pre></li>{% endfor %}
