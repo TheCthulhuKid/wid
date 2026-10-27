@@ -97,7 +97,7 @@ wid/
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
 ├── game.py             # One sitting: the state and actions every front end drives
-├── export.py           # Markdown text of the action history
+├── export.py           # Markdown export: the sheet, the notes and the action history
 ├── history.py          # Structured action history entries and their text rendering
 ├── sessions.py         # The versioned save format and the session file path rules
 ├── storage.py          # Atomic file writes for saves, exports and settings

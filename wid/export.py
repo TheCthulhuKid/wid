@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from itertools import groupby
 
+from wid.formatting import one_line
 from wid.history import HistoryEntry
 from wid.sessions import CharacterDetails
 
@@ -22,18 +23,28 @@ def heading_for(index: int, entry: HistoryEntry) -> str:
 
 
 def history_markdown(
-    name: str, character: CharacterDetails, entries: Sequence[HistoryEntry]
+    name: str,
+    character: CharacterDetails,
+    entries: Sequence[HistoryEntry],
+    *,
+    sheet: Sequence[str] = (),
+    notes: str = "",
 ) -> str:
-    """The history as Markdown: a title, the character line, then one section per entry.
+    """The game as Markdown: a title, the character line, the sheet, the notes, then the history.
 
-    Each entry's text goes in a code block so the dice lines keep their layout and anything
-    typed by the player (names, notes) cannot be taken for Markdown.
+    The sheet's lines are a list, and the notes go in as written, since they are Markdown
+    already. Each history entry's text goes in a code block so the dice lines keep their layout
+    and anything typed by the player cannot be taken for Markdown.
     """
-    title = " ".join(name.split()) or "Session history"
+    title = one_line(name) or "Session history"
     lines = [f"# {title}", ""]
     details = [value for value in (character.name, character.looks, character.nature) if value]
     if details:
-        lines += ["Character: " + ", ".join(" ".join(value.split()) for value in details), ""]
+        lines += ["Character: " + ", ".join(one_line(value) for value in details), ""]
+    if sheet:
+        lines += ["## Sheet", "", *(f"- {line}" for line in sheet), ""]
+    if notes.strip():
+        lines += ["## Notes", "", notes.strip(), ""]
     for index, entry in enumerate(entries, start=1):
         text = str(entry)
         fence = fence_for(text)

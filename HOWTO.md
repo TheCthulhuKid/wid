@@ -142,9 +142,10 @@ folded away. A wound is not counted as strain.
   before an existing file is replaced.
 - **Load game**: press it and a box asks for the path; it starts with the one from the Session
   tab. You are asked first if you would lose anything unsaved.
-- **Export history**: writes all the rolls, and every change to strain, Standing and Resources,
-  to a Markdown file you can read or share. The suggested name is your save file's name ending
-  in `.md`.
+- **Export history**: writes a Markdown file you can read or share: your character, a summary of
+  the sheet (ranks, strain, named items and powers, and your kit's Tech, Corruption, Standing or
+  Resources), your notes, then all the rolls and every change to strain, Standing and Resources.
+  The suggested name is your save file's name ending in `.md`.
 - **New character**: clears the sheet for a new character in the same kit (after a character
   dies, for example): name, looks, nature, ranks, item and expertise names, strain, Scared and the
   current roll. The history, notes, session name and file path stay. You are asked first if

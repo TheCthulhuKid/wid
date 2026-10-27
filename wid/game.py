@@ -20,6 +20,7 @@ from wid.formatting import (
     BONUS_LABELS,
     check_summary,
     resources_notice,
+    sheet_lines,
     spend_summary,
     standing_notice,
     strain_notice,
@@ -588,7 +589,13 @@ class Game:
     def history_text(self) -> str:
         """The history as the Markdown an export writes (or a browser downloads)."""
         self.require_history()
-        return history_markdown(self.name, self.character, self.history)
+        return history_markdown(
+            self.name,
+            self.character,
+            self.history,
+            sheet=sheet_lines(self.session),
+            notes=self.notes,
+        )
 
     def export_history(self, text: str, *, overwrite: bool = False) -> str:
         markdown = self.history_text()

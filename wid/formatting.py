@@ -1,5 +1,7 @@
 """Plain-text renderings of the game, shared by every front end and the history log."""
 
+from collections.abc import Callable
+
 from wid.profiles import PROFILES
 from wid.rolls import (
     MANIFESTATION_EFFECTS,
@@ -218,9 +220,13 @@ def strain_status(tracker: StrainTracker) -> str:
     return f"Defeat — character ended. {tracker.names[2]}".rstrip()
 
 
-def standing_notice(standing: int) -> str:
+def standing_text(standing: int) -> str:
     # Three dots share the label Reputable, so the dot says which one.
-    return f"Standing moved to {standing_label(standing)} (dot {standing + 1})."
+    return f"{standing_label(standing)} (dot {standing + 1})"
+
+
+def standing_notice(standing: int) -> str:
+    return f"Standing moved to {standing_text(standing)}."
 
 
 def resources_notice(amount: int, pool: int) -> str:
@@ -256,3 +262,81 @@ def tech_starting_line(tech: TechState | None) -> str:
         f"Each piece starts at Science {tech.science} + Culture {tech.culture} = "
         f"{tech.starting_strength}."
     )
+
+
+def one_line(text: str) -> str:
+    """Typed text on one line with single spaces, so it cannot break a line it is put in."""
+    return " ".join(text.split())
+
+
+def ranks_line(session: RollSession) -> str:
+    if session.attributes is None:
+        return ""
+    attributes = PROFILES[session.profile_id].attributes
+    ranks = ", ".join(f"{name} {session.attribute_rank(name)}" for name in attributes)
+    return f"Ranks: {ranks}"
+
+
+def strain_line(session: RollSession) -> str:
+    text = f"Strain: {strain_counts(session.strain)}"
+    names = [one_line(name) for name in session.strain.names if name.strip()]
+    return f"{text} ({', '.join(names)})" if names else text
+
+
+def bonuses_line(session: RollSession) -> str:
+    kinds = [kind for kind in BonusKind if kind != BonusKind.CRAFTED_ITEM or session.item_crafted]
+    named = [
+        f"{BONUS_LABELS[kind]} {one_line(name)}"
+        for kind in kinds
+        if (name := getattr(session.bonuses, kind)).strip()
+    ]
+    return f"Named: {', '.join(named)}" if named else ""
+
+
+def powers_line(session: RollSession) -> str:
+    modes = (PowerMode.RELIABLE, PowerMode.ERRATIC)
+    named = [f"{one_line(name)} ({mode})" for mode, name in zip(modes, session.power_names) if name]
+    return f"Powers: {', '.join(named)}" if named else ""
+
+
+def tech_line(session: RollSession) -> str:
+    return f"Tech: {tech_strengths(session.tech.pieces)}" if session.tech else ""
+
+
+def corruption_line(session: RollSession) -> str:
+    if not PROFILES[session.profile_id].has_rerolls:
+        return ""
+    names = [one_line(name) for name in session.manifestations if name.strip()]
+    status = corruption_status(session)
+    return f"{status} ({', '.join(names)})" if names else status
+
+
+def standing_line(session: RollSession) -> str:
+    if not PROFILES[session.profile_id].has_standing:
+        return ""
+    return f"Standing: {standing_text(session.standing)}"
+
+
+def resources_sheet_line(session: RollSession) -> str:
+    if session.resources is None:
+        return ""
+    waiting = ", with the Resources die waiting" if session.resource_die else ""
+    return f"Resources: {session.resources} of {RESOURCES_MAX}{waiting}"
+
+
+# The lines of the sheet in an export, in order; each is empty when the kit has no such part.
+SHEET_LINES: tuple[Callable[[RollSession], str], ...] = (
+    ranks_line,
+    strain_line,
+    bonuses_line,
+    powers_line,
+    tech_line,
+    corruption_line,
+    standing_line,
+    resources_sheet_line,
+)
+
+
+def sheet_lines(session: RollSession) -> list[str]:
+    """The sheet as short lines for an export: ranks, strain, names and the kit's own state."""
+    return [text for line in SHEET_LINES if (text := line(session))]
