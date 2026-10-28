@@ -1,25 +1,9 @@
-import asyncio
-
 import pytest
-from textual.widgets import Input, Select, TabbedContent
+from helpers import active_tab, run_app
+from textual.widgets import Input, Select
 from textual.widgets.tabbed_content import ContentTabs
 
-from wid.ui.app import RollerApp
-
 pytestmark = pytest.mark.ui
-
-
-def run(scenario, size=(100, 45)):
-    async def main():
-        app = RollerApp()
-        async with app.run_test(size=size) as pilot:
-            await scenario(app, pilot)
-
-    asyncio.run(main())
-
-
-def active_tab(app):
-    return app.query_one("#details", TabbedContent).active
 
 
 def test_letter_shortcuts_switch_tabs_and_fold_sections():
@@ -35,7 +19,7 @@ def test_letter_shortcuts_switch_tabs_and_fold_sections():
         assert app.query_one("#strain-section").collapsed
         assert app.query_one("#items-section").collapsed
 
-    run(scenario)
+    run_app(scenario, size=(100, 45))
 
 
 def test_letters_are_typed_inside_a_text_field():
@@ -45,4 +29,4 @@ def test_letters_are_typed_inside_a_text_field():
         assert app.query_one("#character-name", Input).value == "cst"
         assert not app.query_one("#strain-section").collapsed
 
-    run(scenario)
+    run_app(scenario, size=(100, 45))

@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from helpers import PAGE, ScriptedRandom
+from helpers import PAGE, ScriptedRandom, browser
 
 from wid.game import Game
 from wid.web.app import create_app, token_cookie
@@ -8,25 +8,19 @@ TOKEN = "launch-token"
 
 
 def client(game=None, host="127.0.0.1"):
+    """A browser that has not opened the address with the token yet, as ``helpers.browser`` has."""
     app = create_app(game or Game(rng=ScriptedRandom([4] * 8)), TOKEN)
     return TestClient(app, base_url=f"http://{host}")
 
 
-def signed_in(game):
-    """A browser that opened the address ``wid --web`` printed, so it holds the cookie."""
-    browser = client(game)
-    browser.get(f"/?token={TOKEN}")
-    return browser
-
-
 def test_actions_take_the_sheet_fields_change_the_game_and_return_the_sheet():
     game = Game(rng=ScriptedRandom([4] * 4))
-    browser = signed_in(game)
-    refused = browser.post("/actions/roll", headers=PAGE)
+    page = browser(game)
+    refused = page.post("/actions/roll", headers=PAGE)
     assert "press Start game first" in refused.text
-    browser.post("/actions/start-game", data={"rank": ["1", "2", "3"]}, headers=PAGE)
+    page.post("/actions/start-game", data={"rank": ["1", "2", "3"]}, headers=PAGE)
     sheet = {"sheet": "1", "fear": "0", "name-appropriate_item": "Sword <b>"}
-    response = browser.post("/actions/roll", data=sheet, headers=PAGE)
+    response = page.post("/actions/roll", data=sheet, headers=PAGE)
     assert response.status_code == 200
     assert game.session.bonuses.appropriate_item == "Sword <b>"
     assert "Roll: core, Athleticism rank 1" in response.text
@@ -50,6 +44,6 @@ def test_the_token_is_swapped_for_a_cookie_and_then_required():
 
 
 def test_actions_need_the_page_header_and_a_local_host():
-    browser = signed_in(Game())
-    assert browser.post("/actions/roll").status_code == 403
+    page = browser(Game())
+    assert page.post("/actions/roll").status_code == 403
     assert client(host="wid.example").get(f"/?token={TOKEN}").status_code == 400

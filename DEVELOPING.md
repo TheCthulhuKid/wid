@@ -34,8 +34,8 @@ uv run ruff format --check .
 
 Tests run offline and headless (Textual's test runner). They cover the usual path of each
 feature, one domain test and, where there is a screen, one app test, rather than every edge
-case. UI tests click through `click` and `reveal` in `tests/helpers.py`, which wait until a
-widget has settled on screen. Every test that starts the app carries the `ui` marker
+case. UI tests start the app with `run_app` and click through `click` and `reveal` in
+`tests/helpers.py`, which wait until a widget has settled on screen. Every test that starts the app carries the `ui` marker
 (`pytestmark` for a whole module, `@pytest.mark.ui` otherwise), so mark a new one too. Shared
 helpers live in `tests/helpers.py`, never in another test module. Shared fixtures are in
 `tests/conftest.py`; save tests use `tmp_path`, and an autouse fixture points

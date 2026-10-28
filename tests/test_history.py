@@ -7,10 +7,6 @@ from wid.profiles import Genre
 from wid.rolls import RollRequest, RollSession
 
 
-def test_notice_renders_as_its_text():
-    assert str(HistoryEntry(notice="Switched kit")) == "Switched kit"
-
-
 def test_an_entry_is_either_a_notice_or_an_action_with_its_result(saved_session_factory):
     result = saved_session_factory().session.current_result
 
@@ -22,7 +18,8 @@ def test_an_entry_is_either_a_notice_or_an_action_with_its_result(saved_session_
         HistoryEntry(result=result)
 
 
-def test_result_entry_renders_snapshot_totals(saved_session_factory):
+def test_entries_render_their_notice_or_their_result_with_snapshot_totals(saved_session_factory):
+    assert str(HistoryEntry(notice="Switched kit")) == "Switched kit"
     session = saved_session_factory(Genre.HECKBOY).session
     entry = HistoryEntry(
         action="Roll", result=session.current_result, total_strain=session.total_strain
@@ -34,15 +31,8 @@ def test_result_entry_renders_snapshot_totals(saved_session_factory):
     assert "Strain +1 (session 1)" in text
     assert "Corruption" not in text
     assert "Tech remaining" not in text
-
-
-def test_uncharged_entry_reports_no_cost(saved_session_factory):
-    session = saved_session_factory(Genre.HECKBOY).session
-    entry = HistoryEntry(
-        action="Item", result=session.current_result, charged=False, total_strain=1
-    )
-
-    assert "Strain +0 (session 1)" in str(entry)
+    uncharged = entry.model_copy(update={"action": "Item", "charged": False})
+    assert "Strain +0 (session 1)" in str(uncharged)
 
 
 def test_statistics_count_each_new_test_once():

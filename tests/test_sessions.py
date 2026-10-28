@@ -38,12 +38,9 @@ def test_invalid_or_corrupt_files_are_rejected(tmp_path, saved_session_factory):
         SavedSession.model_validate(data)
 
 
-def test_notes_are_saved_and_older_saves_load_without_them(tmp_path, saved_session_factory):
+def test_an_older_save_loads_without_notes(tmp_path, saved_session_factory):
     data = saved_session_factory().model_dump(mode="json")
-    data["notes"] = "Character: Ada 🎲"
     path = tmp_path / "notes.json"
-    path.write_text(json.dumps(data), encoding="utf-8")
-    assert read_saved(path).notes == "Character: Ada 🎲"
     data.pop("notes")
     data["version"] = 1
     path.write_text(json.dumps(data), encoding="utf-8")

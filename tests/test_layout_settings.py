@@ -1,30 +1,9 @@
-import asyncio
-
 import pytest
-from textual.widgets import Collapsible, TabbedContent
+from helpers import active_tab, collapsed, run_app
 
 from wid.settings import Settings, load_settings, save_settings
-from wid.ui.app import RollerApp
 
 pytestmark = pytest.mark.ui
-
-
-def run(settings_path, scenario, size=(100, 45)):
-    async def main():
-        app = RollerApp(settings_path=settings_path)
-        async with app.run_test(size=size) as pilot:
-            await pilot.pause()
-            await scenario(app, pilot)
-
-    asyncio.run(main())
-
-
-def tab(app):
-    return app.query_one("#details", TabbedContent).active
-
-
-def collapsed(app, name):
-    return app.query_one(f"#{name}-section", Collapsible).collapsed
 
 
 def test_saved_layout_is_restored_on_start_without_rewriting_the_file(tmp_path):
@@ -33,10 +12,10 @@ def test_saved_layout_is_restored_on_start_without_rewriting_the_file(tmp_path):
     before = path.read_text(encoding="utf-8")
 
     async def scenario(app, pilot):
-        assert tab(app) == "tab-session"
+        assert active_tab(app) == "tab-session"
         assert collapsed(app, "strain") and collapsed(app, "items")
 
-    run(path, scenario)
+    run_app(scenario, size=(100, 45), settings_path=path)
     assert path.read_text(encoding="utf-8") == before
 
 
@@ -49,7 +28,7 @@ def test_layout_changes_are_saved_with_the_other_settings(tmp_path):
         await pilot.press("s", "t")
         await pilot.pause()
 
-    run(path, scenario)
+    run_app(scenario, size=(100, 45), settings_path=path)
     saved = load_settings(path)
     assert (saved.theme, saved.tab, saved.strain_collapsed, saved.items_collapsed) == (
         "dracula",
@@ -66,7 +45,7 @@ def test_a_small_terminal_starts_folded_without_saving_that(tmp_path):
         assert collapsed(app, "strain")
         assert not path.exists()
 
-    run(path, scenario, size=(80, 24))
+    run_app(scenario, size=(80, 24), settings_path=path)
 
 
 def test_an_unwritable_settings_file_is_reported_not_fatal(tmp_path):
@@ -79,4 +58,4 @@ def test_an_unwritable_settings_file_is_reported_not_fatal(tmp_path):
         assert collapsed(app, "strain")
         assert "Could not save settings" in str(app.query_one("#feedback").content)
 
-    run(blocker / "settings.json", scenario)
+    run_app(scenario, size=(100, 45), settings_path=blocker / "settings.json")

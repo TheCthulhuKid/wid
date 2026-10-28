@@ -1,16 +1,12 @@
 import asyncio
 
 import pytest
-from helpers import ScriptedRandom, reveal, start_game, text
-from textual.widgets import Button, Collapsible, RichLog, Select
+from helpers import ScriptedRandom, collapsed, reveal, start_game, text
+from textual.widgets import Button, RichLog, Select
 
 from wid.ui.app import RollerApp
 
 pytestmark = pytest.mark.ui
-
-
-def collapsed(app, name):
-    return app.query_one(f"#{name}-section", Collapsible).collapsed
 
 
 @pytest.mark.parametrize("size", [(80, 24), (140, 45)])
