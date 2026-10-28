@@ -1,13 +1,8 @@
-import asyncio
-
 import pytest
-from helpers import ScriptedRandom, start_game
 from textual.color import Color
-from textual.widgets import Static
 
 from wid.formatting import dice_parts, summarize
 from wid.rolls import Outcome
-from wid.ui.app import RollerApp
 from wid.ui.outcomes import (
     MIN_CONTRAST,
     contrast_ratio,
@@ -71,25 +66,3 @@ def test_coloured_text_is_the_same_text_the_log_uses(saved_session_factory):
     lines = ("".join(text for text, _ in line) for line in dice_parts(result))
     assert dice_content(result, variables).plain == "\n".join(lines)
     assert summary_content(result, variables).plain == summarize(result)
-
-
-@pytest.mark.ui
-def test_changing_theme_recolours_the_shown_result_without_changing_its_text():
-    async def scenario():
-        app = RollerApp(rng=ScriptedRandom([1, 4, 6, 6]))
-        async with app.run_test(size=(120, 50)) as pilot:
-            await start_game(app, pilot)
-            await pilot.press("ctrl+r")
-            await pilot.pause()
-            dice = app.query_one("#dice", Static)
-            before_text = str(dice.content)
-            before_colours = {s.style.color for s in dice.render_line(0) if s.style}
-
-            app.theme = "dracula" if app.theme != "dracula" else "nord"
-            await pilot.pause()
-
-            after_colours = {s.style.color for s in dice.render_line(0) if s.style}
-            assert str(dice.content) == before_text
-            assert after_colours != before_colours
-
-    asyncio.run(scenario())

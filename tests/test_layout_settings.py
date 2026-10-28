@@ -45,13 +45,14 @@ def test_layout_changes_are_saved_with_the_other_settings(tmp_path):
     save_settings(Settings(theme="nord"), path)
 
     async def scenario(app, pilot):
+        app.theme = "dracula"
         await pilot.press("s", "t")
         await pilot.pause()
 
     run(path, scenario)
     saved = load_settings(path)
     assert (saved.theme, saved.tab, saved.strain_collapsed, saved.items_collapsed) == (
-        "nord",
+        "dracula",
         "session",
         True,
         None,

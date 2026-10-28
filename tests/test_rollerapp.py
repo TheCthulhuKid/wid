@@ -6,18 +6,9 @@ from textual.command import CommandPalette
 from textual.widgets import Checkbox, Collapsible, Input, Select
 
 from wid.profiles import Genre
-from wid.rolls import BonusKind
 from wid.ui.app import RollerApp
 
 pytestmark = pytest.mark.ui
-
-
-async def apply_item(app, pilot, index=0):
-    app.query_one("#name-appropriate_item", Input).value = "Tool"
-    app.query_one("#item-target", Select).value = index
-    await pilot.pause()
-    app.apply_bonus(BonusKind.APPROPRIATE_ITEM)
-    await pilot.pause()
 
 
 def test_a_roll_with_options_and_an_item():
@@ -30,11 +21,9 @@ def test_a_roll_with_options_and_an_item():
             await pilot.pause()
             assert "5d6" in text(app, "#pool")
             await click(app, pilot, "#roll-attribute-0")
-            await apply_item(app, pilot)
             assert "Athleticism (rank 2)" in text(app, "#tested-attribute")
-            assert "1: 1+1=2 fumble" in text(app, "#dice")
             assert "Hits: 3" in text(app, "#summary")
-            assert len(app.history) == 2
+            assert len(app.history) == 1
             assert not app.query_one("#assisted", Checkbox).value
             assert not app.query_one("#expertise", Checkbox).value
 

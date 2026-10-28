@@ -11,6 +11,7 @@ from wid.rolls import (
     PowerMode,
     RollRequest,
     RollSession,
+    StrainTracker,
     TechPiece,
 )
 
@@ -66,6 +67,7 @@ def test_heckboy_powers_add_dice_and_strain():
     result = session.roll(request, rng=Random(3))
     assert len(result.dice) == 6
     assert result.strain_delta == session.total_strain == 2
+    assert session.strain == StrainTracker().take(2)
     with pytest.raises(ValidationError, match="Only Heckboy"):
         RollRequest(power=PowerMode.RELIABLE)
 

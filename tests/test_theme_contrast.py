@@ -50,11 +50,13 @@ def test_outcomes_and_action_buttons_are_readable_in_light_and_dark():
         async with app.run_test(size=(120, 50)) as pilot:
             await start_game(app, pilot)
             await pilot.press("ctrl+r")
+            shown = []
             for theme in THEMES:
                 app.theme = theme
-                app.show_result(app.session.current_result)
                 await pilot.pause()
+                # A new theme recolours the result already shown; its text stays the same.
                 dice = coloured_words(app.query_one("#dice"), OUTCOME_TEXT)
+                shown.append(dice)
                 assert {text for text, *_ in dice} == OUTCOME_TEXT, theme
                 assert_readable(dice, theme)
                 assert_readable(coloured_words(app.query_one("#summary"), SUMMARY_TEXT), theme)
@@ -62,5 +64,8 @@ def test_outcomes_and_action_buttons_are_readable_in_light_and_dark():
                     button = await reveal(app, pilot, selector)
                     words = coloured_words(button, str(button.label).split())
                     assert_readable(words, theme, selector)
+            light, dark = shown
+            assert [text for text, *_ in light] == [text for text, *_ in dark]
+            assert [colour for _, colour, _ in light] != [colour for _, colour, _ in dark]
 
     asyncio.run(scenario())

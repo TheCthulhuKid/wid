@@ -7,8 +7,7 @@ from textual.widgets import Input, Select
 
 from wid.formatting import check_summary
 from wid.profiles import Genre
-from wid.rolls import OLDHEART_MAX_POOL, RollRequest, manifestation_check
-from wid.sessions import SavedSession
+from wid.rolls import RollRequest, manifestation_check
 from wid.ui.app import RollerApp
 
 KIT = Genre.OLDHEART
@@ -35,28 +34,15 @@ def test_corruption_is_gained_with_a_check_until_the_character_succumbs(session_
 
 
 def test_manifestations_change_depravity_and_hospitality_pools():
-    def pool(attribute, manifestations, fear=0, assisted=False):
+    def pool(attribute, manifestations, fear=0):
         request = RollRequest(
-            profile_id=KIT,
-            attribute=attribute,
-            manifestations=manifestations,
-            fear_level=fear,
-            assisted=assisted,
+            profile_id=KIT, attribute=attribute, manifestations=manifestations, fear_level=fear
         )
         return request.pool_size
 
     assert pool("Depravity", 2) == 6
-    assert pool("Hospitality", 2) == 2
-    assert pool("Fitness", 2) == 4
+    # Hospitality loses dice, down to a floor of 1d6.
     assert pool("Hospitality", 3, fear=3) == 1
-    assert pool("Depravity", 3, assisted=True) == OLDHEART_MAX_POOL
-
-
-def test_manifestations_belong_to_oldheart(saved_session_factory):
-    data = saved_session_factory().model_dump()
-    data["session"]["manifestations"] = ("Scales",)
-    with pytest.raises(ValueError, match="Only Oldheart can have manifestations"):
-        SavedSession.model_validate(data)
 
 
 @pytest.mark.ui

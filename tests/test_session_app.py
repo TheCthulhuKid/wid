@@ -3,11 +3,12 @@ from random import Random
 
 import pytest
 from helpers import change_genre, click, load_game, read_saved, start_game, text
-from textual.widgets import Button, Checkbox, Input, Select, TextArea
+from textual.widgets import Button, Input, Select, TextArea
 
 from wid.formatting import QUIT_QUESTION
 from wid.game import Game
 from wid.profiles import Genre
+from wid.sessions import CharacterDetails
 from wid.ui.app import RollerApp
 
 pytestmark = pytest.mark.ui
@@ -17,32 +18,25 @@ def test_a_saved_game_loads_with_its_draft_and_history(tmp_path):
     path = tmp_path / "oldheart.json"
     details = {"name": "Ada 🎲", "looks": "Red coat", "nature": "Curious"}
     notes = "# Ada\n\n**Keep** the map.\n"
+    game = Game(rng=Random(4))
+    game.change_kit(Genre.OLDHEART)
+    game.start_game((3, 1, 2))
+    game.roll()
+    game.character = CharacterDetails(**details)
+    game.notes = notes
+    game.fear_level = 3
+    game.reroll_selection = (1,)
+    game.name = "A dangerous evening"
+    game.path = str(path)
+    game.save()
 
     async def scenario():
-        app = RollerApp(rng=Random(4))
-        async with app.run_test(size=(100, 40)) as pilot:
-            await change_genre(app, pilot, Genre.OLDHEART)
-            await start_game(app, pilot, (3, 1, 2))
-            await pilot.press("ctrl+r")
-            for field, value in details.items():
-                app.query_one(f"#character-{field}", Input).value = value
-            app.query_one("#session-notes", TextArea).load_text(notes)
-            app.query_one("#fear", Select).value = 3
-            app.query_one("#reroll-die-1", Checkbox).value = True
-            app.query_one("#session-name", Input).value = "A dangerous evening"
-            app.query_one("#session-path", Input).value = str(path)
-            await pilot.pause()
-            expected_session = app.session.model_dump()
-            expected_history = list(app.history)
-            await click(app, pilot, "#save-session")
-            assert "Saved A dangerous evening" in text(app, "#feedback")
-
         loaded = RollerApp(rng=Random(9))
         async with loaded.run_test(size=(100, 40)) as pilot:
             loaded.query_one("#session-path", Input).value = str(path)
             await load_game(loaded, pilot)
-            assert loaded.session.model_dump() == expected_session
-            assert loaded.history == expected_history
+            assert loaded.session.model_dump() == game.session.model_dump()
+            assert loaded.history == game.history
             assert loaded.query_one("#fear", Select).value == 3
             assert loaded.selected_dice() == {1}
             assert loaded.sub_title == "A dangerous evening"

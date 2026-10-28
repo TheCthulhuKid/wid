@@ -34,7 +34,7 @@ async def export_to(app, pilot, path):
     await pilot.pause()
 
 
-def test_exports_the_history_to_a_markdown_file(tmp_path):
+def test_exports_the_history_and_replaces_a_file_only_after_confirmation(tmp_path):
     target = tmp_path / "export.md"
 
     async def scenario(app, pilot):
@@ -46,16 +46,7 @@ def test_exports_the_history_to_a_markdown_file(tmp_path):
         assert content.startswith("# Friday\n\nCharacter: Ada\n\n## Sheet\n")
         assert "\n## 1. Roll\n" in content
         assert text(app, "#feedback") == f"Exported 2 history entries to {target}."
-
-    run(scenario)
-
-
-def test_an_existing_file_is_replaced_only_after_confirmation(tmp_path):
-    target = tmp_path / "export.md"
-    target.write_text("keep me", encoding="utf-8")
-
-    async def scenario(app, pilot):
-        await play(app, pilot)
+        target.write_text("keep me", encoding="utf-8")
         await export_to(app, pilot, target)
         await pilot.click("#cancel-session")
         await pilot.pause()
@@ -63,6 +54,6 @@ def test_an_existing_file_is_replaced_only_after_confirmation(tmp_path):
         await export_to(app, pilot, target)
         await pilot.click("#confirm-session")
         await pilot.pause()
-        assert target.read_text(encoding="utf-8").startswith("# ")
+        assert target.read_text(encoding="utf-8") == content
 
     run(scenario)

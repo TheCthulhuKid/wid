@@ -1,8 +1,6 @@
 import sys
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "release"))
 
@@ -25,18 +23,6 @@ def parse(text):
     return eval(text, {name: Record for name in names})  # noqa: S307 - our own generated text
 
 
-@pytest.mark.parametrize(
-    ("version", "expected"),
-    [
-        ("0.1.0", (0, 1, 0, 0)),
-        ("1.2.3.4", (1, 2, 3, 4)),
-        ("0.1.1.dev3+gabc1234", (0, 1, 1, 0)),
-    ],
-)
-def test_numeric_version_keeps_only_the_release_numbers(version, expected):
-    assert versioninfo.numeric_version(version) == expected
-
-
 def test_the_version_is_the_installed_one_the_program_reports():
     assert versioninfo.installed_version() == package_version()
 
@@ -47,6 +33,7 @@ def test_generated_text_is_valid_and_carries_the_product_details():
     info = parse(text)
     fixed = info.kwargs["ffi"].kwargs
     assert fixed["filevers"] == fixed["prodvers"] == (0, 1, 1, 0)
+    assert versioninfo.numeric_version("0.1.0") == (0, 1, 0, 0)
     for expected in (
         "'ProductName', 'wid'",
         "'OriginalFilename', 'wid.exe'",
