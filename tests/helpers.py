@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from random import Random
 
@@ -8,6 +9,7 @@ from textual.widget import Widget
 from textual.widgets import Collapsible, Input, Select, Static, TabbedContent, TabPane
 
 from wid.sessions import SavedSession
+from wid.ui.app import RollerApp
 from wid.ui.dialogs import ConfirmSessionAction
 from wid.web.app import create_app
 
@@ -28,6 +30,26 @@ class ScriptedRandom(Random):
 
     def randint(self, a, b):
         return next(self.faces)
+
+
+def run_app(scenario, *, size=(100, 40), rng=None, settings_path=None, recovery_path=None):
+    """Start the app headless at ``size`` and run ``scenario(app, pilot)`` once it has settled."""
+
+    async def main():
+        app = RollerApp(rng=rng, settings_path=settings_path, recovery_path=recovery_path)
+        async with app.run_test(size=size) as pilot:
+            await pilot.pause()
+            await scenario(app, pilot)
+
+    asyncio.run(main())
+
+
+def active_tab(app) -> str:
+    return app.query_one("#details", TabbedContent).active
+
+
+def collapsed(app, name: str) -> bool:
+    return app.query_one(f"#{name}-section", Collapsible).collapsed
 
 
 async def reveal(app, pilot, selector: str) -> Widget:

@@ -35,11 +35,11 @@ uv run ruff format --check .
 Tests run offline and headless (Textual's test runner). They cover the usual path of each
 feature, one domain test and, where there is a screen, one app test, rather than every edge
 case. UI tests start the app with `run_app` and click through `click` and `reveal` in
-`tests/helpers.py`, which wait until a widget has settled on screen. Every test that starts the app carries the `ui` marker
-(`pytestmark` for a whole module, `@pytest.mark.ui` otherwise), so mark a new one too. Shared
-helpers live in `tests/helpers.py`, never in another test module. Shared fixtures are in
-`tests/conftest.py`; save tests use `tmp_path`, and an autouse fixture points
-`XDG_CONFIG_HOME` at a temporary directory so no test touches your real settings.
+`tests/helpers.py`, which wait until a widget has settled on screen. Every test that starts the
+app carries the `ui` marker (`pytestmark` for a whole module, `@pytest.mark.ui` otherwise), so
+mark a new one too. Shared helpers live in `tests/helpers.py`, never in another test module.
+Shared fixtures are in `tests/conftest.py`; save tests use `tmp_path`, and an autouse fixture
+points `XDG_CONFIG_HOME` at a temporary directory so no test touches your real settings.
 
 ## Release builds
 
@@ -82,9 +82,13 @@ GitHub Actions:
   release, which you publish yourself; the file names, `wid --version` and the Windows file
   properties all take their version from that tag. Without a tag, the `publish` job is skipped.
 
-To release, tag the commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
-Both workflows check out the full history (`fetch-depth: 0`) so the tag is visible to
-`hatch-vcs`.
+A change a player would notice adds a line under **Unreleased** in [CHANGELOG.md](CHANGELOG.md),
+in the same change. To release, rename **Unreleased** to the version and date (such as
+`## [0.5.0] - 2026-11-02`), add an empty **Unreleased** above it and the compare links at the
+end, then tag that commit and push the tag: `git tag v0.5.0 && git push origin v0.5.0`. The
+`publish` job takes the draft release's notes from that version's section
+(`release/changelog_notes.py`) and stops if there is none. Both workflows check out the full
+history (`fetch-depth: 0`) so the tag is visible to `hatch-vcs`.
 
 ## Project structure
 
@@ -119,10 +123,11 @@ wid/
     ├── templates/      # Jinja2 page and sheet: one form, each button posts to its action
     └── static/         # sheet.css, and sheet.js: posts the form and swaps the reply in
 .github/workflows/      # ci.yml: tests, ruff; release.yml: builds for each system, draft release
-release/                # PyInstaller spec, build scripts, release readmes, Windows smoke test, icon
+release/                # PyInstaller spec, build scripts, readmes, smoke test, icon, release notes
 tests/                  # Domain, persistence, headless UI, and launch tests
 HOWTO.md                # How to use the program (for players)
 README.md               # Short overview for players, linking to the how-to
+CHANGELOG.md            # What changed in each release, for players
 ```
 
 Front ends call `Game` (`wid/game.py`), which owns the session, history, roll options,

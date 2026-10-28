@@ -1,8 +1,13 @@
 import ast
 import struct
+import sys
 from pathlib import Path
 
 RELEASE = Path(__file__).resolve().parents[1] / "release"
+sys.path.insert(0, str(RELEASE))
+
+import changelog_notes  # noqa: E402
+
 SPEC = RELEASE / "wid.spec"
 ICON = RELEASE / "wid.ico"
 
@@ -117,3 +122,12 @@ def test_windows_builds_a_folder_and_other_systems_one_file_unless_told(monkeypa
     assert run_spec(monkeypatch, tmp_path, "win32")["ONEDIR"] is True
     assert run_spec(monkeypatch, tmp_path, "linux")["ONEDIR"] is False
     assert run_spec(monkeypatch, tmp_path, "win32", onedir=False)["ONEDIR"] is False
+
+
+def test_the_release_notes_are_the_changelog_section_for_the_tag(capsys):
+    assert changelog_notes.main(["v0.4.1"]) == 0
+    notes = capsys.readouterr().out
+    assert notes.startswith("### Fixed\n")
+    assert "## [0.4.0]" not in notes
+    assert changelog_notes.main(["v9.9.9"]) == 1
+    assert capsys.readouterr().err == "CHANGELOG.md has no notes for v9.9.9.\n"

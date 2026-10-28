@@ -46,4 +46,4 @@ explains checking the `.sha256` file.
 ## Running from Python and developers
 
 Running from Python, building a release, the project layout, and the file formats are in
-[DEVELOPING.md](DEVELOPING.md).
+[DEVELOPING.md](DEVELOPING.md). What changed in each release is in [CHANGELOG.md](CHANGELOG.md).

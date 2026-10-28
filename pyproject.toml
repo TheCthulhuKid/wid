@@ -30,7 +30,8 @@ packages = ["wid"]
 
 [tool.hatch.build.targets.sdist]
 only-include = [
-    "wid", "release", "README.md", "HOWTO.md", "DEVELOPING.md", "pyproject.toml", "uv.lock", "tests",
+    "wid", "release", "README.md", "HOWTO.md", "DEVELOPING.md", "CHANGELOG.md", "pyproject.toml",
+    "uv.lock", "tests",
 ]
 
 [dependency-groups]
