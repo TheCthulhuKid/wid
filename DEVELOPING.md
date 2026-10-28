@@ -101,7 +101,7 @@ wid/
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── dangers.py          # The GM's Dangers: loadouts, a scene's threshold and activation
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
-├── game.py             # One sitting: the state and actions every front end drives
+├── game.py             # One sitting: BaseGame (history, save, undo, recovery) and the player's Game
 ├── export.py           # Markdown export: the sheet, the notes and the action history
 ├── history.py          # Structured action history entries, their text, and dice statistics
 ├── sessions.py         # The versioned save format and the session file path rules
@@ -133,7 +133,9 @@ CHANGELOG.md            # What changed in each release, for players
 
 Front ends call `Game` (`wid/game.py`), which owns the session, history, roll options,
 character, notes and file path, records history and words the feedback; game rules stay in
-the domain models, independent of Textual. The terminal app copies what the player typed into
+the domain models, independent of Textual. What is not the character sheet (the history, the
+session name, notes and file path, Undo, saving, loading, exporting and the recovery copy) is
+`BaseGame`, so another mode of play only supplies its own state and save model. The terminal app copies what the player typed into
 the game before each action (`collect`), then redraws from it (`refresh_sheet`), so a second
 front end only needs the same two steps; the browser version does them per request (each action
 posts the whole sheet, `collect` copies it in, the action runs, the sheet comes back). Every web
