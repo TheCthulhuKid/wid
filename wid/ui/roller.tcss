@@ -30,7 +30,7 @@ Collapsible > Contents { padding: 0; }
 .button-row Button { margin-right: 1; }
 StrainGroup { height: auto; margin: 1 0; }
 .strain-row { height: 3; }
-.strain-checks { width: 25; height: 3; }
+.strain-checks { width: 29; height: 3; }
 .strain-row Checkbox { padding: 0; }
 .strain-row Checkbox.-on { background: $success 35%; border: tall $success; }
 .strain-row Checkbox.-on > .toggle--button {

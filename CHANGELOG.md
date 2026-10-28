@@ -26,6 +26,9 @@ What changed in each release of wid, newest first. The format follows
 
 ### Changed
 
+- **Heckboy** characters wound on the fifth strain, as the kit says: the strain tracker has four
+  strain boxes per row there. Older Heckboy saves keep their wounds and the strain since the
+  last one.
 - `wid --self-test` also starts the GM screen, activates a Danger and serves the GM page.
 - **Load game** is now **Load session**, the Session tab's path box is **Session file (JSON)**,
   and the name box says "Name this session": a session is what you save and load.

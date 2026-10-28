@@ -17,7 +17,7 @@ from wid.rolls import (
     MANIFESTATION_EFFECTS,
     MANIFESTATION_LIMIT,
     RESOURCES_MAX,
-    STRAIN_ENDINGS,
+    STRAIN_ROWS,
     BonusKind,
     ManifestationCheck,
     Outcome,
@@ -224,16 +224,20 @@ def tech_slot_label(index: int, strength: int) -> str:
     return f"Tech {index + 1}, strength {strength}"
 
 
-def strain_box_name(index: int) -> str:
+# What the last box of each strain row marks.
+STRAIN_ROW_NAMES = ("Wound",) * (STRAIN_ROWS - 1) + ("Defeat",)
+
+
+def strain_box_name(tracker: StrainTracker, index: int) -> str:
     """What strain box ``index`` marks: Defeat at the very end, a Wound at a row's end."""
-    if index == STRAIN_ENDINGS[-1]:
-        return "Defeat"
-    return "Wound" if index in STRAIN_ENDINGS else "Strain"
+    if index in tracker.endings:
+        return STRAIN_ROW_NAMES[tracker.endings.index(index)]
+    return "Strain"
 
 
 def strain_counts(tracker: StrainTracker) -> str:
     """Marked strain and wounds, such as ``3 strain, 1 wound``; Defeat is added when marked."""
-    wounds = sum(tracker.boxes[ending] for ending in STRAIN_ENDINGS[:-1])
+    wounds = sum(tracker.boxes[ending] for ending in tracker.endings[:-1])
     strain = sum(tracker.boxes) - wounds - tracker.defeated
     text = f"{strain} strain, {wounds} {'wound' if wounds == 1 else 'wounds'}"
     return f"{text} — Defeat" if tracker.defeated else text

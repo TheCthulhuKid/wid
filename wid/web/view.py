@@ -51,7 +51,6 @@ from wid.rolls import (
     RESOURCES_MIN,
     SCARED_MAX,
     STANDING_LABELS,
-    STRAIN_ENDINGS,
     BonusKind,
     PowerMode,
 )
@@ -176,7 +175,6 @@ def sheet_context(
         "BonusKind": BonusKind,
         "PowerMode": PowerMode,
         "standing_labels": STANDING_LABELS,
-        "strain_endings": STRAIN_ENDINGS,
         "resources_min": RESOURCES_MIN,
         "resources_max": RESOURCES_MAX,
         "scared_max": SCARED_MAX,

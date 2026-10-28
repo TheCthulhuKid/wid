@@ -67,7 +67,10 @@ def test_heckboy_powers_add_dice_and_strain():
     result = session.roll(request, rng=Random(3))
     assert len(result.dice) == 6
     assert result.strain_delta == session.total_strain == 2
-    assert session.strain == StrainTracker().take(2)
+    # Heckboy wounds on the fifth strain, so its rows hold four strain boxes.
+    assert session.strain == StrainTracker(per_wound=4).take(2)
+    assert session.strain.endings == (4, 9, 14)
+    assert not session.strain.take(2).boxes[4] and session.strain.take(3).boxes[4]
     with pytest.raises(ValidationError, match="Only Heckboy"):
         RollRequest(power=PowerMode.RELIABLE)
 

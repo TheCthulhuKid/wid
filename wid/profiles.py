@@ -20,6 +20,8 @@ class WiDProfile(BaseModel):
     genre: Genre
     name: str
     attributes: tuple[str, ...] = ("Athleticism", "Composure", "Reasoning")
+    # Strain boxes before each wound on the tracker; Heckboy wounds on the fifth strain.
+    strain_per_wound: int = 3
     uses_items: bool = True
     has_powers: bool = False
     has_tech: bool = False
@@ -37,6 +39,7 @@ PROFILES = {
         genre=Genre.HECKBOY,
         name="Heckboy",
         attributes=("Aberrance", "Ferocity", "Savvy"),
+        strain_per_wound=4,
         has_powers=True,
     ),
     Genre.SECOND_CONTACT: WiDProfile(

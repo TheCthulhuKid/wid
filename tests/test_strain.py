@@ -1,10 +1,11 @@
 import asyncio
 
 import pytest
-from helpers import click, start_game, text
+from helpers import change_genre, click, start_game, text
 from textual.widgets import Collapsible
 
 from wid.game import Game
+from wid.profiles import Genre
 from wid.rolls import LOCKED_NOTE, NOT_READY_NOTE, StrainTracker
 from wid.ui.app import RollerApp
 from wid.ui.widgets import StrainBox
@@ -42,18 +43,21 @@ def test_strain_buttons_and_locked_boxes():
         app = RollerApp()
         async with app.run_test(size=(100, 45)) as pilot:
             await start_game(app, pilot)
-            wound = app.query_one("#strain-box-3", StrainBox)
+            wound = app.query_one("#strain-wound-0", StrainBox)
             assert wound.disabled
+            assert not app.query_one("#strain-box-0-3", StrainBox).display
             await click(app, pilot, "#take-strain")
             assert app.session.strain.boxes[0]
             await click(app, pilot, "#take-wound")
             assert app.session.strain.boxes == (True,) * 4 + (False,) * 8
             title = app.query_one("#strain-section", Collapsible).title
             assert title == "Strain tracker: 3 strain, 1 wound"
-            assert app.query_one("#strain-box-1", StrainBox).disabled
-            app.query_one("#strain-box-7", StrainBox).value = True
+            assert app.query_one("#strain-box-0-1", StrainBox).disabled
+            app.query_one("#strain-wound-1", StrainBox).value = True
             await pilot.pause()
             assert not app.session.strain.boxes[7]
             assert text(app, "#feedback") == NOT_READY_NOTE
+            await change_genre(app, pilot, Genre.HECKBOY)
+            assert app.query_one("#strain-box-0-3", StrainBox).display
 
     asyncio.run(scenario())

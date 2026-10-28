@@ -131,7 +131,8 @@ cleared. You are asked first if there is anything unsaved. Set the ranks and pre
 
 ## Strain tracker
 
-Three rows of boxes: strain, strain, strain, then a wound (the last row ends in Defeat).
+Three rows of boxes: strain, strain, strain, then a wound (the last row ends in Defeat). In
+**Heckboy** a row holds four strain before its wound.
 
 - **Take 1 strain** fills the next box. **Take 1 wound** fills every box up to and including
   the next wound (Defeat after the second). You can also click boxes yourself.

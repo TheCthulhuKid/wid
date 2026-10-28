@@ -41,7 +41,7 @@ from wid.formatting import (
     NO_RESULT_HINT,
     POWER_LABELS,
     RANKS_HINT,
-    strain_box_name,
+    STRAIN_ROW_NAMES,
 )
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
@@ -52,7 +52,7 @@ from wid.rolls import (
     SCARED_MAX,
     STANDING_LABELS,
     STANDING_START,
-    STRAIN_ENDINGS,
+    STRAIN_ROWS,
     BonusKind,
     PowerMode,
     StrainTracker,
@@ -153,18 +153,43 @@ class SacrificeButton(Button):
 TECH_SLOTS = 3
 
 
-class StrainBox(Checkbox):
-    """One of the twelve strain boxes."""
+# The widest row any kit has; the boxes beyond a kit's own are hidden.
+STRAIN_PER_WOUND_MAX = max(profile.strain_per_wound for profile in PROFILES.values())
 
-    def __init__(self, index: int, label: str = "", *, tooltip: str, **kwargs):
-        super().__init__(label, id=f"strain-box-{index}", tooltip=tooltip, **kwargs)
-        self.index = index
+
+class StrainBox(Checkbox):
+    """Strain box ``column`` of strain row ``row``, or the row's wound when ``wound``."""
+
+    def __init__(
+        self,
+        row: int,
+        column: int = 0,
+        label: str = "",
+        *,
+        wound: bool = False,
+        tooltip: str,
+        **kwargs,
+    ):
+        box_id = f"strain-wound-{row}" if wound else f"strain-box-{row}-{column}"
+        super().__init__(label, id=box_id, tooltip=tooltip, **kwargs)
+        self.row = row
+        self.column = column
+        self.wound = wound
         self.description = tooltip
+
+    def index_in(self, tracker: StrainTracker) -> int:
+        """The box's place in ``tracker``, whose rows may be narrower than the widget's."""
+        ending = tracker.endings[self.row]
+        return ending if self.wound else ending - tracker.per_wound + self.column
 
     def sync(self, tracker: StrainTracker) -> None:
         """Show the tracker's state; boxes that cannot change are disabled and say why."""
-        self.value = tracker.boxes[self.index]
-        note = tracker.lock_reason(self.index)
+        self.display = self.wound or self.column < tracker.per_wound
+        if not self.display:
+            return
+        index = self.index_in(tracker)
+        self.value = tracker.boxes[index]
+        note = tracker.lock_reason(index)
         self.disabled = note is not None
         self.tooltip = note or self.description
 
@@ -460,19 +485,20 @@ class StrainGroup(Vertical):
         with Horizontal(classes="button-row"):
             yield Button("Take 1 strain", id="take-strain", variant="primary")
             yield Button("Take 1 wound", id="take-wound", variant="primary")
-        for row, ending in enumerate(STRAIN_ENDINGS):
-            name = strain_box_name(ending)
+        for row in range(STRAIN_ROWS):
+            name = STRAIN_ROW_NAMES[row]
             with Horizontal(classes="strain-row"):
                 with Horizontal(classes="strain-checks"):
-                    for column in range(4):
-                        index = ending - 3 + column
-                        description = name if column == 3 else f"strain {column + 1}"
-                        yield StrainBox(
-                            index,
-                            name if column == 3 else "",
-                            classes="strain-ending" if column == 3 else "strain-box",
-                            tooltip=f"Row {row + 1}: {description}",
-                        )
+                    for column in range(STRAIN_PER_WOUND_MAX):
+                        tooltip = f"Row {row + 1}: strain {column + 1}"
+                        yield StrainBox(row, column, classes="strain-box", tooltip=tooltip)
+                    yield StrainBox(
+                        row,
+                        name,
+                        wound=True,
+                        classes="strain-ending",
+                        tooltip=f"Row {row + 1}: {name}",
+                    )
                 yield StrainName(row, placeholder=f"{name} name")
         yield Static(id="strain-status", markup=False)
 

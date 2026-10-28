@@ -471,7 +471,7 @@ class RollerApp(SessionActions, BaseApp):
             handler(self, checkbox)
 
     def mark_strain_box(self, box: StrainBox) -> None:
-        index, marked = box.index, box.value
+        index, marked = box.index_in(self.session.strain), box.value
         self.act(lambda: self.game.set_strain_box(index, marked))
 
     def use_power(self, toggle: PowerToggle) -> None:
