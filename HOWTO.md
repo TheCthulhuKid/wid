@@ -42,8 +42,10 @@ terminals pass on (macOS Terminal does not).
 **Undo** (under the result) takes back the last change to the sheet: a roll, a reroll, an item,
 expertise or Tech bonus, strain, Standing, Resources, Corruption or a manifestation. Press it
 again for the one before, up to 50 changes. The history keeps what happened and notes each undo.
-An undone roll is not rolled back into the dice: rolling again gives new numbers. Loading a
-game, starting a new character or changing the kit starts with nothing to undo.
+An undone roll is not rolled back into the dice: rolling again gives new numbers. Names typed
+since the change stay, and only undoing a roll brings back the attribute, Assisted, Expertise
+and power it cleared. Loading a game, starting a new character or changing the kit starts with
+nothing to undo.
 
 ## Items and expertise
 

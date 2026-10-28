@@ -46,10 +46,19 @@ def test_undo_takes_back_the_last_changes_in_turn():
     rolled = game.session.current_result
     game.apply_bonus(BonusKind.APPROPRIATE_ITEM, 0)
     game.take_strain()
+    game.rename("bonus", BonusKind.EXPERTISE, "Lockpicking")
+    game.rename("strain", 0, "Broken arm")
+    game.assisted = True
     assert game.undo() == "Undid the last strain change."
     assert not any(game.session.strain.boxes)
+    assert (game.session.bonuses.expertise, game.session.strain.names[0]) == (
+        "Lockpicking",
+        "Broken arm",
+    )
+    assert game.assisted
     game.undo()
     assert game.session.current_result == rolled
+    assert str(game.history[-1]).startswith("Undid the last bonus:")
     assert game.undo() == "Undid the last roll."
     assert (game.session.current_result, game.assisted) == (None, True)
     assert str(game.history[-1]) == "Undid the last roll."

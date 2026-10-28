@@ -27,7 +27,7 @@ def test_named_items_and_expertise_apply_after_a_roll_and_can_be_undone():
             await click(app, pilot, "#undo")
             await click(app, pilot, "#undo")
             assert "1: 3+0=3 miss" in text(app, "#dice")
-            assert str(app.history[-1]).startswith("Undid the last bonus.")
+            assert str(app.history[-1]).startswith("Undid the last bonus:")
             app.query_one("#item-target", Select).value = 1
             await click(app, pilot, "#apply-appropriate_item")
             assert "2: 2+1=3 miss" in text(app, "#dice")

@@ -52,6 +52,20 @@ RENAMERS: dict[NameField, Callable[[RollSession, Any, str], object]] = {
     "strain": RollSession.set_strain_name,
 }
 
+type NameSlot = tuple[NameField, int | BonusKind]
+
+
+def typed_names(session: RollSession) -> dict[NameSlot, str]:
+    """Every name the player types into ``session``, by the field and slot ``RENAMERS`` take."""
+    pieces = session.tech.pieces if session.tech else ()
+    return {
+        **{("bonus", kind): getattr(session.bonuses, kind.value) for kind in BonusKind},
+        **{("power", index): name for index, name in enumerate(session.power_names)},
+        **{("manifestation", index): name for index, name in enumerate(session.manifestations)},
+        **{("tech", index): piece.name for index, piece in enumerate(pieces)},
+        **{("strain", row): name for row, name in enumerate(session.strain.names)},
+    }
+
 
 def player_message(error: Exception) -> str:
     """The reason to show the player: pydantic's first message, without its prefix."""
@@ -74,8 +88,10 @@ class Before(NamedTuple):
 
     change: str
     session: RollSession
-    # What the change may have reset: the tested attribute, the one-test options and the picks.
-    options: tuple[Any, ...]
+    # The names just after the change, to tell which the player typed since.
+    names: dict[NameSlot, str]
+    # Only a roll resets the tested attribute, the one-test options and the picks; None otherwise.
+    options: tuple[Any, ...] | None
 
 
 class Game:
@@ -196,7 +212,7 @@ class Game:
 
     def roll(self, attribute: str | None = None) -> str:
         """Test ``attribute``, or the last tested one again; one-test options are then cleared."""
-        with self.undoable("roll"):
+        with self.undoable("roll", options=True):
             if attribute is not None:
                 self.session.attribute_rank(attribute)
                 self.tested_attribute = attribute
@@ -469,10 +485,15 @@ class Game:
         )
 
     @contextmanager
-    def undoable(self, change: str) -> Iterator[None]:
-        """Run a change to the sheet so Undo can take it back; a refused change adds nothing."""
-        before = Before(change, self.session.model_copy(deep=True), self.options())
+    def undoable(self, change: str, *, options: bool = False) -> Iterator[None]:
+        """Run a change to the sheet so Undo can take it back; a refused change adds nothing.
+
+        ``options`` keeps the one-test options too, for the change that resets them.
+        """
+        session = self.session.model_copy(deep=True)
+        kept = self.options() if options else None
         yield
+        before = Before(change, session, typed_names(self.session), kept)
         self.undo_stack = [*self.undo_stack, before][-UNDO_LIMIT:]
 
     @property
@@ -488,23 +509,29 @@ class Game:
             raise ValueError("There is nothing to undo.")
         before = self.undo_stack.pop()
         shown = self.session.current_result
+        restored = typed_names(before.session)
+        # A name belongs to the player, not to the change: one typed since it stays.
+        for slot, name in typed_names(self.session).items():
+            if slot in restored and name != before.names.get(slot):
+                RENAMERS[slot[0]](before.session, slot[1], name)
         self.session = before.session
-        message = f"Undid the last {before.change}."
+        action = f"Undid the last {before.change}"
         result = self.session.current_result
         # When the dice change back, the history shows them as they are again.
         if result is not None and result != shown:
-            self.log_result(result, message, charged=False)
+            self.log_result(result, action, charged=False)
         else:
-            self.notice(message)
-        (
-            self.tested_attribute,
-            self.assisted,
-            self.expertise,
-            self.power,
-            self.reroll_selection,
-            self.item_target,
-        ) = before.options
-        return message
+            self.notice(f"{action}.")
+        if before.options is not None:
+            (
+                self.tested_attribute,
+                self.assisted,
+                self.expertise,
+                self.power,
+                self.reroll_selection,
+                self.item_target,
+            ) = before.options
+        return f"{action}."
 
     def keep_recovery(self) -> str:
         """Bring the recovery copy in step with the game, after any change.
