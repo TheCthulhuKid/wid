@@ -284,5 +284,5 @@ keys that work at that moment.
 - A small terminal (80 by 24) works; the strain tracker and items start folded, so press **T** or
   **I** to open them.
 - Your theme, last tab and folded sections are remembered between runs.
-- `wid --self-test` checks the program, the browser version included, and reports which part
-  failed, if any.
+- `wid --self-test` checks the program, the browser version and the GM mode included, and
+  reports which part failed, if any.

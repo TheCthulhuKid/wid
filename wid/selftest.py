@@ -13,13 +13,16 @@ from random import Random
 import uvicorn
 from textual.widgets import Markdown, TabbedContent, TextArea
 
-from wid.game import Game
+from wid.game import BaseGame, Game
+from wid.gm import GmGame
 from wid.settings import load_settings
 from wid.ui.app import RollerApp
+from wid.ui.base import BaseApp
+from wid.ui.gm_app import GmApp
 from wid.web.app import create_app, token_cookie
 from wid.web.server import HOST, listening_socket
 
-Check = Callable[[RollerApp, object, Path], Awaitable[None]]
+Check = Callable[[BaseApp, object, Path], Awaitable[None]]
 
 
 def require(condition: object, message: str) -> None:
@@ -87,8 +90,8 @@ async def http_get(port: int, target: str, cookie: str = "") -> str:
     return response.decode("utf-8", "replace")
 
 
-async def check_browser(app: RollerApp, pilot, folder: Path) -> None:
-    """Serve the browser version for real, as ``wid --web`` does, and open its page.
+async def served_page(game: BaseGame) -> str:
+    """Serve ``game`` for real, as ``wid --web`` does, and return its page.
 
     In a frozen release this proves uvicorn's by-name imports and the page's templates and
     static files were bundled.
@@ -96,7 +99,7 @@ async def check_browser(app: RollerApp, pilot, folder: Path) -> None:
     token = "self-test"
     sock = listening_socket(0)
     port = sock.getsockname()[1]
-    server = uvicorn.Server(uvicorn.Config(create_app(Game(), token), log_level="warning"))
+    server = uvicorn.Server(uvicorn.Config(create_app(game, token), log_level="warning"))
     serving = asyncio.create_task(server.serve(sockets=[sock]))
     try:
         for _ in range(200):
@@ -112,15 +115,34 @@ async def check_browser(app: RollerApp, pilot, folder: Path) -> None:
         require(opened.startswith("HTTP/1.1 303"), "the address with the token was not accepted")
         cookie = f"{token_cookie(token)}={token}"
         page = await http_get(port, "/", cookie)
-        require(page.startswith("HTTP/1.1 200") and "Roll" in page, "the page was not served")
+        require(page.startswith("HTTP/1.1 200"), "the page was not served")
         style = await http_get(port, "/static/sheet.css", cookie)
         require(style.startswith("HTTP/1.1 200"), "the page's stylesheet was not served")
     finally:
         server.should_exit = True
         await serving
         sock.close()
+    return page
 
 
+async def check_browser(app: BaseApp, pilot, folder: Path) -> None:
+    require("Roll" in await served_page(Game()), "the character sheet was not served")
+
+
+async def check_gm_activation(app: GmApp, pilot, folder: Path) -> None:
+    await pilot.click("#add-danger")
+    await pilot.pause()
+    require(len(app.game.scene.dangers) == 1, "Add Danger did not add a Danger")
+    await pilot.press("ctrl+r")
+    require(app.game.last_activation is not None, "the activation produced no roll")
+    require(len(app.history) == 2, "the activation was not recorded in the history")
+
+
+async def check_gm_page(app: BaseApp, pilot, folder: Path) -> None:
+    require("Activate Danger" in await served_page(GmGame()), "the GM page was not served")
+
+
+# The checks of the player's screen, then the GM's, each run in one headless app.
 CHECKS: tuple[tuple[str, Check], ...] = (
     ("start screen and stylesheet", check_screen),
     ("start a game and roll", check_roll),
@@ -130,21 +152,30 @@ CHECKS: tuple[tuple[str, Check], ...] = (
     ("history export", check_export),
     ("browser version served", check_browser),
 )
+GM_CHECKS: tuple[tuple[str, Check], ...] = (
+    ("GM screen activates a Danger", check_gm_activation),
+    ("GM page served", check_gm_page),
+)
+SUITES: tuple[tuple[type[BaseApp], tuple[tuple[str, Check], ...]], ...] = (
+    (RollerApp, CHECKS),
+    (GmApp, GM_CHECKS),
+)
 
 
 async def run_checks(folder: Path) -> list[tuple[str, str | None]]:
-    """Run every check in one headless app; each result is (name, error or None)."""
+    """Run every suite's checks in one headless app each; a result is (name, error or None)."""
     results: list[tuple[str, str | None]] = []
-    app = RollerApp(rng=Random(1), settings_path=folder / "settings.json")
-    async with app.run_test(size=(100, 40)) as pilot:
-        await pilot.pause()
-        for name, check in CHECKS:
-            try:
-                await check(app, pilot, folder)
-            except Exception as error:
-                results.append((name, f"{type(error).__name__}: {error}"))
-            else:
-                results.append((name, None))
+    for app_class, checks in SUITES:
+        app = app_class(rng=Random(1), settings_path=folder / "settings.json")
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            for name, check in checks:
+                try:
+                    await check(app, pilot, folder)
+                except Exception as error:
+                    results.append((name, f"{type(error).__name__}: {error}"))
+                else:
+                    results.append((name, None))
     return results
 
 
