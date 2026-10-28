@@ -9,6 +9,7 @@ from wid.dangers import (
     Activation,
     Complexity,
     Danger,
+    Difficulty,
     Scene,
     defending_attribute,
 )
@@ -271,6 +272,11 @@ def standing_notice(standing: int) -> str:
 
 def resources_notice(amount: int, pool: int) -> str:
     return f"Resources {amount:+d}: {pool} in the pool."
+
+
+def recovery_notice(difficulty: Difficulty, change: str) -> str:
+    """History line for recovery after a Danger, ``change`` being what the kit gave back."""
+    return f"Recovery after a {difficulty.label} Danger — {change}"
 
 
 def corruption_status(session: RollSession, names: str = "") -> str:

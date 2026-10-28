@@ -437,6 +437,17 @@ class KitControls(Vertical):
                         yield Label(POWER_LABELS[mode])
                         yield PowerName(index)
                     yield PowerToggle(mode)
+        with Horizontal(id="recovery-row"):
+            with Vertical(classes="field", id="recovery-field"):
+                yield Label("Danger")
+                yield Select(
+                    [(difficulty.label, difficulty) for difficulty in Difficulty],
+                    value=Difficulty.COMPETENT,
+                    allow_blank=False,
+                    id="recovery-difficulty",
+                    tooltip="The difficulty of the Danger just overcome",
+                )
+            yield Button("Recover", id="recover", tooltip="Recovery after a Danger, by the kit")
         yield Static(id="pool")
 
 

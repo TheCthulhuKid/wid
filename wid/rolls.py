@@ -568,6 +568,20 @@ class RollSession(BaseModel):
             raise ValueError(f"{PROFILES[self.profile_id].name} has no Resources.")
         return self.resources
 
+    def gain_resources(self, amount: int) -> int:
+        """Add to the pool, which holds at most ``RESOURCES_MAX``; returns what was gained."""
+        pool = self._pool()
+        gained = min(amount, RESOURCES_MAX - pool)
+        self.resources = pool + gained
+        return gained
+
+    def recover_strain(self, points: int) -> int:
+        """Clear up to ``points`` of the newest strain; returns how many boxes were cleared."""
+        recovered = self.strain.recover(points)
+        cleared = sum(self.strain.boxes) - sum(recovered.boxes)
+        self.strain = recovered
+        return cleared
+
     def adjust_resources(self, amount: int) -> int:
         """Add to or take from the pool, for taxes, Danger abilities and hits spent on it."""
         pool = self._pool() + amount
@@ -607,9 +621,7 @@ class RollSession(BaseModel):
 
     def _recover_strain(self, rng: Random) -> ResourceSpend:
         die = roll_d6(rng)
-        recovered = self.strain.recover(die)
-        cleared = sum(self.strain.boxes) - sum(recovered.boxes)
-        self.strain = recovered
+        cleared = self.recover_strain(die)
         return ResourceSpend(effect=ResourceEffect.RECOVER_STRAIN, die=die, recovered=cleared)
 
     def _check_corruption_kit(self) -> None:

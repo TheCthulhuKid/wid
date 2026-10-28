@@ -80,7 +80,9 @@ Every kit has the same screen. Each adds at most one thing:
 **Powers (Heckboy).** Every Heckboy has a **Reliable power** (+1 die, +1 strain) and an
 **Erratic power** (+2 dice, +2 strain). Type each power's name in its box. Tick **Use** beside one
 before rolling to use it: the pool grows and the strain is added to the tracker for you. Only one
-power can be used per roll, and **Use** unticks itself after the roll.
+power can be used per roll, and **Use** unticks itself after the roll. After a Danger is
+overcome, choose its difficulty in **Danger** and press **Recover**: the strain Heckboy gives
+back for that difficulty is cleared from the tracker, and the history notes it.
 
 **Tech (Second Contact).** You get one Tech slot for each rank of Muscle as soon as the game starts.
 A slot stays empty until you use it, and each one starts at Science + Culture. Tech is used after
@@ -123,6 +125,9 @@ press **Spend 6 Resources** and choose one effect; the pool then resets to your 
   and use it like the others. Press **Lose** if it is lost; that frees the slot to craft again.
 - **Recover 1d6 strain**: rolls the die and unmarks that much of your newest strain. Wounds,
   and strain before a marked wound, stay marked.
+
+After a Danger is overcome, choose its difficulty in **Danger** and press **Recover** to take
+the Resources the kit gives for it instead of healing; a full pool keeps what does not fit.
 
 **Changing kit.** A kit lasts the whole game, so picking another kit in **Genre kit** starts a
 new game: the character, names, strain, history, notes, session name and file path are all

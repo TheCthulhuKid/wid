@@ -18,10 +18,12 @@ from typing import Any, Literal, NamedTuple
 
 from pydantic import BaseModel, ValidationError
 
+from wid.dangers import Difficulty, recovery_amount
 from wid.export import history_markdown
 from wid.formatting import (
     BONUS_LABELS,
     check_summary,
+    recovery_notice,
     resources_notice,
     sheet_lines,
     spend_summary,
@@ -29,8 +31,9 @@ from wid.formatting import (
     strain_notice,
 )
 from wid.history import ROLL_ACTION, HistoryEntry, history_statistics
-from wid.profiles import PROFILES, Genre, WiDProfile
+from wid.profiles import PROFILES, Genre, Recovers, WiDProfile
 from wid.rolls import (
+    RESOURCES_MAX,
     SCARED_MAX,
     BonusKind,
     PowerMode,
@@ -609,6 +612,20 @@ class Game(BaseGame):
         with self.undoable("Resources spend"):
             spend = self.session.spend_resources(effect, rng=self.rng)
         return self.notice(spend_summary(spend, self.session.resources))
+
+    def recover_after(self, difficulty: Difficulty) -> str:
+        """Recovery after a Danger is overcome, as the kit states it: strain or Resources."""
+        amount = recovery_amount(self.session.profile_id, difficulty)
+        with self.undoable("recovery"):
+            if self.profile.recovers == Recovers.RESOURCES:
+                gained = self.session.gain_resources(amount)
+                change = resources_notice(gained, self.session.resources)
+                if gained < amount:
+                    change += f" The pool holds at most {RESOURCES_MAX}."
+            else:
+                cleared = self.session.recover_strain(amount)
+                change = strain_notice(f"cleared {cleared} strain", self.session.strain)
+        return self.notice(recovery_notice(difficulty, change))
 
     def lose_crafted_item(self) -> str:
         with self.undoable("lost crafted item"):

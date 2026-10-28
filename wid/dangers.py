@@ -1,5 +1,4 @@
-"""The GM guide's Danger rules: classes, difficulties, loadouts, a scene's threshold and
-activation. What an ability does to a PC is the book's; wid only names it."""
+"""The GM's Danger rules: classes, difficulties, loadouts, a scene's threshold and activation."""
 
 from enum import StrEnum
 from random import Random
@@ -145,6 +144,30 @@ def require_tracker(genre: Genre, flag: str, tracker: str) -> None:
     """Refuse a tracker in a kit that has none; ``flag`` is the profile's field for it."""
     if not getattr(PROFILES[genre], flag):
         raise ValueError(f"{PROFILES[genre].name} has no {tracker}.")
+
+
+# What recovery after a Danger gives back, by kit and difficulty: strain in Heckboy, Resources in
+# This Isn't Happening. The base game's amount is not in the texts wid has.
+RECOVERY: dict[Genre, dict[Difficulty, int]] = {
+    Genre.HECKBOY: {
+        Difficulty.PETTY: 2,
+        Difficulty.COMPETENT: 2,
+        Difficulty.BOSS: 3,
+        Difficulty.MEGA: 3,
+    },
+    Genre.THIS_ISNT_HAPPENING: {
+        Difficulty.PETTY: 0,
+        Difficulty.COMPETENT: 1,
+        Difficulty.BOSS: 2,
+        Difficulty.MEGA: 3,
+    },
+}
+
+
+def recovery_amount(genre: Genre, difficulty: Difficulty) -> int:
+    if genre not in RECOVERY:
+        raise ValueError(f"{PROFILES[genre].name} does not say how much a recovery gives back.")
+    return RECOVERY[genre][difficulty]
 
 
 # Dice 1 to 3 of every loadout.

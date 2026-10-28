@@ -183,6 +183,8 @@ def sheet_context(
         "power_labels": POWER_LABELS,
         "spend_labels": SPEND_LABELS,
         "character_labels": CHARACTER_LABELS,
+        "difficulties": tuple(Difficulty),
+        "default_difficulty": Difficulty.COMPETENT,
         "ranks_hint": RANKS_HINT,
         "no_result_hint": NO_RESULT_HINT,
         "tech_slot_label": tech_slot_label,

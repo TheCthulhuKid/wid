@@ -12,6 +12,13 @@ class Genre(StrEnum):
     THIS_ISNT_HAPPENING = "this_isnt_happening"
 
 
+class Recovers(StrEnum):
+    """What a kit's recovery after a Danger gives back, where the kit states an amount."""
+
+    STRAIN = "strain"
+    RESOURCES = "resources"
+
+
 class WiDProfile(BaseModel):
     """Display metadata and explicit kit capabilities."""
 
@@ -31,6 +38,8 @@ class WiDProfile(BaseModel):
     # The scene trackers a kit gives the GM.
     has_barricade: bool = False
     has_revelations: bool = False
+    # Recovery after a Danger, where the kit's text gives the amount (the base game's is unknown).
+    recovers: Recovers | None = None
 
 
 PROFILES = {
@@ -41,6 +50,7 @@ PROFILES = {
         attributes=("Aberrance", "Ferocity", "Savvy"),
         strain_per_wound=4,
         has_powers=True,
+        recovers=Recovers.STRAIN,
     ),
     Genre.SECOND_CONTACT: WiDProfile(
         genre=Genre.SECOND_CONTACT,
@@ -69,5 +79,6 @@ PROFILES = {
         attributes=("Instincts", "Endurance", "Charity"),
         has_resources=True,
         has_barricade=True,
+        recovers=Recovers.RESOURCES,
     ),
 }

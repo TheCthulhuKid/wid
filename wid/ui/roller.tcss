@@ -57,6 +57,11 @@ Select, Input { width: 1fr; }
 Checkbox { width: 1fr; height: auto; }
 #items, #item-rows, #powers, #tech-controls, #reroll-controls, #attribute-setup { height: auto; }
 #tech-scenario-row, #standing-field, #resource-field, #resource-row { height: auto; }
+#recovery-row { height: 4; }
+#recovery-field { width: 14; margin-right: 1; }
+#recover { margin-top: 1; }
+.short #recovery-row { height: 2; }
+.short #recover { margin-top: 0; }
 #resource-row Button { min-width: 5; width: auto; }
 #corruption-field, #corruption-row { height: auto; }
 #corruption-amount { width: 10; }

@@ -323,6 +323,7 @@ class RollerApp(SessionActions, BaseApp):
     def update_kit_controls(self) -> None:
         profile = PROFILES[self.session.profile_id]
         self.query_one("#powers").display = profile.has_powers
+        self.query_one("#recovery-row").display = profile.recovers is not None
         # Tech replaces items, so a kit with Tech shows its slots in the same section.
         self.section("items").title = "Tech" if profile.has_tech else "Items"
         self.query_one("#item-rows").display = profile.uses_items
@@ -518,6 +519,10 @@ class RollerApp(SessionActions, BaseApp):
         if effect is not None:
             self.act(lambda: self.game.spend_resources(effect))
 
+    def recover_after(self) -> None:
+        difficulty = self.query_one("#recovery-difficulty", Select).value
+        self.act(lambda: self.game.recover_after(difficulty))
+
     def gain_corruption(self) -> None:
         amount = self.query_one("#corruption-amount", Select).value
         self.act(lambda: self.game.gain_corruption(amount))
@@ -614,4 +619,5 @@ APP_BUTTONS: dict[str, Callable[[RollerApp], None]] = {
     "reroll_button": RollerApp.action_reroll,
     "spend-resources": RollerApp.ask_spend_resources,
     "gain-corruption": RollerApp.gain_corruption,
+    "recover": RollerApp.recover_after,
 }

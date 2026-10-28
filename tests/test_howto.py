@@ -77,6 +77,7 @@ SCREEN_LABELS = [
     "Revelations",
     "Hits spent",
     "Task done",
+    "Recover",
 ]
 
 KIT_NAMES = [

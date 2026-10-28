@@ -14,6 +14,7 @@ KIT_CONTROLS = {
     'name="corruption-amount"': "has_rerolls",
     'formaction="/actions/standing"': "has_standing",
     'formaction="/actions/spend-resources"': "has_resources",
+    'formaction="/actions/recover"': "recovers",
 }
 
 
@@ -22,7 +23,7 @@ def test_each_kit_shows_only_its_own_controls():
     for genre, profile in PROFILES.items():
         sheet = act(client, "change-kit", genre=genre).text
         for control, flag in KIT_CONTROLS.items():
-            assert (control in sheet) == getattr(profile, flag), (genre, control)
+            assert (control in sheet) == bool(getattr(profile, flag)), (genre, control)
 
 
 def test_an_item_and_a_kit_change_through_the_routes(tmp_path):

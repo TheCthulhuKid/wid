@@ -137,6 +137,17 @@
       </div>
       {% endif %}
 
+      {% if kit.recovers %}
+      <div class="kit-controls row">
+        <label class="field narrow">Danger
+          <select name="recovery-difficulty" title="The difficulty of the Danger just overcome">
+            {% for difficulty in difficulties %}<option value="{{ difficulty }}" {% if difficulty == default_difficulty %}selected{% endif %}>{{ difficulty.label }}</option>{% endfor %}
+          </select>
+        </label>
+        <button formaction="/actions/recover" title="Recovery after a Danger, by the kit">Recover</button>
+      </div>
+      {% endif %}
+
       <p class="pool">{{ pool }}</p>
     </section>
 

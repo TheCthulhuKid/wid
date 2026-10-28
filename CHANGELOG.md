@@ -23,6 +23,8 @@ What changed in each release of wid, newest first. The format follows
 - The kits' scene trackers in the GM mode: a Danger's **Standing** in Ball Season, the
   **Barricade** in This Isn't Happening, and the **Revelations** track in Oldheart, each saved
   with the scene and undoable.
+- **Recover** after a Danger: choose its difficulty and Heckboy clears the strain its kit gives
+  back, or This Isn't Happening gains the Resources.
 
 ### Changed
 
