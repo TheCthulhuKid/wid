@@ -37,7 +37,7 @@ from wid.rolls import (
     RollSession,
     roll_d6,
 )
-from wid.sessions import CharacterDetails, Recovery, SavedSession, session_file_path
+from wid.sessions import NAME_MAX, CharacterDetails, Recovery, SavedSession, session_file_path
 from wid.storage import write_text
 
 type NameField = Literal["bonus", "power", "manifestation", "tech", "strain"]
@@ -453,9 +453,14 @@ class Game:
             raise ValueError("Start the game before downloading a save.")
         return self.saved_session(self.name.strip() or UNNAMED).model_dump_json(indent=2)
 
+    def file_name(self) -> str:
+        """The session file's name, or "" when no file is set (``..`` names none)."""
+        name = Path(self.path.strip()).name
+        return "" if name == ".." else name
+
     def save_file_name(self) -> str:
         """The session file's name, or one made from the session name, for a download."""
-        return Path(self.path.strip()).name or f"{self.name.strip() or 'session'}.json"
+        return self.file_name() or f"{self.name.strip() or 'session'}.json"
 
     def take_over(self, saved: SavedSession) -> None:
         """Replace this game with ``saved``: the sheet, history, name, notes and options."""
@@ -557,9 +562,9 @@ class Game:
         return ""
 
     def write_recovery(self) -> None:
-        recovery = Recovery(
-            name=self.name, path=self.path, game=self.saved_session(self.name.strip() or UNNAMED)
-        )
+        # The stand-in is cut to what a save allows; ``name`` keeps the full text.
+        stand_in = (self.name.strip() or UNNAMED)[:NAME_MAX]
+        recovery = Recovery(name=self.name, path=self.path, game=self.saved_session(stand_in))
         self.recovery_path.parent.mkdir(parents=True, exist_ok=True)
         write_text(self.recovery_path, recovery.model_dump_json(indent=2), overwrite=True)
         self.recovery_snapshot = self.snapshot()
@@ -592,6 +597,8 @@ class Game:
         self.take_over(recovery.game)
         self.name, self.path = recovery.name, recovery.path
         self.saved_snapshot = None
+        # The copy already holds this game, so the next change need not write it again first.
+        self.recovery_snapshot = self.snapshot()
         return "Restored the game wid had kept; save it to keep it for good."
 
     def open_file(self, text: str) -> str:
@@ -604,10 +611,9 @@ class Game:
 
     def default_export_path(self) -> str:
         """The session file's path with a .md ending, or a plain name when none is set."""
-        path = Path(self.path.strip())
-        if not path.name or path.name == "..":
+        if not self.file_name():
             return "history.md"
-        return str(path.with_suffix(".md"))
+        return str(Path(self.path.strip()).with_suffix(".md"))
 
     def require_history(self) -> None:
         if not self.history:

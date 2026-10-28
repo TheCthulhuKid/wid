@@ -7,11 +7,17 @@ from textual.errors import NoWidget
 from textual.widget import Widget
 from textual.widgets import Collapsible, Input, Select, Static, TabbedContent, TabPane
 
+from wid.sessions import SavedSession
 from wid.ui.dialogs import ConfirmReset
 from wid.web.app import create_app
 
 # The header the browser page sends with every action (see wid/web/app.py).
 PAGE = {"HX-Request": "true"}
+
+
+def read_saved(path) -> SavedSession:
+    """The save file at ``path``, as a load reads it."""
+    return SavedSession.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 class ScriptedRandom(Random):

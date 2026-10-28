@@ -2,6 +2,7 @@ import json
 from random import Random
 
 import pytest
+from helpers import read_saved
 
 from wid.profiles import Genre
 from wid.rolls import RollRequest
@@ -13,7 +14,7 @@ def test_every_kit_saves_loads_and_keeps_playing(tmp_path, genre, saved_session_
     original = saved_session_factory(genre)
     path = tmp_path / "campaign.json"
     original.save(path)
-    restored = SavedSession.load(path)
+    restored = read_saved(path)
     assert restored.model_dump() == original.model_dump()
     restored.session.roll(restored.draft, rng=Random(3))
 
@@ -23,7 +24,7 @@ def test_save_before_the_first_roll(tmp_path, session_factory):
     saved = SavedSession(name="Ready to play", session=session_factory(), draft=draft)
     path = tmp_path / "unrolled.json"
     saved.save(path)
-    assert SavedSession.load(path).session.current_result is None
+    assert read_saved(path).session.current_result is None
 
 
 def test_saving_never_overwrites_by_accident(tmp_path, saved_session_factory):
@@ -34,19 +35,19 @@ def test_saving_never_overwrites_by_accident(tmp_path, saved_session_factory):
     with pytest.raises(FileExistsError):
         renamed.save(path)
     renamed.save(path, overwrite=True)
-    assert SavedSession.load(path).name == "New name"
+    assert read_saved(path).name == "New name"
 
 
 def test_invalid_or_corrupt_files_are_rejected(tmp_path, saved_session_factory):
     path = tmp_path / "invalid.json"
     path.write_text("not json", encoding="utf-8")
     with pytest.raises(ValueError):
-        SavedSession.load(path)
+        read_saved(path)
     data = saved_session_factory().model_dump(mode="json")
     data["draft"]["attribute_rank"] = 3
     path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match="assigned attribute rank"):
-        SavedSession.load(path)
+        read_saved(path)
     data["version"] = 3
     with pytest.raises(ValueError, match="saved by a newer wid"):
         SavedSession.model_validate(data)
@@ -60,11 +61,11 @@ def test_notes_are_saved_and_older_saves_load_without_them(tmp_path, saved_sessi
     data["notes"] = "Character: Ada 🎲"
     path = tmp_path / "notes.json"
     path.write_text(json.dumps(data), encoding="utf-8")
-    assert SavedSession.load(path).notes == "Character: Ada 🎲"
+    assert read_saved(path).notes == "Character: Ada 🎲"
     data.pop("notes")
     data["version"] = 1
     path.write_text(json.dumps(data), encoding="utf-8")
-    older = SavedSession.load(path)
+    older = read_saved(path)
     assert (older.notes, older.version) == ("", 2)
 
 

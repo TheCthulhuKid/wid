@@ -2,13 +2,12 @@ import asyncio
 from random import Random
 
 import pytest
-from helpers import change_genre, click, load_game, start_game, text
+from helpers import change_genre, click, load_game, read_saved, start_game, text
 from textual.widgets import Button, Checkbox, Input, Select, TextArea
 
 from wid.formatting import QUIT_QUESTION
 from wid.game import Game
 from wid.profiles import Genre
-from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
 
 pytestmark = pytest.mark.ui
@@ -96,7 +95,7 @@ def test_load_and_save_ask_before_replacing(tmp_path, saved_session_factory):
             assert path.read_bytes() == original_file
             await click(app, pilot, "#save-session")
             await pilot.click("#confirm-session")
-            assert SavedSession.load(path).name == "Replacement"
+            assert read_saved(path).name == "Replacement"
             await pilot.press("ctrl+r")
             await pilot.press("ctrl+q")
             assert app.screen.message == QUIT_QUESTION

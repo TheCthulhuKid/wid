@@ -299,8 +299,8 @@ def bonuses_line(session: RollSession) -> str:
 
 
 def powers_line(session: RollSession) -> str:
-    modes = (PowerMode.RELIABLE, PowerMode.ERRATIC)
-    named = [f"{one_line(name)} ({mode})" for mode, name in zip(modes, session.power_names) if name]
+    powers = zip((PowerMode.RELIABLE, PowerMode.ERRATIC), session.power_names)
+    named = [f"{one_line(name)} ({mode})" for mode, name in powers if name.strip()]
     return f"Powers: {', '.join(named)}" if named else ""
 
 

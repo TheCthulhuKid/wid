@@ -54,9 +54,16 @@ def upgrade_step(step: Callable[[SaveData], SaveData], data: SaveData, version: 
         raise ValueError(f"This file could not be upgraded from save format {version}.") from error
 
 
+# The longest session name a save holds.
+NAME_MAX = 100
+SessionName = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=NAME_MAX)
+]
+
+
 class SavedSession(FrozenModel):
     version: Literal[2] = 2
-    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+    name: SessionName
     session: RollSession
     draft: RollRequest
     notes: str = ""
@@ -182,11 +189,7 @@ class SavedSession(FrozenModel):
             raise ValueError("Reroll selection is outside the current result")
 
     def save(self, path: Path, *, overwrite: bool = False) -> None:
-        write_text(session_file_path(path), self.model_dump_json(indent=2), overwrite=overwrite)
-
-    @classmethod
-    def load(cls, path: Path) -> Self:
-        return cls.model_validate_json(session_file_path(path).read_text(encoding="utf-8"))
+        write_text(path, self.model_dump_json(indent=2), overwrite=overwrite)
 
 
 class Recovery(FrozenModel):

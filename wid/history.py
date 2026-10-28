@@ -82,8 +82,9 @@ class HistoryEntry(FrozenModel):
 def history_statistics(entries: Sequence[HistoryEntry]) -> str:
     """How the dice have fallen: each test's dice as first rolled, and how big the pools were.
 
-    Only new tests count. A reroll's entry repeats the dice it kept, and bonuses and undos repeat
-    a whole result, so counting those would count the same dice twice. Empty with no rolls yet.
+    Only new tests count, and an undone test still counts as first rolled. A reroll's entry
+    repeats the dice it kept, and bonuses and undos repeat a whole result, so counting those would
+    count the same dice twice. Empty with no rolls yet.
     """
     rolls = [entry.result for entry in entries if entry.action == ROLL_ACTION and entry.result]
     if not rolls:

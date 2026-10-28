@@ -11,9 +11,12 @@ def package_version() -> str:
 
 
 def port_number(text: str) -> int:
-    port = int(text)
-    if not 0 <= port <= 65535:
-        raise argparse.ArgumentTypeError(f"{port} is not a port (use 0 to 65535)")
+    try:
+        port = int(text)
+    except ValueError:
+        port = None
+    if port is None or not 0 <= port <= 65535:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a port (use 0 to 65535)")
     return port
 
 

@@ -58,6 +58,9 @@ function swap(html) {
   // A question from the game (replace a file, discard a game) opens as a modal dialog.
   const ask = sheet().querySelector("dialog[data-ask]");
   if (ask) {
+    // Cancel or Escape removes it, so its carried fields (such as an upload) are not sent along
+    // with every later action.
+    ask.addEventListener("close", () => ask.remove());
     ask.showModal();
     return;
   }
@@ -87,13 +90,14 @@ async function upload(file) {
 // Selects and boxes marked data-action send the sheet as soon as they change.
 document.addEventListener("change", (event) => {
   const control = event.target;
-  if (control.dataset.upload !== undefined && control.files.length) {
-    upload(control.files[0]);
-    return;
-  }
-  if (!control.dataset.action || !sheet().contains(control)) return;
+  const file = control.dataset.upload !== undefined ? control.files[0] : undefined;
+  if (!file && (!control.dataset.action || !sheet().contains(control))) return;
   if (pending) {
     missed = true;
+    return;
+  }
+  if (file) {
+    upload(file);
     return;
   }
   const data = new FormData(sheet());
