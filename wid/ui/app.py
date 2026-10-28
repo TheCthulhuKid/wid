@@ -72,6 +72,7 @@ from wid.ui.widgets import (
     RollerGroup,
     RollOptions,
     SacrificeButton,
+    SacrificeItemButton,
     SessionFile,
     SessionName,
     StandingTrack,
@@ -353,6 +354,7 @@ class RollerApp(SessionActions, BaseApp):
         for kind in BonusKind:
             self.query_one(f"#apply-{kind}", Button).disabled = not self.game.bonus_available(kind)
         self.update_tech_controls()
+        self.update_resource_controls()
 
     def selected_dice(self) -> set[int]:
         return {box.index for box in self.query(RerollDie) if box.value}
@@ -395,6 +397,9 @@ class RollerApp(SessionActions, BaseApp):
         with self.prevent(Input.Changed):
             crafted.value = self.session.bonuses.crafted_item
         self.query_one("#lose-crafted-item", Button).disabled = not self.session.item_crafted
+        for button in self.query(SacrificeItemButton):
+            button.display = pool is not None
+            button.disabled = not getattr(self.session.bonuses, button.kind).strip()
 
     def update_tech_controls(self) -> None:
         """Show one row per Tech slot; Use needs a roll, and both buttons a named, working piece."""
@@ -519,6 +524,11 @@ class RollerApp(SessionActions, BaseApp):
         if effect is not None:
             self.act(lambda: self.game.spend_resources(effect))
 
+    def spend_on_barricade(self, build: bool) -> None:
+        spent = self.query_one("#barricade-spend", Select).value
+        action = self.game.build_barricade if build else self.game.strengthen_barricade
+        self.act(lambda: action(spent))
+
     def recover_after(self) -> None:
         difficulty = self.query_one("#recovery-difficulty", Select).value
         self.act(lambda: self.game.recover_after(difficulty))
@@ -591,6 +601,7 @@ TYPED_BUTTONS: dict[type[Button], Callable[[RollerApp, Button], None]] = {
     BonusButton: lambda app, button: app.apply_bonus(button.kind),
     TechUseButton: lambda app, button: app.apply_tech(button.index),
     SacrificeButton: lambda app, button: app.act(lambda: app.game.sacrifice_tech(button.index)),
+    SacrificeItemButton: lambda app, button: app.act(lambda: app.game.sacrifice_item(button.kind)),
 }
 
 # The game's actions in the command palette, beside the buttons that run the same handlers.
@@ -620,4 +631,6 @@ APP_BUTTONS: dict[str, Callable[[RollerApp], None]] = {
     "spend-resources": RollerApp.ask_spend_resources,
     "gain-corruption": RollerApp.gain_corruption,
     "recover": RollerApp.recover_after,
+    "build-barricade": lambda app: app.spend_on_barricade(build=True),
+    "strengthen-barricade": lambda app: app.spend_on_barricade(build=False),
 }

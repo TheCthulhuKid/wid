@@ -4,8 +4,10 @@ from random import Random
 import pytest
 from helpers import ScriptedRandom, change_genre, click, start_game, text
 from pydantic import ValidationError
+from textual.widgets import Input
 
 from wid.formatting import resources_reminder, spend_summary
+from wid.game import Game
 from wid.profiles import Genre
 from wid.rolls import BonusKind, ResourceEffect, ResourceSpend, RollRequest, StrainTracker
 from wid.ui.app import RollerApp
@@ -98,6 +100,39 @@ def test_reminder_only_for_this_kit_with_extra_hits(full_pool, session_factory):
     assert resources_reminder(core.roll(RollRequest(), rng=ScriptedRandom([6] * 4))) == ""
 
 
+def test_barricades_cost_resources_and_a_sacrificed_item_gives_three():
+    game = Game()
+    game.change_kit(KIT)
+    # Endurance 2 and Charity 3, so the pool starts at 3.
+    game.start_game((1, 2, 3))
+    assert (
+        game.build_barricade(2) == "Built a barricade of strength 1 for 2 Resources: 1 in the pool."
+    )
+    with pytest.raises(ValueError, match="fewer than 1 Resources"):
+        game.strengthen_barricade(1)
+    game.session.adjust_resources(4)
+    with pytest.raises(ValueError, match="at least 2 Resources, your Endurance"):
+        game.build_barricade(1)
+    assert game.build_barricade(4).startswith("Built a barricade of strength 3 for 4 Resources")
+    game.session.adjust_resources(3)
+    assert game.strengthen_barricade(2) == (
+        "Strengthened the barricade by 2 for 2 Resources: 2 in the pool."
+    )
+    game.rename("bonus", BonusKind.APPROPRIATE_ITEM, "Crowbar")
+    assert game.sacrifice_item(BonusKind.APPROPRIATE_ITEM) == (
+        "Sacrificed Appropriate Item Crowbar: Resources +3: 5 in the pool."
+    )
+    assert game.session.bonuses.appropriate_item == ""
+    game.rename("bonus", BonusKind.INAPPROPRIATE_ITEM, "Spoon")
+    assert game.sacrifice_item(BonusKind.INAPPROPRIATE_ITEM).endswith(
+        "Resources +1: 6 in the pool. The pool holds at most 6."
+    )
+    with pytest.raises(ValueError, match="Name the item"):
+        game.sacrifice_item(BonusKind.APPROPRIATE_ITEM)
+    assert game.undo() == "Undid the last sacrifice."
+    assert game.session.bonuses.inappropriate_item == "Spoon"
+
+
 @pytest.mark.ui
 def test_resource_controls_spend_and_roll_one_die():
     async def scenario():
@@ -122,8 +157,12 @@ def test_resource_controls_spend_and_roll_one_die():
             assert str(app.history[-1]).startswith("Spent 6 Resources: craft an item")
             await click(app, pilot, "#roll-d6")
             assert str(app.history[-1]) == "Rolled 1d6: 4."
+            app.query_one("#name-appropriate_item", Input).value = "Crowbar"
+            await click(app, pilot, "#sacrifice-appropriate_item")
+            assert text(app, "#resource-count") == "6 / 6"
             await change_genre(app, pilot, Genre.CORE)
             assert not app.query_one("#resource-field").display
             assert not app.query_one("#crafted-row").display
+            assert not app.query_one("#sacrifice-appropriate_item").display
 
     asyncio.run(scenario())

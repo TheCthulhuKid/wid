@@ -274,6 +274,13 @@ def resources_notice(amount: int, pool: int) -> str:
     return f"Resources {amount:+d}: {pool} in the pool."
 
 
+def resources_gained(gained: int, wanted: int, pool: int) -> str:
+    """A gain the pool may have cut short, such as ``Resources +1: 6 in the pool. The pool
+    holds at most 6.``"""
+    text = resources_notice(gained, pool)
+    return f"{text} The pool holds at most {RESOURCES_MAX}." if gained < wanted else text
+
+
 def recovery_notice(difficulty: Difficulty, change: str) -> str:
     """History line for recovery after a Danger, ``change`` being what the kit gave back."""
     return f"Recovery after a {difficulty.label} Danger — {change}"

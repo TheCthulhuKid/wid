@@ -129,6 +129,13 @@ press **Spend 6 Resources** and choose one effect; the pool then resets to your 
 After a Danger is overcome, choose its difficulty in **Danger** and press **Recover** to take
 the Resources the kit gives for it instead of healing; a full pool keeps what does not fit.
 
+During a confrontation, choose **Resources to spend**, then press **Build barricade** (it
+costs your Endurance rank for strength 1, and each Resource beyond that adds 1) or press
+**Strengthen barricade** (each Resource adds 1). The history notes the strength; the GM keeps
+the barricade itself. The pool never drops below 1, so a build it cannot pay is refused.
+**Sacrifice** beside a named item gives it up for 3 Resources; a crafted item frees its slot,
+as **Lose** does.
+
 **Changing kit.** A kit lasts the whole game, so picking another kit in **Genre kit** starts a
 new game: the character, names, strain, history, notes, session name and file path are all
 cleared. You are asked first if there is anything unsaved. Set the ranks and press

@@ -136,6 +136,16 @@ class ManifestationName(Input):
         self.index = index
 
 
+class SacrificeItemButton(Button):
+    """Gives up the item ``kind`` for Resources, in This Isn't Happening."""
+
+    def __init__(self, kind: BonusKind, **kwargs):
+        super().__init__(
+            "Sacrifice", id=f"sacrifice-{kind}", tooltip="Give the item up for Resources", **kwargs
+        )
+        self.kind = kind
+
+
 class SacrificeButton(Button):
     """Drops the Tech piece at ``index`` to 0 strength."""
 
@@ -151,6 +161,8 @@ class SacrificeButton(Button):
 
 # Muscle, which sets the number of Tech slots, is ranked 1 to 3.
 TECH_SLOTS = 3
+# What a turn can spend on a barricade: the pool less the 1 it keeps.
+BARRICADE_SPENDS = range(1, RESOURCES_MAX)
 
 
 # The widest row any kit has; the boxes beyond a kit's own are hidden.
@@ -411,6 +423,16 @@ class KitControls(Vertical):
                 yield Button(
                     f"Spend {RESOURCES_MAX} Resources", id="spend-resources", variant="primary"
                 )
+            yield Label("Resources to spend")
+            with Horizontal(id="barricade-spend-row"):
+                yield Select(
+                    [(str(spent), spent) for spent in BARRICADE_SPENDS],
+                    value=1,
+                    allow_blank=False,
+                    id="barricade-spend",
+                )
+                yield Button("Build barricade", id="build-barricade")
+                yield Button("Strengthen barricade", id="strengthen-barricade")
         with Vertical(id="corruption-field", classes="field"):
             yield Label(id="corruption-status")
             with Horizontal(id="corruption-row"):
@@ -466,6 +488,7 @@ class ItemsGroup(Vertical):
                         yield Label(label)
                         yield BonusName(kind, placeholder=f"{label} name")
                     yield BonusButton("+1 value", kind, variant="primary", disabled=True)
+                    yield SacrificeItemButton(kind)
             with Horizontal(classes="named-bonus", id="crafted-row"):
                 with Vertical(classes="field"):
                     yield Label(BONUS_LABELS[BonusKind.CRAFTED_ITEM])
@@ -477,6 +500,7 @@ class ItemsGroup(Vertical):
                 yield BonusButton(
                     "+1 value", BonusKind.CRAFTED_ITEM, variant="primary", disabled=True
                 )
+                yield SacrificeItemButton(BonusKind.CRAFTED_ITEM)
                 yield Button("Lose", id="lose-crafted-item", disabled=True)
         with Vertical(id="tech-controls"):
             for index in range(TECH_SLOTS):

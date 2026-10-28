@@ -72,6 +72,8 @@ RANKS = range(1, RANK_MAX + 1)
 SCARED_MAX = 3
 RESOURCES_MIN = 1
 RESOURCES_MAX = 6
+# This Isn't Happening: what a sacrificed item is worth.
+SACRIFICE_RESOURCES = 3
 
 
 def roll_d6(rng: Random) -> int:
@@ -574,6 +576,39 @@ class RollSession(BaseModel):
         gained = min(amount, RESOURCES_MAX - pool)
         self.resources = pool + gained
         return gained
+
+    def spend_on_barricade(self, spent: int, *, build: bool) -> int:
+        """Spend Resources on a barricade and return the strength built or added.
+
+        Building costs the Endurance rank for strength 1 and 1 more per Resource beyond it;
+        strengthening adds 1 per Resource. The pool never drops below ``RESOURCES_MIN``.
+        """
+        spent = TypeAdapter(Annotated[int, Field(strict=True, ge=1)]).validate_python(spent)
+        pool = self._pool()
+        if pool - spent < RESOURCES_MIN:
+            raise ValueError(f"Spending {spent} would leave fewer than {RESOURCES_MIN} Resources.")
+        strength = spent
+        if build:
+            cost = self.attribute_rank("Endurance")
+            if spent < cost:
+                raise ValueError(f"A barricade costs at least {cost} Resources, your Endurance.")
+            strength = 1 + spent - cost
+        self.resources = pool - spent
+        return strength
+
+    def sacrifice_item(self, kind: BonusKind) -> int:
+        """Give up the named item for ``SACRIFICE_RESOURCES``; returns what the pool took."""
+        kind = TypeAdapter(BonusKind).validate_python(kind)
+        self._pool()
+        if kind == BonusKind.EXPERTISE:
+            raise ValueError("Expertise is not an item to sacrifice.")
+        if not getattr(self.bonuses, kind).strip():
+            raise ValueError("Name the item before sacrificing it.")
+        if kind == BonusKind.CRAFTED_ITEM:
+            self.lose_crafted_item()
+        else:
+            self.bonuses = self.bonuses.model_copy(update={kind.value: ""})
+        return self.gain_resources(SACRIFICE_RESOURCES)
 
     def recover_strain(self, points: int) -> int:
         """Clear up to ``points`` of the newest strain; returns how many boxes were cleared."""

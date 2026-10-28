@@ -78,6 +78,9 @@ SCREEN_LABELS = [
     "Hits spent",
     "Task done",
     "Recover",
+    "Resources to spend",
+    "Build barricade",
+    "Strengthen barricade",
 ]
 
 KIT_NAMES = [

@@ -24,6 +24,7 @@ from wid.formatting import (
     BONUS_LABELS,
     check_summary,
     recovery_notice,
+    resources_gained,
     resources_notice,
     sheet_lines,
     spend_summary,
@@ -33,7 +34,7 @@ from wid.formatting import (
 from wid.history import ROLL_ACTION, HistoryEntry, history_statistics
 from wid.profiles import PROFILES, Genre, Recovers, WiDProfile
 from wid.rolls import (
-    RESOURCES_MAX,
+    SACRIFICE_RESOURCES,
     SCARED_MAX,
     BonusKind,
     PowerMode,
@@ -619,13 +620,34 @@ class Game(BaseGame):
         with self.undoable("recovery"):
             if self.profile.recovers == Recovers.RESOURCES:
                 gained = self.session.gain_resources(amount)
-                change = resources_notice(gained, self.session.resources)
-                if gained < amount:
-                    change += f" The pool holds at most {RESOURCES_MAX}."
+                change = resources_gained(gained, amount, self.session.resources)
             else:
                 cleared = self.session.recover_strain(amount)
                 change = strain_notice(f"cleared {cleared} strain", self.session.strain)
         return self.notice(recovery_notice(difficulty, change))
+
+    def build_barricade(self, spent: int) -> str:
+        with self.undoable("barricade"):
+            strength = self.session.spend_on_barricade(spent, build=True)
+        return self.notice(
+            f"Built a barricade of strength {strength} for {spent} Resources: "
+            f"{self.session.resources} in the pool."
+        )
+
+    def strengthen_barricade(self, spent: int) -> str:
+        with self.undoable("barricade"):
+            strength = self.session.spend_on_barricade(spent, build=False)
+        return self.notice(
+            f"Strengthened the barricade by {strength} for {spent} Resources: "
+            f"{self.session.resources} in the pool."
+        )
+
+    def sacrifice_item(self, kind: BonusKind) -> str:
+        name = getattr(self.session.bonuses, kind).strip()
+        with self.undoable("sacrifice"):
+            gained = self.session.sacrifice_item(kind)
+        change = resources_gained(gained, SACRIFICE_RESOURCES, self.session.resources)
+        return self.notice(f"Sacrificed {BONUS_LABELS[kind]} {name}: {change}")
 
     def lose_crafted_item(self) -> str:
         with self.undoable("lost crafted item"):

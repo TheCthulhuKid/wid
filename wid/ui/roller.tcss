@@ -76,7 +76,11 @@ Checkbox { width: 1fr; height: auto; }
 .named-bonus .field { width: 1fr; }
 .named-bonus Button { width: 10; min-width: 0; margin: 1 0 0 1; }
 .named-bonus PowerToggle { width: 13; margin: 1 0 0 1; }
-.named-bonus SacrificeButton { width: 13; }
+.named-bonus SacrificeButton, .named-bonus SacrificeItemButton { width: 13; }
+#barricade-spend-row { height: 3; }
+#barricade-spend { width: 8; }
+#barricade-spend-row Button { width: auto; min-width: 0; margin-left: 1; }
+.short #barricade-spend-row { height: 1; }
 #feedback { color: $warning; max-height: 5; overflow-y: auto; }
 #pool, #summary, #resources { margin: 1 0; }
 #pool { margin: 0; }

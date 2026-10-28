@@ -25,6 +25,8 @@ What changed in each release of wid, newest first. The format follows
   with the scene and undoable.
 - **Recover** after a Danger: choose its difficulty and Heckboy clears the strain its kit gives
   back, or This Isn't Happening gains the Resources.
+- This Isn't Happening: **Build barricade** and **Strengthen barricade** spend Resources and note
+  the strength, and **Sacrifice** beside an item gives it up for 3 Resources.
 
 ### Changed
 

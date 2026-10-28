@@ -177,6 +177,7 @@ def sheet_context(
         "standing_labels": STANDING_LABELS,
         "resources_min": RESOURCES_MIN,
         "resources_max": RESOURCES_MAX,
+        "barricade_spends": range(1, RESOURCES_MAX),
         "scared_max": SCARED_MAX,
         "ranks": RANKS,
         "corruption_amounts": CORRUPTION_AMOUNTS,

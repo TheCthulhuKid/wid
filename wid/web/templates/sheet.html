@@ -134,6 +134,13 @@
           </label>
           <button formaction="/actions/spend-resources" {% if session.resources != resources_max %}disabled{% endif %}>Spend</button>
         </div>
+        <div class="row">
+          <label class="field narrow">Resources to spend
+            <select name="barricade-spend">{% for spent in barricade_spends %}<option>{{ spent }}</option>{% endfor %}</select>
+          </label>
+          <button formaction="/actions/build-barricade">Build barricade</button>
+          <button formaction="/actions/strengthen-barricade">Strengthen barricade</button>
+        </div>
       </div>
       {% endif %}
 
@@ -171,6 +178,10 @@
         </label>
         <button formaction="/actions/apply-bonus" name="kind" value="{{ kind }}"
                 {% if not game.bonus_available(kind) %}disabled{% endif %}>+1 value</button>
+        {% if kit.has_resources %}
+        <button formaction="/actions/sacrifice-item" name="kind" value="{{ kind }}"
+                {% if not session.bonuses[kind.value].strip() %}disabled{% endif %}>Sacrifice</button>
+        {% endif %}
       </div>
       {% endfor %}
       {% if kit.has_resources %}
@@ -181,6 +192,8 @@
         </label>
         <button formaction="/actions/apply-bonus" name="kind" value="crafted_item"
                 {% if not game.bonus_available(BonusKind.CRAFTED_ITEM) %}disabled{% endif %}>+1 value</button>
+        <button formaction="/actions/sacrifice-item" name="kind" value="crafted_item"
+                {% if not session.bonuses.crafted_item.strip() %}disabled{% endif %}>Sacrifice</button>
         <button formaction="/actions/lose-crafted-item" {% if not session.item_crafted %}disabled{% endif %}>Lose</button>
       </div>
       {% endif %}
