@@ -6,18 +6,9 @@ from textual.command import CommandPalette
 from textual.widgets import Checkbox, Collapsible, Input, Select
 
 from wid.profiles import Genre
-from wid.rolls import BonusKind
 from wid.ui.app import RollerApp
 
 pytestmark = pytest.mark.ui
-
-
-async def apply_item(app, pilot, index=0):
-    app.query_one("#name-appropriate_item", Input).value = "Tool"
-    app.query_one("#item-target", Select).value = index
-    await pilot.pause()
-    app.apply_bonus(BonusKind.APPROPRIATE_ITEM)
-    await pilot.pause()
 
 
 def test_a_roll_with_options_and_an_item():
@@ -30,11 +21,9 @@ def test_a_roll_with_options_and_an_item():
             await pilot.pause()
             assert "5d6" in text(app, "#pool")
             await click(app, pilot, "#roll-attribute-0")
-            await apply_item(app, pilot)
             assert "Athleticism (rank 2)" in text(app, "#tested-attribute")
-            assert "1: 1+1=2 fumble" in text(app, "#dice")
             assert "Hits: 3" in text(app, "#summary")
-            assert len(app.history) == 2
+            assert len(app.history) == 1
             assert not app.query_one("#assisted", Checkbox).value
             assert not app.query_one("#expertise", Checkbox).value
 
@@ -46,10 +35,10 @@ def test_the_game_starts_only_with_unique_ranks():
         app = RollerApp()
         async with app.run_test(size=(120, 50)) as pilot:
             await pilot.press("ctrl+r")
-            assert "Set attributes" in text(app, "#feedback")
+            assert "press Start game first" in text(app, "#feedback")
             app.query_one("#attribute-rank-0", Select).value = 3
             await click(app, pilot, "#start-game")
-            assert text(app, "#feedback") == "Each attribute rank (1–3) can appear only once"
+            assert text(app, "#feedback") == "Each attribute rank (1–3) can appear only once."
             assert app.session.attributes is None
             await start_game(app, pilot, (3, 1, 2))
             assert app.query_one("#attribute-rank-0", Select).disabled

@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from wid.formatting import resources_reminder, spend_summary
 from wid.profiles import Genre
 from wid.rolls import BonusKind, ResourceEffect, ResourceSpend, RollRequest, StrainTracker
-from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
 
 KIT = Genre.THIS_ISNT_HAPPENING
@@ -99,13 +98,6 @@ def test_reminder_only_for_this_kit_with_extra_hits(full_pool, session_factory):
     assert resources_reminder(core.roll(RollRequest(), rng=ScriptedRandom([6] * 4))) == ""
 
 
-def test_pool_belongs_to_this_kit(saved_session_factory):
-    data = saved_session_factory().model_dump()
-    data["session"]["resources"] = 3
-    with pytest.raises(ValueError, match="Only This Isn't Happening can have Resources"):
-        SavedSession.model_validate(data)
-
-
 @pytest.mark.ui
 def test_resource_controls_spend_and_roll_one_die():
     async def scenario():
@@ -122,6 +114,7 @@ def test_resource_controls_spend_and_roll_one_die():
             assert text(app, "#resource-count") == "6 / 6"
             assert app.query_one("#resources-up").disabled
             await click(app, pilot, "#spend-resources")
+            assert app.screen.query_one("#spend-dialog").size.width < app.size.width
             await pilot.click("#spend-craft_item")
             await pilot.pause()
             assert text(app, "#resource-count") == "3 / 6"

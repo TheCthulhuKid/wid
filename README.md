@@ -1,7 +1,8 @@
 # WiD Dice Roller
 
-An unofficial dice roller for **[We're in Danger](https://thelollygaggers.com/were-in-danger/)**. It rolls your tests, keeps track of strain and wounds,
-applies items and expertise, and saves your character and game so you can pick up next session.
+An unofficial dice roller for **[We're in Danger](https://thelollygaggers.com/were-in-danger/)**.
+It rolls your tests, keeps track of strain and wounds, applies items and expertise, and saves your
+character and game so you can pick up next session.
 
 ## How to use it
 
@@ -18,7 +19,7 @@ wid runs in a terminal, or in your web browser with `wid --web` (it stays on you
 2. Unzip it anywhere.
 3. Open the folder and run `wid.exe`, best in **Windows Terminal** (double-clicking works too).
    To play in your browser instead, run `.\wid.exe --web` in that folder.
-4. To open a saved game straight away, run `.\wid.exe game.json`, or right-click the save,
+4. To open a saved session straight away, run `.\wid.exe game.json`, or right-click the save,
    choose **Open with** and pick `wid.exe`.
 
 Windows may say "Windows protected your PC", because the program is not code-signed. Choose
@@ -34,7 +35,7 @@ beside the settings, and offers it back if wid closed without a save.
 1. Download `wid-<version>-linux-x86_64.tar.gz` or `wid-<version>-macos-arm64.tar.gz` (Apple
    silicon) from the Releases page.
 2. Unpack it with `tar -xzf <file>` and run `./wid` in the new folder from a terminal, or
-   `./wid --web` for the browser. `./wid game.json` opens a saved game straight away.
+   `./wid --web` for the browser. `./wid game.json` opens a saved session straight away.
 
 macOS blocks the program the first time because it is not signed by Apple: run
 `xattr -d com.apple.quarantine wid` in the folder, or choose **Open Anyway** under System
@@ -45,4 +46,4 @@ explains checking the `.sha256` file.
 ## Running from Python and developers
 
 Running from Python, building a release, the project layout, and the file formats are in
-[DEVELOPING.md](DEVELOPING.md).
+[DEVELOPING.md](DEVELOPING.md). What changed in each release is in [CHANGELOG.md](CHANGELOG.md).

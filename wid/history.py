@@ -34,17 +34,17 @@ class HistoryEntry(FrozenModel):
     @model_validator(mode="after")
     def validate_kind(self) -> Self:
         if bool(self.notice) == (self.result is not None):
-            raise ValueError("History entry needs either a notice or a result")
+            raise ValueError("History entry needs either a notice or a result.")
         if self.result is None:
             self.reject_action_fields()
         elif not self.action:
-            raise ValueError("History entry for a result needs an action")
+            raise ValueError("History entry for a result needs an action.")
         return self
 
     def reject_action_fields(self) -> None:
         for name, field in type(self).model_fields.items():
             if name != "notice" and getattr(self, name) != field.default:
-                raise ValueError(f"A notice cannot set {name}")
+                raise ValueError(f"A notice cannot set {name}.")
 
     def __str__(self) -> str:
         result = self.result
@@ -82,8 +82,9 @@ class HistoryEntry(FrozenModel):
 def history_statistics(entries: Sequence[HistoryEntry]) -> str:
     """How the dice have fallen: each test's dice as first rolled, and how big the pools were.
 
-    Only new tests count. A reroll's entry repeats the dice it kept, and bonuses and undos repeat
-    a whole result, so counting those would count the same dice twice. Empty with no rolls yet.
+    Only new tests count, and an undone test still counts as first rolled. A reroll's entry
+    repeats the dice it kept, and bonuses and undos repeat a whole result, so counting those would
+    count the same dice twice. Empty with no rolls yet.
     """
     rolls = [entry.result for entry in entries if entry.action == ROLL_ACTION and entry.result]
     if not rolls:

@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from helpers import ScriptedRandom, reveal, start_game, text
+from helpers import ScriptedRandom, collapsed, reveal, start_game, text
 from textual.widgets import Button, RichLog, Select
 
 from wid.ui.app import RollerApp
@@ -14,6 +14,10 @@ def test_controls_line_up_and_fit_the_panel(size):
     async def scenario():
         app = RollerApp()
         async with app.run_test(size=size) as pilot:
+            # A short terminal uses one-row controls and starts with its sections folded.
+            short = size == (80, 24)
+            assert (app.has_class("short"), app.query_one("#fear").compact) == (short, short)
+            assert (collapsed(app, "strain"), collapsed(app, "items")) == (short, short)
             configuration = app.query_one("#configuration")
             output = app.query_one("#output")
             assert abs(configuration.region.width - 2 * output.region.width) <= 2

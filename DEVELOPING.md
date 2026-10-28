@@ -15,10 +15,10 @@ wid
 `wid --version` shows the installed version. It comes from the latest git tag: `v0.2.0`
 gives `0.2.0`, and commits after a tag give a dev version such as `0.2.1.dev3+gabc1234`
 (with a date added while there are uncommitted changes). Nobody edits a version by hand.
-If your shell cannot find `wid`, run
-`uv tool update-shell` and restart it. The installed command is a separate copy of the
-checkout: after updating, rebuild it with `uv tool install --force --reinstall .`
-(`--reinstall` avoids a cached build; add `--offline` when everything is cached).
+If your shell cannot find `wid`, run `uv tool update-shell` and restart it. The installed
+command is a separate copy of the checkout: after updating, rebuild it with
+`uv tool install --force --reinstall .` (`--reinstall` avoids a cached build; add `--offline`
+when everything is cached).
 
 ## Develop
 
@@ -26,7 +26,7 @@ checkout: after updating, rebuild it with `uv tool install --force --reinstall .
 uv sync --locked --group dev
 uv run wid                 # or .venv/bin/python -m wid
 uv run wid --web           # the browser version: 127.0.0.1:8765 or a free port
-uv run pytest              # a worker per core: about 60 s on 16 cores, 4 s with -m "not ui"
+uv run pytest              # a worker per core: about 60 s on 16 cores, 5 s with -m "not ui"
 uv run pytest --cov        # as CI runs it: fails below 80% coverage of wid/
 uv run ruff check .
 uv run ruff format --check .
@@ -34,12 +34,12 @@ uv run ruff format --check .
 
 Tests run offline and headless (Textual's test runner). They cover the usual path of each
 feature, one domain test and, where there is a screen, one app test, rather than every edge
-case. UI tests click through `click` and `reveal` in `tests/helpers.py`, which wait until a
-widget has settled on screen. Every test that starts the app carries the `ui` marker
-(`pytestmark` for a whole module, `@pytest.mark.ui` otherwise), so mark a new one too. Shared
-helpers live in `tests/helpers.py`, never in another test module. Shared fixtures are in
-`tests/conftest.py`; save tests use `tmp_path`, and an autouse fixture points
-`XDG_CONFIG_HOME` at a temporary directory so no test touches your real settings.
+case. UI tests start the app with `run_app` and click through `click` and `reveal` in
+`tests/helpers.py`, which wait until a widget has settled on screen. Every test that starts the
+app carries the `ui` marker (`pytestmark` for a whole module, `@pytest.mark.ui` otherwise), so
+mark a new one too. Shared helpers live in `tests/helpers.py`, never in another test module.
+Shared fixtures are in `tests/conftest.py`; save tests use `tmp_path`, and an autouse fixture
+points `XDG_CONFIG_HOME` at a temporary directory so no test touches your real settings.
 
 ## Release builds
 
@@ -82,9 +82,13 @@ GitHub Actions:
   release, which you publish yourself; the file names, `wid --version` and the Windows file
   properties all take their version from that tag. Without a tag, the `publish` job is skipped.
 
-To release, tag the commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
-Both workflows check out the full history (`fetch-depth: 0`) so the tag is visible to
-`hatch-vcs`.
+A change a player would notice adds a line under **Unreleased** in [CHANGELOG.md](CHANGELOG.md),
+in the same change. To release, rename **Unreleased** to the version and date (such as
+`## [0.5.0] - 2026-11-02`), add an empty **Unreleased** above it and the compare links at the
+end, then tag that commit and push the tag: `git tag v0.5.0 && git push origin v0.5.0`. The
+`publish` job takes the draft release's notes from that version's section
+(`release/changelog_notes.py`) and stops if there is none. Both workflows check out the full
+history (`fetch-depth: 0`) so the tag is visible to `hatch-vcs`.
 
 ## Project structure
 
@@ -92,7 +96,7 @@ Both workflows check out the full history (`fetch-depth: 0`) so the tag is visib
 wid/
 ├── __init__.py         # Lightweight package marker
 ├── __main__.py         # python -m wid
-├── cli.py              # Installed wid command: a save to open, --web, --self-test, --version
+├── cli.py              # wid command: a save, --web, --port, --no-browser, --self-test, --version
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
@@ -105,7 +109,7 @@ wid/
 ├── settings.py         # Remembered preferences in a small JSON file
 ├── ui/
 │   ├── app.py          # Textual front end: shows the game, passes actions to it
-│   ├── sessions.py     # Save, load, export and new-character dialogs
+│   ├── sessions.py     # Save, load, export, new-character, quit and recovery dialogs
 │   ├── widgets.py      # Character, options, session, and result widgets
 │   ├── dialogs.py      # Confirmation screens
 │   ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
@@ -118,11 +122,12 @@ wid/
     ├── view.py         # Colours (light and dark), the notes preview, the template context
     ├── templates/      # Jinja2 page and sheet: one form, each button posts to its action
     └── static/         # sheet.css, and sheet.js: posts the form and swaps the reply in
-.github/workflows/      # ci.yml: tests, ruff; release.yml: Windows, Linux, macOS builds, draft release
-release/                # PyInstaller spec, build scripts, release readmes, Windows smoke test, icon
+.github/workflows/      # ci.yml: tests, ruff; release.yml: builds for each system, draft release
+release/                # PyInstaller spec, build scripts, readmes, smoke test, icon, release notes
 tests/                  # Domain, persistence, headless UI, and launch tests
 HOWTO.md                # How to use the program (for players)
 README.md               # Short overview for players, linking to the how-to
+CHANGELOG.md            # What changed in each release, for players
 ```
 
 Front ends call `Game` (`wid/game.py`), which owns the session, history, roll options,
@@ -162,7 +167,7 @@ random generator's state are not saved, and the theme lives in the settings file
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.
 
-**Recovery file** (JSON): `recovery.json` beside the settings. While the game has unsaved
+**Recovery copy** (JSON): `recovery.json` beside the settings. While the game has unsaved
 changes and has started, `Game.keep_recovery` writes it after every change (the terminal from
 `refresh_sheet`, the browser after each action), in the save format with the typed session name
 and file path beside it. It goes once nothing is unsaved (a save, a load, a new kit) or when
@@ -174,5 +179,6 @@ games running at once take turns in it. A write that fails is reported once and 
 collapsed. They live in `~/.config/wid/settings.json`, `%APPDATA%\wid\settings.json` on
 Windows, or under `$XDG_CONFIG_HOME` when it is set. A missing or invalid file means defaults.
 
-**Exported history** is a Markdown file: a title, the character's name, looks and nature, then
-one numbered section per action with its dice lines in a code block.
+**Exported history** is a Markdown file: a title, a line with the character's name, looks and
+nature, a Sheet section summing up the sheet, the Notes as written, one numbered section per
+action with its dice lines in a code block, then the dice Statistics.

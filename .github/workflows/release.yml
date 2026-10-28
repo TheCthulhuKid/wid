@@ -70,11 +70,18 @@ jobs:
     permissions:
       contents: write
     steps:
+      # For CHANGELOG.md and the script that takes this tag's notes from it.
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           pattern: wid-*
           merge-multiple: true
           path: dist
+
+      # The notes are the tag's section of CHANGELOG.md; a tag without one stops the release here.
+      - name: Take the release notes from the changelog
+        run: python3 release/changelog_notes.py "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.md"
 
       # A draft, so the release is only published when you decide to.
       - name: Attach the files to a draft release
@@ -85,5 +92,6 @@ jobs:
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" dist/* --clobber
           else
-            gh release create "$GITHUB_REF_NAME" dist/* --draft --generate-notes --title "$GITHUB_REF_NAME"
+            gh release create "$GITHUB_REF_NAME" dist/* --draft --title "$GITHUB_REF_NAME" \
+              --notes-file "$RUNNER_TEMP/notes.md"
           fi

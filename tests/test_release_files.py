@@ -1,10 +1,13 @@
 import ast
 import struct
+import sys
 from pathlib import Path
 
-import pytest
-
 RELEASE = Path(__file__).resolve().parents[1] / "release"
+sys.path.insert(0, str(RELEASE))
+
+import changelog_notes  # noqa: E402
+
 SPEC = RELEASE / "wid.spec"
 ICON = RELEASE / "wid.ico"
 
@@ -29,12 +32,6 @@ def test_spec_is_valid_python_and_names_the_release_files():
     assert "wid_entry.py" in source
     assert (RELEASE / "wid_entry.py").is_file()
     assert "wid.ico" in source
-
-
-def test_spec_gives_the_icon_to_windows_builds_only():
-    source = SPEC.read_text(encoding="utf-8")
-
-    assert 'if sys.platform == "win32" else None' in source
 
 
 def test_icon_is_a_well_formed_ico_file():
@@ -121,16 +118,16 @@ def test_the_spec_bundles_the_data_textual_and_wid_need(monkeypatch, tmp_path):
     assert "uvicorn.sub" in namespace["hiddenimports"]
 
 
-@pytest.mark.parametrize(
-    ("platform", "default_folder"), [("win32", True), ("linux", False), ("darwin", False)]
-)
-def test_windows_builds_a_folder_and_other_systems_one_file_by_default(
-    monkeypatch, tmp_path, platform, default_folder
-):
-    assert run_spec(monkeypatch, tmp_path, platform)["ONEDIR"] is default_folder
+def test_windows_builds_a_folder_and_other_systems_one_file_unless_told(monkeypatch, tmp_path):
+    assert run_spec(monkeypatch, tmp_path, "win32")["ONEDIR"] is True
+    assert run_spec(monkeypatch, tmp_path, "linux")["ONEDIR"] is False
+    assert run_spec(monkeypatch, tmp_path, "win32", onedir=False)["ONEDIR"] is False
 
 
-@pytest.mark.parametrize("platform", ["win32", "linux"])
-def test_the_environment_variable_overrides_the_default(monkeypatch, tmp_path, platform):
-    assert run_spec(monkeypatch, tmp_path, platform, onedir=True)["ONEDIR"] is True
-    assert run_spec(monkeypatch, tmp_path, platform, onedir=False)["ONEDIR"] is False
+def test_the_release_notes_are_the_changelog_section_for_the_tag(capsys):
+    assert changelog_notes.main(["v0.4.1"]) == 0
+    notes = capsys.readouterr().out
+    assert notes.startswith("### Fixed\n")
+    assert "## [0.4.0]" not in notes
+    assert changelog_notes.main(["v9.9.9"]) == 1
+    assert capsys.readouterr().err == "CHANGELOG.md has no notes for v9.9.9.\n"

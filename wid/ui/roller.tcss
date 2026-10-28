@@ -79,11 +79,18 @@ Checkbox { width: 1fr; height: auto; }
 #history-statistics { height: auto; }
 #log { height: 1fr; border: solid $secondary; }
 Button { min-width: 14; }
-ConfirmReset, ConfirmSessionAction, LoadGame { align: center middle; background: $background 80%; }
-#confirmation, #load-dialog, #export-dialog {
+ConfirmSessionAction, LoadGame, ExportHistory, SpendResources {
+    align: center middle; background: $background 80%;
+}
+#confirmation, #load-dialog, #export-dialog, #spend-dialog {
     width: 54; max-width: 100%; height: auto; padding: 1 2; border: thick $warning;
 }
-#confirmation Button, #load-dialog Button, #export-dialog Button { width: 1fr; margin-top: 1; }
+#confirmation Button, #load-dialog Button, #export-dialog Button, #spend-dialog Button {
+    width: 1fr; margin-top: 1;
+}
+/* Wide enough for the longest effect on one line; in a short terminal the gaps go to fit. */
+#spend-dialog { width: 72; }
+.short #spend-dialog Button { margin-top: 0; }
 
 /* Short terminals: one-row controls, so the attributes and options fit without scrolling. */
 .short #profile-fields, .short #game-controls { height: 2; }

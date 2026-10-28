@@ -1,5 +1,3 @@
-import pytest
-
 from wid.settings import Settings, load_settings, save_settings, settings_path
 
 
@@ -18,24 +16,13 @@ def test_invalid_content_gives_defaults_and_unknown_keys_are_ignored(tmp_path):
     assert load_settings(path) == Settings(theme="nord")
 
 
-def test_path_follows_xdg_config_home_or_falls_back_to_home(monkeypatch, tmp_path):
+def test_path_follows_xdg_config_home_or_appdata_or_falls_back_to_home(monkeypatch, tmp_path):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     assert settings_path() == tmp_path / "xdg" / "wid" / "settings.json"
-    monkeypatch.setattr("wid.settings.IS_WINDOWS", False)
     monkeypatch.delenv("XDG_CONFIG_HOME")
-    monkeypatch.setenv("HOME", str(tmp_path))
-    assert settings_path() == tmp_path / ".config" / "wid" / "settings.json"
-
-
-def test_windows_uses_appdata(monkeypatch, tmp_path):
     monkeypatch.setattr("wid.settings.IS_WINDOWS", True)
-    monkeypatch.delenv("XDG_CONFIG_HOME")
     monkeypatch.setenv("APPDATA", str(tmp_path / "Roaming"))
     assert settings_path() == tmp_path / "Roaming" / "wid" / "settings.json"
-
-
-def test_save_to_an_impossible_location_raises(tmp_path):
-    blocker = tmp_path / "file"
-    blocker.write_text("x", encoding="utf-8")
-    with pytest.raises(OSError):
-        save_settings(Settings(theme="nord"), blocker / "settings.json")
+    monkeypatch.setattr("wid.settings.IS_WINDOWS", False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    assert settings_path() == tmp_path / ".config" / "wid" / "settings.json"

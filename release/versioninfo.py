@@ -8,7 +8,7 @@ import re
 from importlib.metadata import version
 
 PRODUCT = "wid"
-DESCRIPTION = "A terminal dice roller for We're in Danger"
+DESCRIPTION = "A dice roller for We're in Danger, in the terminal or a browser"
 LANGUAGE_CODE = "040904B0"  # US English, Unicode
 
 

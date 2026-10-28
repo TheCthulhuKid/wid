@@ -42,7 +42,7 @@ class SessionActions:
         if confirmed:
             self.action_save_session(overwrite=True)
         else:
-            self.feedback("Save canceled; existing file unchanged.")
+            self.feedback("Save cancelled; existing file unchanged.")
 
     def action_export_history(self) -> None:
         if self.pending_genre is not None:
@@ -51,7 +51,7 @@ class SessionActions:
         try:
             self.game.require_history()
         except ValueError as error:
-            self.feedback(str(error))
+            self.feedback(player_message(error))
             return
         self.push_screen(ExportHistory(self.game.default_export_path()), self.export_history_path)
 
@@ -70,7 +70,7 @@ class SessionActions:
         if confirmed:
             self.export_history_path(value, overwrite=True)
         else:
-            self.feedback("Export canceled; existing file unchanged.")
+            self.feedback("Export cancelled; existing file unchanged.")
 
     def action_new_character(self) -> None:
         if self.pending_genre is not None:
@@ -86,7 +86,7 @@ class SessionActions:
 
     def finish_new_character(self, confirmed: bool) -> None:
         if not confirmed:
-            self.feedback("New character canceled; current character unchanged.")
+            self.feedback("New character cancelled; current character unchanged.")
             return
         message = self.game.new_character()
         self.show_game()
@@ -111,7 +111,7 @@ class SessionActions:
             self.game.discard_recovery()
             self.exit()
         else:
-            self.feedback("Quit canceled; the game is still open.")
+            self.feedback("Quit cancelled; the game is still open.")
 
     def offer_recovery(self) -> None:
         """On start, offer back the game an earlier run closed without saving."""
@@ -143,7 +143,7 @@ class SessionActions:
         try:
             saved, path = self.game.read_save(value)
         except ValueError as error:
-            self.feedback(str(error))
+            self.feedback(player_message(error))
             return
         if self.game.has_unsaved_state():
             self.push_screen(
@@ -155,7 +155,7 @@ class SessionActions:
 
     def finish_load(self, saved: SavedSession, path: Path, confirmed: bool) -> None:
         if not confirmed:
-            self.feedback("Load canceled; current game unchanged.")
+            self.feedback("Load cancelled; current game unchanged.")
             return
         message = self.game.load(saved, path)
         self.show_game()

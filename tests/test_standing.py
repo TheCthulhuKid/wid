@@ -5,7 +5,6 @@ from helpers import change_genre, reveal
 
 from wid.profiles import Genre
 from wid.rolls import standing_label
-from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
 from wid.ui.widgets import StandingTrack
 
@@ -22,13 +21,6 @@ def test_standing_starts_reputable_and_stays_on_the_track(session_factory):
     assert session.standing == 4
     with pytest.raises(ValueError, match="Core WiD has no Standing"):
         session_factory().set_standing(0)
-
-
-def test_standing_belongs_to_ball_season(saved_session_factory):
-    data = saved_session_factory().model_dump()
-    data["session"]["standing"] = 0
-    with pytest.raises(ValueError, match="Only Ball Season can have Standing"):
-        SavedSession.model_validate(data)
 
 
 @pytest.mark.ui

@@ -28,7 +28,7 @@
     <section class="block character" aria-labelledby="character-title">
       <h2 id="character-title">Character</h2>
       <div class="row details">
-        {% for field, label in (("name", "Name"), ("looks", "Looks"), ("nature", "Nature")) %}
+        {% for field, label in character_labels.items() %}
         <label class="field">{{ label }}
           <input name="character-{{ field }}" value="{{ game.character[field] }}">
         </label>
@@ -56,7 +56,7 @@
       </div>
       <div class="row actions">
         {% if not session.attributes %}
-        <p class="hint">Give each attribute a different rank (1–3), then start.</p>
+        <p class="hint">{{ ranks_hint }}</p>
         <button class="primary" formaction="/actions/start-game">Start game</button>
         {% endif %}
         <button formaction="/actions/new-character">New character</button>
@@ -103,7 +103,7 @@
           <label class="field narrow">Gain
             <select name="corruption-amount">{% for amount in corruption_amounts %}<option>{{ amount }}</option>{% endfor %}</select>
           </label>
-          <button formaction="/actions/gain-corruption">Gain corruption</button>
+          <button formaction="/actions/gain-corruption">Gain Corruption</button>
         </div>
         {% for name in session.manifestations %}
         <label class="field">Manifestation {{ loop.index }}
@@ -134,10 +134,10 @@
       <div class="kit-controls resources">
         <div class="row">
           <span class="field-label">Resources</span>
-          <button formaction="/actions/resources" name="amount" value="-1" aria-label="Lose 1 Resource"
+          <button formaction="/actions/resources" name="amount" value="-1" aria-label="Take 1 from Resources"
                   {% if session.resources is none or session.resources <= resources_min %}disabled{% endif %}>−</button>
           <span class="count">{{ session.resources if session.resources is not none else "—" }} / {{ resources_max }}</span>
-          <button formaction="/actions/resources" name="amount" value="1" aria-label="Gain 1 Resource"
+          <button formaction="/actions/resources" name="amount" value="1" aria-label="Add 1 to Resources"
                   {% if session.resources is none or session.resources >= resources_max %}disabled{% endif %}>+</button>
         </div>
         <div class="row">
@@ -195,7 +195,7 @@
       <p class="hint">{{ tech_line }}</p>
       {% for piece in (session.tech.pieces if session.tech else ()) %}
       <div class="row named">
-        <label class="field grow">Tech {{ loop.index }}, strength {{ piece.strength }}
+        <label class="field grow">{{ tech_slot_label(loop.index0, piece.strength) }}
           <input name="tech-name-{{ loop.index0 }}" value="{{ piece.name }}" placeholder="Empty: name it when you use it">
         </label>
         <button class="primary" formaction="/actions/apply-tech" name="index" value="{{ loop.index0 }}"
@@ -220,15 +220,15 @@
         <span class="boxes">
           {% for index in range(ending - 3, ending + 1) %}
           <label class="box {% if index == ending %}ending{% endif %}">
-            <span class="visually-hidden">{{ "Defeat" if index == strain_endings[-1] else ("Wound" if index == ending else "Strain") }} box {{ index + 1 }}</span>
+            <span class="visually-hidden">{{ strain_box_name(index) }} box {{ index + 1 }}</span>
             <input type="checkbox" data-action="strain-box" data-index="{{ index }}"
                    {% if session.strain.boxes[index] %}checked{% endif %}
                    {% if session.strain.lock_reason(index) %}disabled{% endif %}>
           </label>
           {% endfor %}
         </span>
-        <label class="field grow"><span class="visually-hidden">Name of the {{ "Defeat" if row == 2 else "wound" }}</span>
-          <input name="strain-name-{{ row }}" value="{{ session.strain.names[row] }}" placeholder="{{ 'Defeat' if row == 2 else 'Wound' }}">
+        <label class="field grow"><span class="visually-hidden">Name of the {{ strain_box_name(ending) }}</span>
+          <input name="strain-name-{{ row }}" value="{{ session.strain.names[row] }}" placeholder="{{ strain_box_name(ending) }} name">
         </label>
       </div>
       {% endfor %}
@@ -256,7 +256,7 @@
           <input name="session-path" value="{{ game.path }}" placeholder="/path/to/session.json">
         </label>
         <button class="primary" formaction="/actions/save">Save session</button>
-        <button formaction="/actions/load">Load game</button>
+        <button formaction="/actions/load">Load session</button>
       </div>
       <div class="row named">
         <label class="field grow">Upload a save
@@ -291,14 +291,12 @@
       </li>
       {% endfor %}
     </ol>
-    {% set totals = result.totals() %}
-    <p class="totals"><span class="hit">Hits {{ totals.hits }}</span>{% if totals.expertise_hits %} (expertise {{ totals.expertise_hits }}){% endif %}
-      <span class="miss">Misses {{ totals.misses }}</span> <span class="fumble">Fumbles {{ totals.fumbles }}</span></p>
+    <p class="totals">{% for text, outcome in totals %}<span class="{{ outcome }}">{{ text }}</span>{% endfor %}</p>
     <p class="resources">{{ resources }}</p>
     {% if reminder %}<p class="hint">{{ reminder }}</p>{% endif %}
     {% if kit.has_rerolls %}<button formaction="/actions/reroll">Reroll selected</button>{% endif %}
     {% else %}
-    <p class="empty">Roll an attribute to see the dice here.</p>
+    <p class="empty">{{ no_result_hint }}</p>
     {% endif %}
     <div class="row">
       <button formaction="/actions/roll" title="Roll the last attribute again (Ctrl+R)" {% if not session.attributes %}disabled{% endif %}>Repeat roll</button>

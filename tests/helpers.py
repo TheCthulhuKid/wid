@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from random import Random
 
@@ -7,11 +8,18 @@ from textual.errors import NoWidget
 from textual.widget import Widget
 from textual.widgets import Collapsible, Input, Select, Static, TabbedContent, TabPane
 
-from wid.ui.dialogs import ConfirmReset
+from wid.sessions import SavedSession
+from wid.ui.app import RollerApp
+from wid.ui.dialogs import ConfirmSessionAction
 from wid.web.app import create_app
 
 # The header the browser page sends with every action (see wid/web/app.py).
 PAGE = {"HX-Request": "true"}
+
+
+def read_saved(path) -> SavedSession:
+    """The save file at ``path``, as a load reads it."""
+    return SavedSession.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 class ScriptedRandom(Random):
@@ -22,6 +30,26 @@ class ScriptedRandom(Random):
 
     def randint(self, a, b):
         return next(self.faces)
+
+
+def run_app(scenario, *, size=(100, 40), rng=None, settings_path=None, recovery_path=None):
+    """Start the app headless at ``size`` and run ``scenario(app, pilot)`` once it has settled."""
+
+    async def main():
+        app = RollerApp(rng=rng, settings_path=settings_path, recovery_path=recovery_path)
+        async with app.run_test(size=size) as pilot:
+            await pilot.pause()
+            await scenario(app, pilot)
+
+    asyncio.run(main())
+
+
+def active_tab(app) -> str:
+    return app.query_one("#details", TabbedContent).active
+
+
+def collapsed(app, name: str) -> bool:
+    return app.query_one(f"#{name}-section", Collapsible).collapsed
 
 
 async def reveal(app, pilot, selector: str) -> Widget:
@@ -79,7 +107,7 @@ async def start_game(app, pilot, ranks=None):
 
 
 async def load_game(app, pilot):
-    """Open Load game, check it offers the session path, and load that file."""
+    """Open Load session, check it offers the session path, and load that file."""
     await click(app, pilot, "#load-session")
     assert (
         app.screen.query_one("#load-path", Input).value
@@ -93,8 +121,8 @@ async def change_genre(app, pilot, genre) -> None:
     """Switch the genre kit, confirming the new game if the app asks."""
     app.query_one("#genre", Select).value = genre
     await pilot.pause()
-    if isinstance(app.screen, ConfirmReset):
-        await pilot.click("#confirm-reset")
+    if isinstance(app.screen, ConfirmSessionAction):
+        await pilot.click("#confirm-session")
         await pilot.pause()
 
 

@@ -4,16 +4,22 @@ from markdown_it import MarkdownIt
 
 from wid.formatting import (
     BONUS_LABELS,
+    CHARACTER_LABELS,
     CORRUPTION_AMOUNTS,
+    NO_RESULT_HINT,
     POWER_LABELS,
+    RANKS_HINT,
     SPEND_LABELS,
     corruption_status,
     pool_line,
     resources_line,
     resources_reminder,
     result_text,
+    strain_box_name,
     strain_status,
     strain_summary,
+    summary_parts,
+    tech_slot_label,
     tech_starting_line,
 )
 from wid.game import Game
@@ -115,6 +121,8 @@ def sheet_context(
         "resources": resources,
         "reminder": resources_reminder(result) if result is not None else "",
         "result_text": result_text(result) if result is not None else "",
+        # The totals, each with its outcome for colour; the browser spaces them out instead of "|".
+        "totals": [part for part in summary_parts(result) if part[1]] if result is not None else [],
         "pool": pool_line(game.draft_request(preview=True)),
         "strain_title": strain_summary(session.strain),
         "strain_status": strain_status(session.strain),
@@ -140,4 +148,9 @@ def sheet_context(
         "corruption_amounts": CORRUPTION_AMOUNTS,
         "power_labels": POWER_LABELS,
         "spend_labels": SPEND_LABELS,
+        "character_labels": CHARACTER_LABELS,
+        "ranks_hint": RANKS_HINT,
+        "no_result_hint": NO_RESULT_HINT,
+        "tech_slot_label": tech_slot_label,
+        "strain_box_name": strain_box_name,
     }
