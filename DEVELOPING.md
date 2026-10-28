@@ -99,6 +99,7 @@ wid/
 ├── cli.py              # wid command: a save, --web, --port, --no-browser, --self-test, --version
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
+├── dangers.py          # The GM's Dangers: loadouts, a scene's threshold and activation
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
 ├── game.py             # One sitting: the state and actions every front end drives
 ├── export.py           # Markdown export: the sheet, the notes and the action history

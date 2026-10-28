@@ -2,7 +2,8 @@
 
 from collections.abc import Callable
 
-from wid.profiles import PROFILES
+from wid.dangers import TARGETS, Ability, Activation, Danger, Scene, defending_attribute
+from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     MANIFESTATION_EFFECTS,
     MANIFESTATION_LIMIT,
@@ -364,3 +365,52 @@ SHEET_LINES: tuple[Callable[[RollSession], str], ...] = (
 def sheet_lines(session: RollSession) -> list[str]:
     """The sheet as short lines for an export: ranks, strain, names and the kit's own state."""
     return [text for line in SHEET_LINES if (text := line(session))]
+
+
+# The GM's scene. The rules behind these numbers are the book's.
+NO_DANGER_HINT = "Add a Danger to start the scene."
+LOADOUT_COLUMNS = ("Die", "Ability", "Target", "Attribute")
+
+
+def hits_text(hits: int) -> str:
+    return f"{hits} {'hit' if hits == 1 else 'hits'} to pass"
+
+
+def danger_summary(danger: Danger, index: int, pc_count: int) -> str:
+    """One Danger's line, such as ``Danger 1: Competent Brute — threshold 8, 1 hit to pass``."""
+    return (
+        f"{one_line(danger.label(index))}: {danger.difficulty.label} {danger.danger_class.label} "
+        f"— threshold {danger.threshold(pc_count)}, {hits_text(danger.hits_to_pass)}"
+    )
+
+
+def scene_summary(scene: Scene) -> str:
+    """The combined threshold, what is raised and committed, and the strongest Danger's hits."""
+    if not scene.dangers:
+        return NO_DANGER_HINT
+    text = f"Threshold {scene.threshold}"
+    if scene.raised:
+        text += f" (raised {scene.raised})"
+    text += f", progress {scene.progress} — {hits_text(scene.hits_to_pass)}"
+    if scene.overcome:
+        text += ". Overcome"
+    if scene.hostile:
+        text += ". Dangers fight each other"
+    return text
+
+
+def activation_line(activation: Activation) -> str:
+    """History line for an activation, the three dice in the order they were rolled."""
+    dice = ", ".join(str(die) for die in activation.dice)
+    return (
+        f"Activation ({dice}): {activation.ability.label} — {activation.target}, "
+        f"defending with {activation.attribute}"
+    )
+
+
+def loadout_rows(loadout: tuple[Ability, ...], genre: Genre) -> list[tuple[str, str, str, str]]:
+    """The activation table for a loadout, a row per die under ``LOADOUT_COLUMNS``."""
+    return [
+        (str(die), ability.label, TARGETS[die - 1], defending_attribute(genre, die))
+        for die, ability in enumerate(loadout, start=1)
+    ]
