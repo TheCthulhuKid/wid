@@ -1,4 +1,4 @@
-wid - a terminal dice roller for We're in Danger
+wid - a dice roller for We're in Danger, in the terminal or a browser
 
 HOW TO RUN
   1. Unzip this folder anywhere you like.

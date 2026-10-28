@@ -1,7 +1,7 @@
 [project]
 name = "wid"
 dynamic = ["version"]
-description = "A terminal dice roller for We're in Danger"
+description = "A dice roller for We're in Danger, in the terminal or a browser"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

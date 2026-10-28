@@ -517,7 +517,9 @@ class RollSession(BaseModel):
 
     def configure_attributes(self, ranks: tuple[int, ...]) -> AttributeSetup:
         if self.attributes is not None:
-            raise ValueError("Attributes are fixed until changing genre kit.")
+            raise ValueError(
+                "Attributes are fixed until changing genre kit or starting a new character."
+            )
         candidate = AttributeSetup(profile_id=self.profile_id, ranks=ranks)
         self.attributes = candidate
         if PROFILES[self.profile_id].has_tech:

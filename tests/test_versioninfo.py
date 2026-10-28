@@ -51,6 +51,6 @@ def test_generated_text_is_valid_and_carries_the_product_details():
         "'ProductName', 'wid'",
         "'OriginalFilename', 'wid.exe'",
         "'ProductVersion', '0.1.1.dev3+gabc1234'",
-        '"A terminal dice roller for We\'re in Danger"',
+        '"A dice roller for We\'re in Danger, in the terminal or a browser"',
     ):
         assert expected in text

@@ -1,7 +1,8 @@
 # WiD Dice Roller
 
-An unofficial dice roller for **[We're in Danger](https://thelollygaggers.com/were-in-danger/)**. It rolls your tests, keeps track of strain and wounds,
-applies items and expertise, and saves your character and game so you can pick up next session.
+An unofficial dice roller for **[We're in Danger](https://thelollygaggers.com/were-in-danger/)**.
+It rolls your tests, keeps track of strain and wounds, applies items and expertise, and saves your
+character and game so you can pick up next session.
 
 ## How to use it
 

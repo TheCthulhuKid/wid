@@ -4,9 +4,10 @@ wid is a dice roller and tracker for **We're in Danger**.
 
 ## Start
 
-1. Choose a **Genre kit** (top left). Core WiD is the default.
+1. Choose a **Genre kit** (top left in the terminal, top right in the browser). Core WiD is the
+   default.
 2. Give each attribute a different rank (1, 2 or 3) in the **Character** tab.
-3. Press **Start game**. The ranks are locked until you change kit.
+3. Press **Start game**. The ranks are locked until you change kit or start a new character.
 4. Press **Roll** beside an attribute. The result appears on the right.
 
 **Load session** (next to Start game) opens a saved session instead. **Ctrl+Q** quits, asking
@@ -40,8 +41,9 @@ ready to paste into a chat. In the terminal it goes through the terminal's clipb
 terminals pass on (macOS Terminal does not).
 
 **Undo** (under the result) takes back the last change to the sheet: a roll, a reroll, an item,
-expertise or Tech bonus, strain, Standing, Resources, Corruption or a manifestation. Press it
-again for the one before, up to 50 changes. The history keeps what happened and notes each undo.
+expertise or Tech bonus, New scenario, a sacrificed piece of Tech, strain, Standing, Resources,
+a lost crafted item, Corruption or a manifestation. Press it again for the one before, up to 50
+changes. The history keeps what happened and notes each undo.
 An undone roll is not rolled back into the dice: rolling again gives new numbers. Names typed
 since the change stay, and only undoing a roll brings back the attribute, Assisted, Expertise
 and power it cleared. Loading a game, starting a new character or changing the kit starts with
@@ -84,7 +86,7 @@ power can be used per roll, and **Use** unticks itself after the roll.
 A slot stays empty until you use it, and each one starts at Science + Culture. Tech is used after
 rolling, like an item:
 
-1. Type a name in an empty slot (or pick a piece you named before).
+1. Type a name in an empty slot (or use a slot you named before).
 2. Choose a die in **Apply to die** and press **Use** on that piece.
 
 The die gets the piece's strength, and the piece loses 1 for next time. You can use several pieces
@@ -198,6 +200,9 @@ The browser sheet has the same game controls as the terminal, with these differe
   Markdown to the **History file** box; **Download history** saves it through the browser.
 - **Download save** saves the game through the browser, and **Upload a save** opens a save you
   pick, asking first if you would lose anything unsaved. Neither needs a path typed in.
+- **Preview** is a tick box above the notes: tick it to see them formatted, untick it to edit.
+- **Roll 1d6** sits beside **Repeat roll**.
+- At 6 Resources, choose an effect in **Spend 6 Resources on** and press **Spend**.
 - When something would be replaced or lost, a small box asks first, as in the terminal.
   Closing or reloading the page with unsaved changes asks too.
 - The colours follow your browser's light or dark setting. **Colours** in the title band switches
