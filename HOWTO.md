@@ -9,8 +9,8 @@ wid is a dice roller and tracker for **We're in Danger**.
 3. Press **Start game**. The ranks are locked until you change kit.
 4. Press **Roll** beside an attribute. The result appears on the right.
 
-**Load game** (next to Start game) opens a saved game instead. **Ctrl+Q** quits, asking first if
-anything is unsaved.
+**Load session** (next to Start game) opens a saved session instead. **Ctrl+Q** quits, asking
+first if anything is unsaved.
 
 ## Rolling
 
@@ -100,7 +100,7 @@ to set how many hits a test needs.
 
 **Corruption (Oldheart).** Tick dice in the result, then press **Reroll selected**: each rerolled
 die costs 1 Corruption. For Corruption from anything else, such as a Danger or strain you chose
-to avoid, choose how much in the box beside **Gain corruption** and press it. Corruption never
+to avoid, choose how much in the box beside **Gain Corruption** and press it. Corruption never
 goes down during a scenario. Every gain makes a manifestation check for you: one die per point
 just gained, and a total at or under your new Corruption means a manifestation. The dice and the
 outcome go to the history. Name each manifestation in its box. Use **Add manifestation** for one
@@ -117,7 +117,7 @@ press **Spend 6 Resources** and choose one effect; the pool then resets to your 
 - **+1d6 on the next test** (to confront a Danger or defend against it): the pool line shows the
   extra die until your next roll.
 - **Automatically pass** an obstacle that does not involve a Danger: noted in the history.
-- **Craft an item**: unlocks the **Crafted item** line under **Items**, your third item. Name it
+- **Craft an item**: unlocks the **Crafted Item** line under **Items**, your third item. Name it
   and use it like the others. Press **Lose** if it is lost; that frees the slot to craft again.
 - **Recover 1d6 strain**: rolls the die and unmarks that much of your newest strain. Wounds,
   and strain before a marked wound, stay marked.
@@ -150,7 +150,7 @@ folded away. A wound is not counted as strain.
 - Notes accept Markdown. **Preview** shows it formatted and **Edit** takes you back.
 - **Save session**: enter a session name and a file path, then press the button. You are asked
   before an existing file is replaced.
-- **Load game**: press it and a box asks for the path; it starts with the one from the Session
+- **Load session**: press it and a box asks for the path; it starts with the one from the Session
   tab. You are asked first if you would lose anything unsaved.
 - **Export history**: writes a Markdown file you can read or share: your character, a summary of
   the sheet (ranks, strain, named items and powers, and your kit's Tech, Corruption, Standing or
@@ -194,7 +194,7 @@ The browser sheet has the same game controls as the terminal, with these differe
   tab instead.
 - The dice appear on the right (on a phone, straight after the options for the next test).
   **Repeat roll** or **Ctrl+R** rolls the last attribute again.
-- **Save session** and **Load game** use the **Session file** box. **Export history** writes the
+- **Save session** and **Load session** use the **Session file** box. **Export history** writes the
   Markdown to the **History file** box; **Download history** saves it through the browser.
 - **Download save** saves the game through the browser, and **Upload a save** opens a save you
   pick, asking first if you would lose anything unsaved. Neither needs a path typed in.
@@ -216,7 +216,7 @@ changes every time wid starts.
 | **T** / **I** | Fold or unfold the strain tracker / the items (Tech in Second Contact) |
 | **D** | Pick a colour theme, which is remembered (the default, "danger", is cream and red) |
 | **Ctrl+L** | Show or hide the history log |
-| **Ctrl+P** | Search the commands: Save session, Load game, Undo and more (not over a dialog) |
+| **Ctrl+P** | Search the commands: Save session, Load session, Undo and more (not over a dialog) |
 | **Tab** / **Shift+Tab** | Move between controls |
 | **Ctrl+Q** | Quit (asks first if anything is unsaved) |
 

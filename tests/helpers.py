@@ -85,7 +85,7 @@ async def start_game(app, pilot, ranks=None):
 
 
 async def load_game(app, pilot):
-    """Open Load game, check it offers the session path, and load that file."""
+    """Open Load session, check it offers the session path, and load that file."""
     await click(app, pilot, "#load-session")
     assert (
         app.screen.query_one("#load-path", Input).value

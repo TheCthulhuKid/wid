@@ -13,11 +13,11 @@ from wid.storage import write_text
 def session_file_path(value: str | Path, *, label: str = "session file") -> Path:
     value = str(value).strip()
     if not value:
-        raise ValueError(f"Choose a {label} path")
+        raise ValueError(f"Choose a {label} path.")
     try:
         path = Path(value).expanduser()
     except RuntimeError as error:
-        raise ValueError("Could not determine the path's home directory") from error
+        raise ValueError("Could not determine the path's home directory.") from error
     # Checked first, so a folder is never offered as a file to replace.
     if path.is_dir():
         raise ValueError("That path is a folder; add a file name.")
@@ -98,7 +98,7 @@ class SavedSession(FrozenModel):
     @model_validator(mode="after")
     def validate_state(self) -> Self:
         if self.session.attributes is None:
-            raise ValueError("Start the game before saving a session")
+            raise ValueError("Start the game before saving a session.")
         self.validate_request(self.draft)
         self.validate_result()
         self.validate_resources()
@@ -110,9 +110,9 @@ class SavedSession(FrozenModel):
 
     def validate_request(self, request: RollRequest) -> None:
         if request.profile_id != self.session.profile_id:
-            raise ValueError("Saved request must match the session genre")
+            raise ValueError("Saved request must match the session genre.")
         if request.attribute_rank != self.session.attribute_rank(request.attribute):
-            raise ValueError("Saved request must use the assigned attribute rank")
+            raise ValueError("Saved request must use the assigned attribute rank.")
 
     def validate_result(self) -> None:
         session = self.session
@@ -121,37 +121,37 @@ class SavedSession(FrozenModel):
             return
         self.validate_request(result.request)
         if result.strain_delta != result.request.power.cost:
-            raise ValueError("Result strain must match its power")
+            raise ValueError("Result strain must match its power.")
         if result.strain_delta > session.total_strain:
-            raise ValueError("Result strain exceeds session total")
+            raise ValueError("Result strain exceeds session total.")
         if result.corruption_delta > session.total_corruption:
-            raise ValueError("Result Corruption exceeds session total")
+            raise ValueError("Result Corruption exceeds session total.")
         if result.corruption_delta > len(result.dice):
-            raise ValueError("Invalid reroll Corruption cost")
+            raise ValueError("Invalid reroll Corruption cost.")
 
     def validate_resources(self) -> None:
         session = self.session
         if session.total_strain and session.profile_id != Genre.HECKBOY:
-            raise ValueError("Only Heckboy can have strain")
+            raise ValueError("Only Heckboy can have strain.")
         if session.total_corruption and session.profile_id != Genre.OLDHEART:
-            raise ValueError("Only Oldheart can have Corruption")
+            raise ValueError("Only Oldheart can have Corruption.")
         if session.manifestations and session.profile_id != Genre.OLDHEART:
-            raise ValueError("Only Oldheart can have manifestations")
+            raise ValueError("Only Oldheart can have manifestations.")
         if self.draft.manifestations != len(session.manifestations):
-            raise ValueError("Draft manifestations must match the character's")
+            raise ValueError("Draft manifestations must match the character's.")
         if session.standing != STANDING_START and not PROFILES[session.profile_id].has_standing:
-            raise ValueError("Only Ball Season can have Standing")
+            raise ValueError("Only Ball Season can have Standing.")
 
     def validate_pool_of_resources(self) -> None:
         session = self.session
         if not PROFILES[session.profile_id].has_resources:
             if session.resources is not None or session.resource_die or session.item_crafted:
-                raise ValueError("Only This Isn't Happening can have Resources")
+                raise ValueError("Only This Isn't Happening can have Resources.")
             return
         if session.resources is None:
-            raise ValueError("This Isn't Happening needs its Resources pool")
+            raise ValueError("This Isn't Happening needs its Resources pool.")
         if self.draft.resource_die and not session.resource_die:
-            raise ValueError("Draft Resources die requires a waiting die")
+            raise ValueError("Draft Resources die requires a waiting die.")
 
     def validate_tech(self) -> None:
         session = self.session
@@ -160,33 +160,33 @@ class SavedSession(FrozenModel):
         used = result.applied_tech if result is not None else frozenset()
         if session.profile_id != Genre.SECOND_CONTACT:
             if tech is not None or used:
-                raise ValueError("Only Second Contact can have Tech")
+                raise ValueError("Only Second Contact can have Tech.")
             return
         if tech is None:
-            raise ValueError("Second Contact needs its Tech slots")
+            raise ValueError("Second Contact needs its Tech slots.")
         ranks = (session.attribute_rank("Science"), session.attribute_rank("Culture"))
         if (tech.science, tech.culture) != ranks:
-            raise ValueError("Tech must use the assigned Science and Culture ranks")
+            raise ValueError("Tech must use the assigned Science and Culture ranks.")
         if len(tech.pieces) != session.attribute_rank("Muscle"):
-            raise ValueError("Tech needs one slot per Muscle rank")
+            raise ValueError("Tech needs one slot per Muscle rank.")
         if any(index >= len(tech.pieces) for index in used):
-            raise ValueError("Used Tech is outside the Tech slots")
+            raise ValueError("Used Tech is outside the Tech slots.")
 
     def validate_item_target(self) -> None:
         if self.item_target is None:
             return
         result = self.session.current_result
         if result is None or self.item_target >= len(result.dice):
-            raise ValueError("Item target requires a valid die from the current result")
+            raise ValueError("Item target requires a valid die from the current result.")
 
     def validate_reroll_indices(self) -> None:
         if not self.reroll_indices:
             return
         result = self.session.current_result
         if self.session.profile_id != Genre.OLDHEART or result is None:
-            raise ValueError("Reroll selections require an Oldheart result")
+            raise ValueError("Reroll selections require an Oldheart result.")
         if any(index >= len(result.dice) for index in self.reroll_indices):
-            raise ValueError("Reroll selection is outside the current result")
+            raise ValueError("Reroll selection is outside the current result.")
 
     def save(self, path: Path, *, overwrite: bool = False) -> None:
         write_text(path, self.model_dump_json(indent=2), overwrite=overwrite)

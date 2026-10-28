@@ -4,7 +4,7 @@ HOW TO RUN
   1. Unzip this folder anywhere you like.
   2. Open Windows Terminal or PowerShell, go to the folder and run:   .\wid.exe
      (Double-clicking wid.exe also works. Windows Terminal looks best.)
-  3. To open a saved game straight away:   .\wid.exe game.json
+  3. To open a saved session straight away:   .\wid.exe game.json
      or right-click the save, choose "Open with" and pick wid.exe.
 
 "WINDOWS PROTECTED YOUR PC"
@@ -37,6 +37,6 @@ CHECK THAT IT WORKS
 
 YOUR SETTINGS
   Theme, last tab and collapsed sections are kept in %APPDATA%\wid\settings.json.
-  Delete that file to start fresh. Saved games and exported history go where you choose.
+  Delete that file to start fresh. Saved sessions and exported history go where you choose.
   A game with unsaved changes is also kept in recovery.json there, and offered back if wid
   closes without a save.

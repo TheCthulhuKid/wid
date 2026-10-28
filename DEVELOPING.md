@@ -162,7 +162,7 @@ random generator's state are not saved, and the theme lives in the settings file
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.
 
-**Recovery file** (JSON): `recovery.json` beside the settings. While the game has unsaved
+**Recovery copy** (JSON): `recovery.json` beside the settings. While the game has unsaved
 changes and has started, `Game.keep_recovery` writes it after every change (the terminal from
 `refresh_sheet`, the browser after each action), in the save format with the typed session name
 and file path beside it. It goes once nothing is unsaved (a save, a load, a new kit) or when

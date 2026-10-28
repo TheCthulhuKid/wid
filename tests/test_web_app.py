@@ -23,7 +23,7 @@ def test_actions_take_the_sheet_fields_change_the_game_and_return_the_sheet():
     game = Game(rng=ScriptedRandom([4] * 4))
     browser = signed_in(game)
     refused = browser.post("/actions/roll", headers=PAGE)
-    assert "Set attributes" in refused.text
+    assert "press Start game first" in refused.text
     browser.post("/actions/start-game", data={"rank": ["1", "2", "3"]}, headers=PAGE)
     sheet = {"sheet": "1", "fear": "0", "name-appropriate_item": "Sword <b>"}
     response = browser.post("/actions/roll", data=sheet, headers=PAGE)

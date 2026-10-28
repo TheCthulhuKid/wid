@@ -27,7 +27,7 @@ BONUS_LABELS = {
     BonusKind.EXPERTISE: "Expertise",
     BonusKind.APPROPRIATE_ITEM: "Appropriate Item",
     BonusKind.INAPPROPRIATE_ITEM: "Inappropriate Item",
-    BonusKind.CRAFTED_ITEM: "Crafted item",
+    BonusKind.CRAFTED_ITEM: "Crafted Item",
 }
 
 # A piece of text and the outcome it should be coloured as, if any.
@@ -152,13 +152,13 @@ POWER_LABELS = {
 SPEND_EFFECTS = {
     ResourceEffect.EXTRA_DIE: "+1d6 on the next test to confront a Danger or defend against it",
     ResourceEffect.AUTO_PASS: "automatically pass an obstacle that does not involve a Danger",
-    ResourceEffect.CRAFT_ITEM: "craft an item; name it under Crafted item",
+    ResourceEffect.CRAFT_ITEM: "craft an item; name it under Crafted Item",
     ResourceEffect.RECOVER_STRAIN: "recover 1d6 strain",
 }
 
 
 # The effects as choices on screen. They start lower case to fit the middle of a history line,
-# and str.capitalize would lower "Crafted item" as well.
+# and str.capitalize would lower "Crafted Item" as well.
 SPEND_LABELS = {effect: text[0].upper() + text[1:] for effect, text in SPEND_EFFECTS.items()}
 
 
@@ -177,7 +177,7 @@ NEW_GAME_QUESTION = (
 )
 NEW_CHARACTER_QUESTION = (
     "Start a new character? This clears the character, ranks, items, strain and the current "
-    "roll. The history, notes and file path stay."
+    "roll. The session name, history, notes and file path stay."
 )
 QUIT_QUESTION = "Quit? Unsaved changes will be lost."
 RECOVERY_QUESTION = (
@@ -198,6 +198,23 @@ def replace_question(kind: str, path: object) -> str:
 
 def load_question(name: str) -> str:
     return f"Load {name}? This replaces the current game and history. Unsaved changes will be lost."
+
+
+# Words both front ends show.
+CHARACTER_LABELS = {"name": "Name", "looks": "Looks", "nature": "Nature"}
+RANKS_HINT = "Give each attribute a different rank (1–3), then start."
+NO_RESULT_HINT = "Roll an attribute to see the dice here."
+
+
+def tech_slot_label(index: int, strength: int) -> str:
+    return f"Tech {index + 1}, strength {strength}"
+
+
+def strain_box_name(index: int) -> str:
+    """What strain box ``index`` marks: Defeat at the very end, a Wound at a row's end."""
+    if index == STRAIN_ENDINGS[-1]:
+        return "Defeat"
+    return "Wound" if index in STRAIN_ENDINGS else "Strain"
 
 
 def strain_counts(tracker: StrainTracker) -> str:
@@ -238,12 +255,15 @@ def resources_notice(amount: int, pool: int) -> str:
     return f"Resources {amount:+d}: {pool} in the pool."
 
 
-def corruption_status(session: RollSession) -> str:
-    """Oldheart's Corruption and manifestation count, and whether the character succumbed."""
+def corruption_status(session: RollSession, names: str = "") -> str:
+    """Oldheart's Corruption and manifestation count, with ``names`` after the count when given,
+    and whether the character succumbed."""
     status = (
         f"Corruption {session.total_corruption} — {len(session.manifestations)} of "
         f"{MANIFESTATION_LIMIT} manifestations"
     )
+    if names:
+        status += f" ({names})"
     if session.succumbed:
         status += ". Succumbed: the character becomes a Brute Danger for the GM"
     return status
@@ -312,8 +332,7 @@ def corruption_line(session: RollSession) -> str:
     if not PROFILES[session.profile_id].has_rerolls:
         return ""
     names = [one_line(name) for name in session.manifestations if name.strip()]
-    status = corruption_status(session)
-    return f"{status} ({', '.join(names)})" if names else status
+    return corruption_status(session, ", ".join(names))
 
 
 def standing_line(session: RollSession) -> str:

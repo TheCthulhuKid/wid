@@ -51,7 +51,7 @@ def as_number(name: str, value: str) -> int:
     try:
         return int(value)
     except ValueError:
-        raise ValueError(f"{name} must be a number") from None
+        raise ValueError(f"{name} must be a number.") from None
 
 
 class SheetForm:

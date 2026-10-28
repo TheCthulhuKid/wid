@@ -176,7 +176,7 @@ class Game:
         without them.
         """
         if not 0 <= fear_level <= SCARED_MAX:
-            raise ValueError(f"Scared runs from 0 to {SCARED_MAX}")
+            raise ValueError(f"Scared runs from 0 to {SCARED_MAX}.")
         count = self.dice_count
         self.fear_level = fear_level
         self.assisted = assisted

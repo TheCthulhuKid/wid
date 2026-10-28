@@ -18,7 +18,7 @@ def test_ranks_are_fixed_and_used_for_tests():
 
 def test_ranks_must_be_unique_and_set_before_rolling():
     session = RollSession()
-    with pytest.raises(ValueError, match="attributes"):
+    with pytest.raises(ValueError, match="press Start game first"):
         session.roll(RollRequest(), rng=Random(1))
     with pytest.raises(ValueError, match="only once"):
         session.configure_attributes((1, 1, 3))

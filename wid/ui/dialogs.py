@@ -86,9 +86,9 @@ class PathPrompt(ModalScreen[str | None]):
 
 class LoadGame(PathPrompt):
     prefix = "load"
-    heading = "Load game — file path (JSON)"
+    heading = "Load session — file path (JSON)"
     placeholder = "/path/to/session.json"
-    action = "Load game"
+    action = "Load session"
 
 
 class ExportHistory(PathPrompt):

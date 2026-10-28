@@ -183,7 +183,7 @@ class GameRow(Horizontal):
             )
         with Horizontal(id="game-controls"):
             yield Button("Start game", id="start-game", variant="primary")
-            yield Button("Load game", id="load-session")
+            yield Button("Load session", id="load-session")
 
 
 class CharacterGroup(Grid):
@@ -267,12 +267,12 @@ class NotesGroup(Vertical):
 class SessionName(Vertical):
     def compose(self) -> ComposeResult:
         yield Label("Session name")
-        yield Input(placeholder="Name this game", max_length=100, id="session-name")
+        yield Input(placeholder="Name this session", max_length=100, id="session-name")
 
 
 class SessionFile(Vertical):
     def compose(self) -> ComposeResult:
-        yield Label("Save / load file path (JSON)")
+        yield Label("Session file (JSON)")
         yield Input(placeholder="/path/to/session.json", id="session-path")
         with Horizontal(classes="button-row"):
             yield Button("Save session", id="save-session", variant="primary")
@@ -343,9 +343,9 @@ class KitControls(Vertical):
         with Vertical(id="resource-field", classes="field"):
             yield Label("Resources")
             with Horizontal(id="resource-row"):
-                yield Button("−", id="resources-down", tooltip="Lose 1 Resource")
+                yield Button("−", id="resources-down", tooltip="Take 1 from Resources")
                 yield Static(id="resource-count")
-                yield Button("+", id="resources-up", tooltip="Gain 1 Resource")
+                yield Button("+", id="resources-up", tooltip="Add 1 to Resources")
                 yield Button(
                     f"Spend {RESOURCES_MAX} Resources", id="spend-resources", variant="primary"
                 )
@@ -359,7 +359,7 @@ class KitControls(Vertical):
                     id="corruption-amount",
                     tooltip="Corruption gained at once, such as from a Danger or avoided strain",
                 )
-                yield Button("Gain corruption", id="gain-corruption", variant="primary")
+                yield Button("Gain Corruption", id="gain-corruption", variant="primary")
             for index in range(MANIFESTATION_LIMIT):
                 yield ManifestationName(index)
             with Horizontal(classes="button-row"):

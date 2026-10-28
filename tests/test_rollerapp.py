@@ -46,10 +46,10 @@ def test_the_game_starts_only_with_unique_ranks():
         app = RollerApp()
         async with app.run_test(size=(120, 50)) as pilot:
             await pilot.press("ctrl+r")
-            assert "Set attributes" in text(app, "#feedback")
+            assert "press Start game first" in text(app, "#feedback")
             app.query_one("#attribute-rank-0", Select).value = 3
             await click(app, pilot, "#start-game")
-            assert text(app, "#feedback") == "Each attribute rank (1–3) can appear only once"
+            assert text(app, "#feedback") == "Each attribute rank (1–3) can appear only once."
             assert app.session.attributes is None
             await start_game(app, pilot, (3, 1, 2))
             assert app.query_one("#attribute-rank-0", Select).disabled

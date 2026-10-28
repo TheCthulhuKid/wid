@@ -723,7 +723,7 @@ TYPED_BUTTONS: dict[type[Button], Callable[[RollerApp, Button], None]] = {
 # The game's actions in the command palette, beside the buttons that run the same handlers.
 PALETTE_COMMANDS: tuple[tuple[str, str, Callable[[RollerApp], object]], ...] = (
     ("Save session", "Save the game to the session file", RollerApp.action_save_session),
-    ("Load game", "Open a saved game", RollerApp.action_load_session),
+    ("Load session", "Open a saved session", RollerApp.action_load_session),
     (
         "Export history",
         "Write the sheet, notes and history to a Markdown file",
