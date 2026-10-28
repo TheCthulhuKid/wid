@@ -8,7 +8,7 @@ from textual.widget import Widget
 from textual.widgets import Collapsible, Input, Select, Static, TabbedContent, TabPane
 
 from wid.sessions import SavedSession
-from wid.ui.dialogs import ConfirmReset
+from wid.ui.dialogs import ConfirmSessionAction
 from wid.web.app import create_app
 
 # The header the browser page sends with every action (see wid/web/app.py).
@@ -99,8 +99,8 @@ async def change_genre(app, pilot, genre) -> None:
     """Switch the genre kit, confirming the new game if the app asks."""
     app.query_one("#genre", Select).value = genre
     await pilot.pause()
-    if isinstance(app.screen, ConfirmReset):
-        await pilot.click("#confirm-reset")
+    if isinstance(app.screen, ConfirmSessionAction):
+        await pilot.click("#confirm-session")
         await pilot.pause()
 
 

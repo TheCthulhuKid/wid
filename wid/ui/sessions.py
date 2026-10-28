@@ -51,7 +51,7 @@ class SessionActions:
         try:
             self.game.require_history()
         except ValueError as error:
-            self.feedback(str(error))
+            self.feedback(player_message(error))
             return
         self.push_screen(ExportHistory(self.game.default_export_path()), self.export_history_path)
 
@@ -143,7 +143,7 @@ class SessionActions:
         try:
             saved, path = self.game.read_save(value)
         except ValueError as error:
-            self.feedback(str(error))
+            self.feedback(player_message(error))
             return
         if self.game.has_unsaved_state():
             self.push_screen(

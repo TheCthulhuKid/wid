@@ -421,8 +421,6 @@ class RollSession(BaseModel):
     # Oldheart: one optional name per manifestation, oldest first.
     manifestations: tuple[str, ...] = Field(default=(), max_length=MANIFESTATION_LIMIT)
 
-    # Results before each bonus, newest last, with the Tech slot the bonus spent, if any.
-    # Not saved; cleared by a roll and by anything else that changes the Tech.
     @model_validator(mode="after")
     def validate_attributes(self) -> Self:
         if self.attributes is not None and self.attributes.profile_id != self.profile_id:

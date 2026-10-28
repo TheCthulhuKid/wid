@@ -27,6 +27,10 @@ from textual.widgets import (
 from textual.widgets.tabbed_content import ContentTabs
 
 from wid.formatting import (
+    CHARACTER_LABELS,
+    NEW_GAME_QUESTION,
+    NO_RESULT_HINT,
+    RANKS_HINT,
     attribute_label,
     corruption_status,
     pool_line,
@@ -35,6 +39,7 @@ from wid.formatting import (
     result_text,
     strain_status,
     strain_summary,
+    tech_slot_label,
     tech_starting_line,
 )
 from wid.game import Game, NameField, player_message
@@ -52,12 +57,11 @@ from wid.rolls import (
 )
 from wid.sessions import CharacterDetails
 from wid.settings import load_settings, save_settings
-from wid.ui.dialogs import ConfirmReset, SpendResources
+from wid.ui.dialogs import ConfirmSessionAction, SpendResources
 from wid.ui.outcomes import dice_content, summary_content
 from wid.ui.sessions import SessionActions
 from wid.ui.themes import DANGER, DANGER_THEME
 from wid.ui.widgets import (
-    CHARACTER_LABELS,
     TECH_SLOTS,
     AttributeRollButton,
     AttributeSetup,
@@ -404,24 +408,19 @@ class RollerApp(SessionActions, App):
         attributes = PROFILES[self.session.profile_id].attributes
         ready = self.session.attributes is not None
         self.query_one("#attribute-instructions", Label).update(
-            "Roll beside an attribute to test it."
-            if ready
-            else "Assign unique ranks (1–3), then start"
+            "Roll beside an attribute to test it." if ready else RANKS_HINT
         )
         self.query_one("#start-game", Button).display = not ready
         self.query_one("#new-scenario", Button).disabled = not ready
-        for index in range(3):
-            label = self.query_one(f"#attribute-label-{index}", Label)
+        for index, attribute in enumerate(attributes):
             selector = self.query_one(f"#attribute-rank-{index}", Select)
             button = self.query_one(f"#roll-attribute-{index}", Button)
-            self.query_one(f"#attribute-row-{index}").display = index < len(attributes)
+            self.query_one(f"#attribute-label-{index}", Label).update(attribute)
             selector.disabled = ready
             button.disabled = not ready
-            if index < len(attributes):
-                label.update(attributes[index])
-                button.tooltip = f"Roll {attributes[index]}"
-                if ready:
-                    selector.value = self.session.attribute_rank(attributes[index])
+            button.tooltip = f"Roll {attribute}"
+            if ready:
+                selector.value = self.session.attribute_rank(attribute)
         self.query_one("#tech-attributes", Static).update(tech_starting_line(self.session.tech))
 
     def start_game(self) -> None:
@@ -515,7 +514,7 @@ class RollerApp(SessionActions, App):
                 continue
             piece = owned[index]
             self.query_one(f"#tech-label-{index}", Label).update(
-                f"Tech {index + 1} — strength {piece.strength}"
+                tech_slot_label(index, piece.strength)
             )
             with self.prevent(Input.Changed):
                 self.query_one(f"#tech-name-{index}", Input).value = piece.name
@@ -528,7 +527,10 @@ class RollerApp(SessionActions, App):
         self.pending_genre = genre
         self.collect()
         if self.game.has_unsaved_state():
-            self.push_screen(ConfirmReset(), self.finish_genre_change)
+            question = ConfirmSessionAction(
+                NEW_GAME_QUESTION, "Start new game", "Keep current game"
+            )
+            self.push_screen(question, self.finish_genre_change)
         else:
             self.finish_genre_change(True)
 
@@ -544,7 +546,7 @@ class RollerApp(SessionActions, App):
 
     def clear_result_display(self) -> None:
         self.query_one("#tested-attribute", Static).update("")
-        self.query_one("#dice", Static).update("Roll a test to see individual outcomes.")
+        self.query_one("#dice", Static).update(NO_RESULT_HINT)
         self.query_one("#summary", Static).update("")
         self.query_one("#resources", Static).update("")
 
@@ -718,7 +720,6 @@ TYPED_BUTTONS: dict[type[Button], Callable[[RollerApp, Button], None]] = {
     SacrificeButton: lambda app, button: app.act(lambda: app.game.sacrifice_tech(button.index)),
 }
 
-# The other buttons, by id, that open a dialog or need more than one game call.
 # The game's actions in the command palette, beside the buttons that run the same handlers.
 PALETTE_COMMANDS: tuple[tuple[str, str, Callable[[RollerApp], object]], ...] = (
     ("Save session", "Save the game to the session file", RollerApp.action_save_session),
@@ -733,6 +734,7 @@ PALETTE_COMMANDS: tuple[tuple[str, str, Callable[[RollerApp], object]], ...] = (
     ("Copy result", "Copy the dice as text", RollerApp.copy_result),
 )
 
+# The other buttons, by id, that open a dialog or need more than one game call.
 APP_BUTTONS: dict[str, Callable[[RollerApp], None]] = {
     "copy-result": RollerApp.copy_result,
     "save-session": RollerApp.action_save_session,

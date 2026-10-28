@@ -58,7 +58,7 @@ def test_shortcuts_do_nothing_while_a_confirmation_is_open():
         dialog = app.screen
         await pilot.press("s", "t")
         assert app.screen is dialog
-        await pilot.click("#cancel-reset")
+        await pilot.click("#cancel-session")
         await pilot.pause()
         assert active_tab(app) == "tab-character"
 

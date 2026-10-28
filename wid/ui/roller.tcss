@@ -79,7 +79,7 @@ Checkbox { width: 1fr; height: auto; }
 #history-statistics { height: auto; }
 #log { height: 1fr; border: solid $secondary; }
 Button { min-width: 14; }
-ConfirmReset, ConfirmSessionAction, LoadGame, ExportHistory, SpendResources {
+ConfirmSessionAction, LoadGame, ExportHistory, SpendResources {
     align: center middle; background: $background 80%;
 }
 #confirmation, #load-dialog, #export-dialog, #spend-dialog {

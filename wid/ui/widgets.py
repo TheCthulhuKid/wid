@@ -18,7 +18,15 @@ from textual.widgets import (
     TextArea,
 )
 
-from wid.formatting import BONUS_LABELS, CORRUPTION_AMOUNTS, POWER_LABELS
+from wid.formatting import (
+    BONUS_LABELS,
+    CHARACTER_LABELS,
+    CORRUPTION_AMOUNTS,
+    NO_RESULT_HINT,
+    POWER_LABELS,
+    RANKS_HINT,
+    strain_box_name,
+)
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     MANIFESTATION_LIMIT,
@@ -28,13 +36,12 @@ from wid.rolls import (
     SCARED_MAX,
     STANDING_LABELS,
     STANDING_START,
+    STRAIN_ENDINGS,
     BonusKind,
     PowerMode,
     StrainTracker,
     standing_label,
 )
-
-CHARACTER_LABELS = {"name": "Name", "looks": "Looks", "nature": "Nature"}
 
 
 class AttributeRollButton(Button):
@@ -189,7 +196,7 @@ class CharacterGroup(Grid):
 
 class AttributeSetup(Vertical):
     def compose(self) -> ComposeResult:
-        yield Label("Assign unique ranks (1–3), then start", id="attribute-instructions")
+        yield Label(RANKS_HINT, id="attribute-instructions")
         with Vertical(id="attribute-ranks"):
             for index in range(3):
                 with Horizontal(classes="attribute-row", id=f"attribute-row-{index}"):
@@ -416,26 +423,27 @@ class StrainGroup(Vertical):
         with Horizontal(classes="button-row"):
             yield Button("Take 1 strain", id="take-strain", variant="primary")
             yield Button("Take 1 wound", id="take-wound", variant="primary")
-        for row, ending in enumerate(("Wound", "Wound", "Defeat")):
+        for row, ending in enumerate(STRAIN_ENDINGS):
+            name = strain_box_name(ending)
             with Horizontal(classes="strain-row"):
                 with Horizontal(classes="strain-checks"):
                     for column in range(4):
-                        index = row * 4 + column
-                        description = ending if column == 3 else f"strain {column + 1}"
+                        index = ending - 3 + column
+                        description = name if column == 3 else f"strain {column + 1}"
                         yield StrainBox(
                             index,
-                            ending if column == 3 else "",
+                            name if column == 3 else "",
                             classes="strain-ending" if column == 3 else "strain-box",
                             tooltip=f"Row {row + 1}: {description}",
                         )
-                yield StrainName(row, placeholder=f"{ending} name")
+                yield StrainName(row, placeholder=f"{name} name")
         yield Static(id="strain-status", markup=False)
 
 
 class RollerGroup(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Static(id="tested-attribute", markup=False)
-        yield Static("Roll a test to see individual outcomes.", id="dice", markup=False)
+        yield Static(NO_RESULT_HINT, id="dice", markup=False)
         yield Static(id="summary")
         yield Static(id="resources")
         with Horizontal(classes="button-row"):

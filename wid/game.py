@@ -77,7 +77,7 @@ def player_message(error: Exception) -> str:
     return str(error)
 
 
-# A save needs a name; the recovery copy of a game that has none uses this one.
+# A save needs a name; the recovery copy and a browser download of a game without one use this.
 UNNAMED = "Unsaved game"
 # How many changes Undo can take back.
 UNDO_LIMIT = 50

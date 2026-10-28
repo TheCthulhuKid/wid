@@ -5,20 +5,8 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Static
 
-from wid.formatting import NEW_GAME_QUESTION, SPEND_LABELS
+from wid.formatting import SPEND_LABELS
 from wid.rolls import RESOURCES_MAX, ResourceEffect
-
-
-class ConfirmReset(ModalScreen[bool]):
-    def compose(self) -> ComposeResult:
-        with Vertical(id="confirmation"):
-            yield Static(NEW_GAME_QUESTION)
-            yield Button("Start new game", id="confirm-reset", variant="warning")
-            yield Button("Keep current game", id="cancel-reset")
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        event.stop()
-        self.dismiss(event.button.id == "confirm-reset")
 
 
 class ConfirmSessionAction(ModalScreen[bool]):

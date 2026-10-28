@@ -121,7 +121,7 @@ def test_new_character_and_a_new_kit_clear_the_screen():
             assert app.query_one("#session-path", Input).value == "game.json"
             app.query_one("#genre", Select).value = Genre.HECKBOY
             await pilot.pause()
-            await pilot.click("#cancel-reset")
+            await pilot.click("#cancel-session")
             await pilot.pause()
             assert app.query_one("#genre", Select).value == Genre.CORE
             await change_genre(app, pilot, Genre.HECKBOY)
