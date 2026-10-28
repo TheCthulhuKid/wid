@@ -2,19 +2,26 @@
 
 from markdown_it import MarkdownIt
 
+from wid.dangers import DANGERS_MAX, PC_MAX, PC_MIN, DangerClass, Difficulty, classes_for
 from wid.formatting import (
     BONUS_LABELS,
     CHARACTER_LABELS,
     CORRUPTION_AMOUNTS,
+    LOADOUT_COLUMNS,
+    NO_ACTIVATION_HINT,
     NO_RESULT_HINT,
     POWER_LABELS,
     RANKS_HINT,
     SPEND_LABELS,
+    activation_line,
     corruption_status,
+    danger_summary,
+    loadout_rows,
     pool_line,
     resources_line,
     resources_reminder,
     result_text,
+    scene_summary,
     strain_box_name,
     strain_status,
     strain_summary,
@@ -22,7 +29,8 @@ from wid.formatting import (
     tech_slot_label,
     tech_starting_line,
 )
-from wid.game import Game
+from wid.game import BaseGame, Game
+from wid.gm import GmGame
 from wid.history import history_statistics
 from wid.profiles import PROFILES
 from wid.rolls import (
@@ -92,6 +100,31 @@ def notes_html(text: str) -> str:
     return MARKDOWN.render(text)
 
 
+def session_context(
+    game: BaseGame,
+    message: str,
+    *,
+    preview: bool,
+    ask: NeedsConfirmation | None = None,
+    export_path: str = "",
+) -> dict[str, object]:
+    """What the session block, the history and the question dialog read, on either page."""
+    return {
+        "game": game,
+        "kit": game.profile,
+        "kits": PROFILES,
+        "message": message,
+        "savable": game.savable,
+        "history": [str(entry) for entry in reversed(game.history)],
+        "statistics": history_statistics(game.history),
+        "preview": preview,
+        "ask": ask,
+        # What the player typed stays; the suggestion only fills an empty box.
+        "export_path": export_path or game.default_export_path(),
+        "notes_html": notes_html(game.notes) if preview else "",
+    }
+
+
 def sheet_context(
     game: Game,
     message: str,
@@ -112,11 +145,9 @@ def sheet_context(
             tech_pieces=session.tech.pieces if session.tech else None,
         )
     return {
-        "game": game,
+        **session_context(game, message, preview=preview, ask=ask, export_path=export_path),
+        "sheet_template": "sheet.html",
         "session": session,
-        "kit": game.profile,
-        "kits": PROFILES,
-        "message": message,
         "result": result,
         "resources": resources,
         "reminder": resources_reminder(result) if result is not None else "",
@@ -128,13 +159,6 @@ def sheet_context(
         "strain_status": strain_status(session.strain),
         "corruption_status": corruption_status(session),
         "tech_line": tech_starting_line(session.tech),
-        "history": [str(entry) for entry in reversed(game.history)],
-        "statistics": history_statistics(game.history),
-        "preview": preview,
-        "ask": ask,
-        # What the player typed stays; the suggestion only fills an empty box.
-        "export_path": export_path or game.default_export_path(),
-        "notes_html": notes_html(game.notes) if preview else "",
         "bonus_labels": BONUS_LABELS,
         "item_kinds": (BonusKind.APPROPRIATE_ITEM, BonusKind.INAPPROPRIATE_ITEM),
         "BonusKind": BonusKind,
@@ -153,4 +177,37 @@ def sheet_context(
         "no_result_hint": NO_RESULT_HINT,
         "tech_slot_label": tech_slot_label,
         "strain_box_name": strain_box_name,
+    }
+
+
+def gm_context(
+    game: GmGame,
+    message: str,
+    *,
+    preview: bool,
+    ask: NeedsConfirmation | None = None,
+    export_path: str = "",
+) -> dict[str, object]:
+    """Everything the GM page reads: the scene, its Dangers and the last activation."""
+    scene = game.scene
+    activation = game.last_activation
+    return {
+        **session_context(game, message, preview=preview, ask=ask, export_path=export_path),
+        "sheet_template": "gm.html",
+        "scene": scene,
+        "dangers": [
+            danger_summary(danger, index, scene.pc_count)
+            for index, danger in enumerate(scene.dangers)
+        ],
+        "scene_summary": scene_summary(scene),
+        "activation": activation_line(activation) if activation else NO_ACTIVATION_HINT,
+        "loadout_columns": LOADOUT_COLUMNS,
+        "loadout_rows": loadout_rows(scene.loadout, game.genre),
+        "classes": classes_for(game.genre),
+        "difficulties": tuple(Difficulty),
+        "default_class": DangerClass.BRUTE,
+        "default_difficulty": Difficulty.COMPETENT,
+        "pc_counts": range(PC_MIN, PC_MAX + 1),
+        "amounts": range(1, 7),
+        "scene_full": len(scene.dangers) >= DANGERS_MAX,
     }

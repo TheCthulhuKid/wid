@@ -122,9 +122,9 @@ wid/
 └── web/
     ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser with a token
     ├── app.py          # FastAPI app: the page, POST /actions/<name>, downloads, safety checks
-    ├── forms.py        # The posted sheet fields copied into the game, and the action table
-    ├── view.py         # Colours (light and dark), the notes preview, the template context
-    ├── templates/      # Jinja2 page and sheet: one form, each button posts to its action
+    ├── forms.py        # The posted fields copied into the game, and each page's action table
+    ├── view.py         # Colours (light and dark), the notes preview, each page's template context
+    ├── templates/      # Jinja2 page, sheet and GM page: one form, each button posts to its action
     └── static/         # sheet.css, and sheet.js: posts the form and swaps the reply in
 .github/workflows/      # ci.yml: tests, ruff; release.yml: builds for each system, draft release
 release/                # PyInstaller spec, build scripts, readmes, smoke test, icon, release notes
@@ -144,7 +144,10 @@ feedback line, `act`, the history log, the kit question and the command palette,
 `RollerApp` and `GmApp` (`wid/ui/gm_app.py`) compose their panels and name their buttons. The terminal app copies what the player typed into
 the game before each action (`collect`), then redraws from it (`refresh_sheet`), so a second
 front end only needs the same two steps; the browser version does them per request (each action
-posts the whole sheet, `collect` copies it in, the action runs, the sheet comes back). Every web
+posts the whole sheet, `collect` copies it in, the action runs, the sheet comes back). The GM
+page is a second `Mode` in `wid/web/app.py` (its template, action table, `collect` and context),
+and `gm.html` shares the band, the session block, the history and the question dialog with
+`sheet.html` through includes. Every web
 request must come from `127.0.0.1` or `localhost`, carry the per-launch token cookie, and, for
 actions, the `HX-Request` header that `sheet.js` adds (see `wid/web/app.py` for why each check
 is needed). The cookie is named after its token, so two `wid --web` games can run at once in one

@@ -1,0 +1,14 @@
+{#- A question from the game, shown as a modal by sheet.js; each answer sends the action again
+    with its own field set, and the last button closes the dialog. -#}
+{% if ask %}
+<dialog class="ask" data-ask aria-labelledby="ask-question">
+  <p id="ask-question">{{ ask.question }}</p>
+  {% for name, value in ask.carry.items() %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+  <div class="row">
+    {% for answer in ask.answers %}
+    <button {% if loop.first %}class="primary" {% endif %}formaction="/actions/{{ ask.action }}" name="{{ answer.name }}" value="{{ answer.value }}">{{ answer.label }}</button>
+    {% endfor %}
+    <button type="button" data-close>{{ ask.cancel }}</button>
+  </div>
+</dialog>
+{% endif %}

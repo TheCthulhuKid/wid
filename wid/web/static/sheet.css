@@ -335,12 +335,38 @@ button:disabled, input:disabled, select:disabled {
   overflow-wrap: anywhere;
 }
 
+/* The GM's page: each Danger is a ruled entry in the scene, and the loadout is a small table. */
+.danger {
+  margin: 0.75rem 0;
+  padding-left: 0.9rem;
+  border-left: 3px solid var(--danger);
+}
+
+.danger .status { margin: 0 0 0.4rem; font-weight: 600; color: var(--ink); }
+
+.loadout {
+  width: 100%;
+  margin: 0 0 0.75rem;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.loadout th, .loadout td {
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--rule);
+}
+
+.loadout th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.loadout td:first-child { font-weight: 800; font-variant-numeric: tabular-nums; }
+
 /* Narrow screens: one column, with the dice right after the next-test options so a roll's
-   outcome shows beside the button that made it. */
+   outcome shows beside the button that made it (on the GM's page, the activation after the
+   scene). */
 @media (max-width: 52rem) {
   .columns { grid-template-columns: minmax(0, 1fr); }
   .main { display: contents; }
-  .character { order: 1; }
+  .character, .scene { order: 1; }
   .options { order: 2; }
   .table { order: 3; position: static; max-height: none; border-bottom: 1px solid var(--rule); }
   .items { order: 4; }

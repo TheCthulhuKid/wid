@@ -13,6 +13,7 @@ HOW TO RUN
 
 RUNNING THE GAME
   The Game Master's screen, with the Dangers instead of a character:   .\wid.exe --gm
+  The same in your browser:   .\wid.exe --web --gm
 
 PLAY IN YOUR BROWSER
   In the folder, run:   .\wid.exe --web

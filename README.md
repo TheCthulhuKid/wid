@@ -11,8 +11,9 @@ genre kit, the strain tracker, saving and loading, and the keys, with no technic
 needed.
 
 wid runs in a terminal, or in your web browser with `wid --web` (it stays on your computer; see
-"Play in the browser" in the how-to). Running the game? `wid --gm` is the Game Master's screen:
-pick a Danger's class and difficulty and wid works out its threshold, hits and loadout.
+"Play in the browser" in the how-to). Running the game? `wid --gm` (or `wid --web --gm`) is
+the Game Master's screen: pick a Danger's class and difficulty and wid works out its threshold,
+hits and loadout.
 
 ## Get it (Windows)
 

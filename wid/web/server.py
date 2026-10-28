@@ -9,7 +9,8 @@ import webbrowser
 import uvicorn
 
 from wid.game import Game
-from wid.settings import recovery_path
+from wid.gm import GmGame
+from wid.settings import gm_recovery_path, recovery_path
 from wid.web.app import create_app
 
 # The loopback address only, so nothing outside this machine can reach the game.
@@ -43,9 +44,14 @@ def open_socket(port: int | None) -> socket.socket:
 
 
 def serve(
-    *, port: int | None = None, open_browser: bool = True, open_path: str | None = None
+    *,
+    port: int | None = None,
+    open_browser: bool = True,
+    open_path: str | None = None,
+    gm: bool = False,
 ) -> int:
-    """Run until Ctrl+C and return the process exit code; ``open_path`` is a save to open."""
+    """Run until Ctrl+C and return the process exit code; ``open_path`` is a save to open, and
+    ``gm`` serves the GM's page instead of the character sheet."""
     try:
         sock = open_socket(port)
     except OSError as error:
@@ -58,7 +64,7 @@ def serve(
     # The socket already listens, so a browser that is quicker than the server just waits.
     if open_browser:
         webbrowser.open(url)
-    game = Game(recovery_path=recovery_path())
+    game = GmGame(recovery_path=gm_recovery_path()) if gm else Game(recovery_path=recovery_path())
     greeting = game.open_file(open_path) if open_path else ""
     app = create_app(game, token, greeting=greeting)
     server = uvicorn.Server(uvicorn.Config(app, log_level="warning"))

@@ -59,7 +59,7 @@ def test_the_command_line_flags_start_the_server_instead_of_the_terminal():
         main(["--web", "--port", "9000", "--no-browser"])
 
     assert stop.value.code == 0
-    serve.assert_called_once_with(port=9000, open_browser=False, open_path=None)
+    serve.assert_called_once_with(port=9000, open_browser=False, open_path=None, gm=False)
     app.assert_not_called()
     # A port outside 0-65535 is a usage error, not a traceback.
     with pytest.raises(SystemExit) as refused:

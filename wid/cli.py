@@ -54,6 +54,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         from wid.selftest import run_self_test
 
         raise SystemExit(run_self_test())
+    from wid.sessions import file_kind
+
+    # A save opens in the mode it was saved in; --gm on a player's file is refused on screen.
+    gm = arguments.gm or (arguments.session is not None and file_kind(arguments.session) == "gm")
     if arguments.web:
         from wid.web.server import serve
 
@@ -62,14 +66,13 @@ def main(argv: Sequence[str] | None = None) -> None:
                 port=arguments.port,
                 open_browser=not arguments.no_browser,
                 open_path=arguments.session,
+                gm=gm,
             )
         )
     # Imported here so --web and --self-test do not load the terminal interface first.
-    from wid.sessions import file_kind
     from wid.settings import gm_recovery_path, recovery_path
 
-    # A save opens in the mode it was saved in; --gm on a player's file is refused on screen.
-    if arguments.gm or (arguments.session and file_kind(arguments.session) == "gm"):
+    if gm:
         from wid.ui.gm_app import GmApp
 
         GmApp(recovery_path=gm_recovery_path(), open_path=arguments.session).run()

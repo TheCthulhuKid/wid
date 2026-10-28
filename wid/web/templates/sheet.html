@@ -4,23 +4,7 @@
       {%- if game.has_unsaved_state() %} data-unsaved{% endif %}>
   <input type="hidden" name="sheet" value="1">
 
-  <header class="band">
-    <h1>We're in Danger</h1>
-    <div class="band-tools">
-      <button type="button" class="theme-toggle" data-theme-toggle
-              title="Switch between your browser's colours (Auto), light and dark">
-        Colours: <span class="theme-auto">Auto</span><span class="theme-light">Light</span><span class="theme-dark">Dark</span>
-      </button>
-      <label class="kit-picker">
-        <span class="visually-hidden">Genre kit</span>
-        <select name="genre" data-action="change-kit">
-          {% for genre, profile in kits.items() %}
-          <option value="{{ genre }}" {% if genre == session.profile_id %}selected{% endif %}>{{ profile.name }}</option>
-          {% endfor %}
-        </select>
-      </label>
-    </div>
-  </header>
+  {% include "band.html" %}
 
   <div class="columns">
   <div class="main">
@@ -235,43 +219,7 @@
       <p class="status">{{ strain_status }}</p>
     </section>
 
-    <section class="block session-notes" aria-labelledby="session-title">
-      <h2 id="session-title">Session</h2>
-      <label class="field">Session name
-        <input name="session-name" value="{{ game.name }}">
-      </label>
-      <div class="row notes-tools">
-        <button type="button" data-format="bold" {% if preview %}disabled{% endif %}>Bold</button>
-        <button type="button" data-format="italic" {% if preview %}disabled{% endif %}>Italic</button>
-        <button type="button" data-format="heading" {% if preview %}disabled{% endif %}>Heading</button>
-        <label class="tick"><input type="checkbox" name="notes-preview" data-action="update" {% if preview %}checked{% endif %}> Preview</label>
-      </div>
-      <label class="field {% if preview %}visually-hidden{% endif %}">Notes
-        <textarea name="notes" rows="8">{{ game.notes }}</textarea>
-      </label>
-      {% if preview %}<div class="notes-preview">{{ notes_html | safe }}</div>{% endif %}
-
-      <div class="row named">
-        <label class="field grow">Session file
-          <input name="session-path" value="{{ game.path }}" placeholder="/path/to/session.json">
-        </label>
-        <button class="primary" formaction="/actions/save">Save session</button>
-        <button formaction="/actions/load">Load session</button>
-      </div>
-      <div class="row named">
-        <label class="field grow">Upload a save
-          <input type="file" accept=".json,application/json" data-upload>
-        </label>
-        {% if session.attributes %}<a class="button" href="/session.json" download>Download save</a>{% endif %}
-      </div>
-      <div class="row named">
-        <label class="field grow">History file
-          <input name="export-path" value="{{ export_path }}">
-        </label>
-        <button formaction="/actions/export" {% if not history %}disabled{% endif %}>Export history</button>
-        {% if history %}<a class="button" href="/history.md" download>Download history</a>{% endif %}
-      </div>
-    </section>
+    {% include "session.html" %}
   </div>
 
   <aside class="table" aria-label="Result and history">
@@ -299,32 +247,14 @@
     <p class="empty">{{ no_result_hint }}</p>
     {% endif %}
     <div class="row">
-      <button formaction="/actions/roll" title="Roll the last attribute again (Ctrl+R)" {% if not session.attributes %}disabled{% endif %}>Repeat roll</button>
+      <button formaction="/actions/roll" data-repeat title="Roll the last attribute again (Ctrl+R)" {% if not session.attributes %}disabled{% endif %}>Repeat roll</button>
       <button formaction="/actions/roll-d6">Roll 1d6</button>
       <button formaction="/actions/undo" title="Take back the last change" {% if not game.can_undo %}disabled{% endif %}>Undo</button>
       <button type="button" data-copy="{{ result_text }}" title="Copy the dice as text" {% if not result %}disabled{% endif %}>Copy result</button>
     </div>
-    <h2>History</h2>
-    {% if statistics %}<p class="hint">{{ statistics }}</p>{% endif %}
-    {% if history %}
-    <ol class="history" reversed>
-      {% for entry in history %}<li><pre>{{ entry }}</pre></li>{% endfor %}
-    </ol>
-    {% else %}
-    <p class="empty">Nothing has happened yet.</p>
-    {% endif %}
+    {% include "history.html" %}
   </aside>
   </div>
 
-  {% if ask %}
-  {#- Shown as a modal by sheet.js; the confirm button sends the action again with its flag set. -#}
-  <dialog class="ask" data-ask aria-labelledby="ask-question">
-    <p id="ask-question">{{ ask.question }}</p>
-    {% for name, value in ask.carry.items() %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
-    <div class="row">
-      <button class="primary" formaction="/actions/{{ ask.action }}" name="{{ ask.flag }}" value="{{ ask.value }}">{{ ask.confirm }}</button>
-      <button type="button" data-close>{{ ask.cancel }}</button>
-    </div>
-  </dialog>
-  {% endif %}
+  {% include "ask.html" %}
 </form>

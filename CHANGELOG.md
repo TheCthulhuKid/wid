@@ -7,12 +7,14 @@ What changed in each release of wid, newest first. The format follows
 
 ### Added
 
-- **GM mode**: `wid --gm` runs the Game Master's screen. Choose the **PCs**, a Danger's
-  **Class** and **Difficulty**, and wid gives its threshold, hits to pass and loadout; **Activate
-  Danger** rolls its ability, target and defending attribute in the current kit's words, and
-  the scene tracks hits committed, a raised threshold and Dangers that fight each other. GM
-  saves are their own kind of file and open in GM mode by themselves.
-- **Save first** on the question asked when changing kit with unsaved changes.
+- **GM mode**: `wid --gm` runs the Game Master's screen, and `wid --web --gm` the same page in
+  the browser. Choose the **PCs**, a Danger's **Class** and **Difficulty**, and wid gives its
+  threshold, hits to pass and loadout; **Activate Danger** rolls its ability, target and
+  defending attribute in the current kit's words, and the scene tracks hits committed, a raised
+  threshold and Dangers that fight each other. GM saves are their own kind of file and open in
+  GM mode by themselves.
+- **Save first** on the question asked when changing kit with unsaved changes, in the terminal
+  and the browser.
 
 ### Changed
 

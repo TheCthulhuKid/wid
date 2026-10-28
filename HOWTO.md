@@ -221,6 +221,13 @@ Keys: **E** opens the Scene tab and **S** the Session tab; **Ctrl+R** activates 
 other keys are the ones below, except **C**, **T** and **I**, which belong to the character
 sheet.
 
+**In the browser**, `wid --web --gm` serves the GM page instead of the character sheet, with
+the same controls. The scene is a section on the left (on a phone, first), the activation, the
+loadout table and the history on the right. The **PCs** box and **Dangers fight each other**
+send themselves as soon as they change, as the sheet's boxes do; everything else is a button.
+**Ctrl+R** presses **Activate Danger**. The session block, downloads, uploads and the colours
+work as on the sheet, and a player's save uploaded here is refused the same way.
+
 ## Play in the browser
 
 Prefer a web browser to the terminal? Start wid with `wid --web` (from a release download,

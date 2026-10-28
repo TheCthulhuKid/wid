@@ -128,12 +128,13 @@ document.addEventListener("keydown", (event) => {
     sheet().requestSubmit();
     return;
   }
-  // Ctrl+R repeats the last roll, as in the terminal, instead of reloading the page.
+  // Ctrl+R repeats the last roll (or activates the GM's Danger), as in the terminal, instead
+  // of reloading the page.
   if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "r") return;
   event.preventDefault();
   // While the game asks a question, the answer comes first, as in the terminal.
   if (sheet().querySelector("dialog[open]")) return;
-  const repeat = sheet().querySelector('button[formaction="/actions/roll"]:not([name])');
+  const repeat = sheet().querySelector("button[data-repeat]");
   if (repeat && !repeat.disabled) sheet().requestSubmit(repeat);
 });
 
