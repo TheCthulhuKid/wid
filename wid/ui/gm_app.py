@@ -155,6 +155,7 @@ class GmApp(SessionActions, BaseApp):
         """Show the kit's trackers only: a Danger's standing, the barricade, the revelations."""
         profile, scene = self.profile, self.game.scene
         self.query_one("#standing-row").display = profile.has_standing
+        self.query_one("#mismatched-row").display = profile.has_standing
         self.query_one("#barricade-row").display = profile.has_barricade
         self.query_one("#barricade", Static).update(barricade_text(scene.barricade))
         self.query_one("#barricade-up", Button).disabled = scene.barricade >= BARRICADE_MAX
@@ -221,7 +222,8 @@ class GmApp(SessionActions, BaseApp):
 
     def task_strain(self) -> None:
         complexity = self.query_one("#task", Select).value
-        self.act(lambda: self.game.task_strain(complexity))
+        mismatched = self.query_one("#mismatched", Select).value if self.profile.has_standing else 0
+        self.act(lambda: self.game.task_strain(complexity, mismatched))
 
     def spend_hits(self) -> None:
         amount = self.query_one("#amount", Select).value

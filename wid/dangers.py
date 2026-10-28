@@ -1,22 +1,15 @@
 """The GM's Danger rules: classes, difficulties, loadouts, a scene's threshold and activation."""
 
-from enum import StrEnum
 from random import Random
 from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
 from wid.profiles import PROFILES, Genre
-from wid.rolls import FrozenModel, roll_d6
+from wid.rolls import FrozenModel, Standing, Word, roll_d6
 
 
-class _Word(StrEnum):
-    @property
-    def label(self) -> str:
-        return self.value.capitalize()
-
-
-class Ability(_Word):
+class Ability(Word):
     HARASS = "harass"
     SCARE = "scare"
     KILL = "kill"
@@ -28,7 +21,7 @@ class Ability(_Word):
     SIEGE = "siege"
 
 
-class DangerClass(_Word):
+class DangerClass(Word):
     BRUTE = "brute"
     SWARM = "swarm"
     NIGHTMARE = "nightmare"
@@ -86,7 +79,7 @@ class DifficultyRule(FrozenModel):
         return pc_count * self.multiplier + self.addend
 
 
-class Difficulty(_Word):
+class Difficulty(Word):
     PETTY = "petty"
     COMPETENT = "competent"
     BOSS = "boss"
@@ -112,7 +105,7 @@ DIFFICULTY_RULES = {
 }
 
 
-class Complexity(_Word):
+class Complexity(Word):
     """A task's complexity, which sets the strain the PCs share: the PC count times this."""
 
     LOW = "low"
@@ -130,14 +123,6 @@ class Complexity(_Word):
     def revelation_advance(self) -> int:
         """How far a task done advances Oldheart's revelations track: 2, 3 or 4."""
         return self.multiplier + 1
-
-
-class Standing(_Word):
-    """A Ball Season Danger's tier of standing, which its manipulate ability measures PCs by."""
-
-    ESTEEMED = "esteemed"
-    REPUTABLE = "reputable"
-    SCANDALOUS = "scandalous"
 
 
 def require_tracker(genre: Genre, flag: str, tracker: str) -> None:

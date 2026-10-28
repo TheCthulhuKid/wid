@@ -47,6 +47,7 @@ from wid.rolls import (
     ResourceEffect,
     RollResult,
     RollSession,
+    Standing,
     StrainTracker,
 )
 from wid.sessions import CharacterDetails
@@ -232,7 +233,12 @@ class RollerApp(SessionActions, BaseApp):
             power=self.chosen_power(),
             reroll=self.selected_dice(),
             item_target=self.query_one("#item-target", Select).value,
+            target_standing=self.chosen_target_standing(),
         )
+
+    def chosen_target_standing(self) -> Standing | None:
+        value = self.query_one("#target-standing", Select).value
+        return None if value is Select.NULL else value
 
     def refresh_sheet(self) -> None:
         self.show_draft()
@@ -280,6 +286,10 @@ class RollerApp(SessionActions, BaseApp):
             self.query_one("#assisted", Checkbox).value = game.assisted
             self.query_one("#expertise", Checkbox).value = game.expertise
             self.set_power(game.power)
+            target = game.target_standing
+            self.query_one("#target-standing", Select).value = (
+                Select.NULL if target is None else target
+            )
 
     def update_strain_controls(self) -> None:
         tracker = self.session.strain
@@ -325,6 +335,7 @@ class RollerApp(SessionActions, BaseApp):
         profile = PROFILES[self.session.profile_id]
         self.query_one("#powers").display = profile.has_powers
         self.query_one("#recovery-row").display = profile.recovers is not None
+        self.query_one("#target-standing-row").display = profile.has_standing
         # Tech replaces items, so a kit with Tech shows its slots in the same section.
         self.section("items").title = "Tech" if profile.has_tech else "Items"
         self.query_one("#item-rows").display = profile.uses_items
@@ -465,7 +476,7 @@ class RollerApp(SessionActions, BaseApp):
         self.update_preview()
 
     def select_changed(self, event: Select.Changed) -> None:
-        if event.select.id == "fear":
+        if event.select.id in ("fear", "target-standing"):
             self.options_changed()
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:

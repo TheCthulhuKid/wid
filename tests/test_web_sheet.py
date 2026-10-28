@@ -16,6 +16,7 @@ KIT_CONTROLS = {
     'formaction="/actions/spend-resources"': "has_resources",
     'formaction="/actions/recover"': "recovers",
     'formaction="/actions/build-barricade"': "has_resources",
+    'name="target-standing"': "has_standing",
 }
 
 

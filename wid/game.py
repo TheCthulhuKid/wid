@@ -42,6 +42,7 @@ from wid.rolls import (
     RollRequest,
     RollResult,
     RollSession,
+    Standing,
     roll_d6,
 )
 from wid.sessions import (
@@ -410,6 +411,7 @@ class Game(BaseGame):
         self.assisted = False
         self.expertise = False
         self.power = PowerMode.NONE
+        self.target_standing: Standing | None = None
         # Choices about the current result, kept so a save can restore them.
         self.reroll_selection: tuple[int, ...] = ()
         self.item_target: int | None = None
@@ -464,6 +466,7 @@ class Game(BaseGame):
         power: PowerMode,
         reroll: Iterable[int],
         item_target: int | None,
+        target_standing: Standing | None = None,
     ) -> None:
         """Take the options for the next test and the dice picked from the current result.
 
@@ -478,6 +481,7 @@ class Game(BaseGame):
         self.assisted = assisted
         self.expertise = expertise
         self.power = power
+        self.target_standing = target_standing if self.profile.has_standing else None
         picked = {index for index in reroll if 0 <= index < count}
         self.reroll_selection = tuple(sorted(picked)) if self.profile.has_rerolls else ()
         on_a_die = item_target is not None and 0 <= item_target < count
@@ -511,6 +515,8 @@ class Game(BaseGame):
             power=self.power if self.profile.has_powers else PowerMode.NONE,
             resource_die=session.resource_die,
             manifestations=len(session.manifestations),
+            standing=session.standing,
+            target_standing=self.target_standing,
         )
 
     def start_game(self, ranks: tuple[int, ...]) -> str:
@@ -527,6 +533,7 @@ class Game(BaseGame):
             self.log_result(result, ROLL_ACTION)
             self.assisted = self.expertise = False
             self.power = PowerMode.NONE
+            self.target_standing = None
         return ""
 
     def reroll(self, indices: set[int]) -> str:
@@ -703,6 +710,7 @@ class Game(BaseGame):
                 self.assisted,
                 self.expertise,
                 self.power,
+                self.target_standing,
             ),
         }
 
@@ -743,6 +751,7 @@ class Game(BaseGame):
         self.assisted = draft.assisted
         self.expertise = draft.expertise
         self.power = draft.power
+        self.target_standing = draft.target_standing
         self.reroll_selection = saved.reroll_indices
         self.item_target = saved.item_target
 
@@ -752,6 +761,7 @@ class Game(BaseGame):
             self.assisted,
             self.expertise,
             self.power,
+            self.target_standing,
             self.reroll_selection,
             self.item_target,
         )
@@ -762,6 +772,7 @@ class Game(BaseGame):
             self.assisted,
             self.expertise,
             self.power,
+            self.target_standing,
             self.reroll_selection,
             self.item_target,
         ) = options

@@ -414,6 +414,15 @@ class KitControls(Vertical):
     """Kit-specific controls, and the resulting pool size."""
 
     def compose(self) -> ComposeResult:
+        # Ball Season: a one-test option, on its own row so the options row keeps its width.
+        with Horizontal(id="target-standing-row"):
+            yield Label("Target standing")
+            yield Select(
+                [(standing.label, standing) for standing in Standing],
+                prompt="No standing",
+                id="target-standing",
+                tooltip="The tier the test is made against: each tier apart is 1 more hit to pass",
+            )
         with Vertical(id="resource-field", classes="field"):
             yield Label("Resources")
             with Horizontal(id="resource-row"):
@@ -651,6 +660,15 @@ class SceneGroup(Vertical):
                     id="task",
                 )
             yield Button("Task strain", id="task-strain", tooltip="Log the strain a task taxes")
+        # Ball Season: the PCs whose standing differs from the task's, 1 strain each.
+        with Horizontal(id="mismatched-row"):
+            yield Label("PCs of another standing")
+            yield Select(
+                [(str(count), count) for count in range(PC_MAX + 1)],
+                value=0,
+                allow_blank=False,
+                id="mismatched",
+            )
         with Horizontal(id="barricade-row"):
             yield Static(id="barricade", markup=False)
             yield Button("Barricade +1", id="barricade-up")

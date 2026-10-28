@@ -21,6 +21,11 @@ Collapsible > Contents { padding: 0; }
 #fear-field { width: 9; margin-right: 1; }
 #assisted-field { width: 10; }
 #expertise-field { width: 1fr; }
+#target-standing-row { height: 3; }
+#target-standing-row Label { width: 16; padding: 1 0; }
+#target-standing { width: 18; }
+.short #target-standing-row { height: 1; }
+.short #target-standing-row Label { padding: 0; }
 #expertise-controls { height: 3; }
 #expertise { width: 4; }
 #name-expertise { width: 1fr; min-width: 0; }
@@ -135,7 +140,9 @@ SceneGroup { height: auto; }
 #task-row { height: 4; }
 #task-field { width: 12; margin-right: 1; }
 #task-strain { margin-top: 1; }
-#standing-row { height: 3; }
+#standing-row, #mismatched-row { height: 3; }
+#mismatched-row Label { width: 24; padding: 1 0; }
+#mismatched { width: 8; }
 #standing-row Label { width: 10; padding: 1 0; }
 #danger-standing { width: 16; }
 #barricade-row { height: 3; }
@@ -154,8 +161,8 @@ ActivationGroup { height: 1fr; padding: 1; border: solid $primary; }
 .short #new-danger, .short #threshold-row { height: 2; }
 .short #add-danger, .short #threshold-row Button, .short #task-strain { margin-top: 0; }
 .short #task-row { height: 2; }
-.short #barricade-row, .short #standing-row { height: 1; }
-.short #standing-row Label { padding: 0; }
+.short #barricade-row, .short #standing-row, .short #mismatched-row { height: 1; }
+.short #standing-row Label, .short #mismatched-row Label { padding: 0; }
 .short #barricade { padding: 0; }
 .short #revelations-row { height: 2; }
 .short #revelations-row Button { margin-top: 0; }

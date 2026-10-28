@@ -81,6 +81,8 @@ SCREEN_LABELS = [
     "Resources to spend",
     "Build barricade",
     "Strengthen barricade",
+    "Target standing",
+    "PCs of another standing",
 ]
 
 KIT_NAMES = [

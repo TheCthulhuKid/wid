@@ -113,6 +113,47 @@ def manifestation_check(
     return ManifestationCheck(dice=dice, score=score, succumbed=succumbed)
 
 
+class Word(StrEnum):
+    """An enum whose value, capitalised, is its label on screen."""
+
+    @property
+    def label(self) -> str:
+        return self.value.capitalize()
+
+
+class Standing(Word):
+    """A tier of Ball Season's standing: a character's, a Danger's or a test's target's."""
+
+    ESTEEMED = "esteemed"
+    REPUTABLE = "reputable"
+    SCANDALOUS = "scandalous"
+
+    @property
+    def rank(self) -> int:
+        return list(Standing).index(self)
+
+
+# Ball Season's Standing track, from left to right; the game starts on the centre dot.
+STANDING_TIERS = (
+    Standing.ESTEEMED,
+    Standing.REPUTABLE,
+    Standing.REPUTABLE,
+    Standing.REPUTABLE,
+    Standing.SCANDALOUS,
+)
+STANDING_LABELS = tuple(tier.label for tier in STANDING_TIERS)
+STANDING_START = 2
+StandingDot = Annotated[int, Field(strict=True, ge=0, le=len(STANDING_TIERS) - 1)]
+
+
+def standing_tier(dot: int) -> Standing:
+    return STANDING_TIERS[dot]
+
+
+def standing_label(dot: int) -> str:
+    return standing_tier(dot).label
+
+
 class RollRequest(FrozenModel):
     profile_id: Genre = Genre.CORE
     assisted: bool = False
@@ -125,6 +166,16 @@ class RollRequest(FrozenModel):
     resource_die: bool = False
     # Oldheart manifestations the character had when rolling; they change some pools.
     manifestations: Annotated[int, Field(strict=True, ge=0, le=MANIFESTATION_LIMIT)] = 0
+    # Ball Season: the character's dot on the Standing track, and the tier of what the test is
+    # made against; each tier between them is one more hit to pass.
+    standing: StandingDot = STANDING_START
+    target_standing: Standing | None = None
+
+    @property
+    def extra_hits(self) -> int:
+        if self.target_standing is None:
+            return 0
+        return abs(standing_tier(self.standing).rank - self.target_standing.rank)
 
     @property
     def manifestation_dice(self) -> int:
@@ -147,6 +198,8 @@ class RollRequest(FrozenModel):
             raise ValueError(f"{PROFILES[self.profile_id].name} has no Resources.")
         if self.manifestations and not PROFILES[self.profile_id].has_rerolls:
             raise ValueError(f"{PROFILES[self.profile_id].name} has no manifestations.")
+        if self.target_standing is not None and not PROFILES[self.profile_id].has_standing:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Standing.")
         return self
 
     def validate_power(self) -> None:
@@ -274,16 +327,6 @@ class AttributeSetup(FrozenModel):
         if attribute not in attributes:
             raise ValueError("Attribute must belong to the current genre kit.")
         return self.ranks[attributes.index(attribute)]
-
-
-# Ball Season's Standing track, from left to right; the game starts on the centre dot.
-STANDING_LABELS = ("Esteemed", "Reputable", "Reputable", "Reputable", "Scandalous")
-STANDING_START = 2
-Standing = Annotated[int, Field(strict=True, ge=0, le=len(STANDING_LABELS) - 1)]
-
-
-def standing_label(standing: int) -> str:
-    return STANDING_LABELS[standing]
 
 
 # The tracker: three rows of strain boxes, each ending in a wound (the last in Defeat). A row
@@ -436,7 +479,7 @@ class RollSession(BaseModel):
     # Heckboy power names, for the player's reference; they do not change rolls.
     power_names: tuple[str, str] = ("", "")
     # Ball Season only; it sets the GM's target numbers, so it never changes a roll here.
-    standing: Standing = STANDING_START
+    standing: StandingDot = STANDING_START
     # This Isn't Happening only: the pool starts at the Charity rank when the game starts.
     resources: Annotated[int, Field(strict=True, ge=RESOURCES_MIN, le=RESOURCES_MAX)] | None = None
     # A +1d6 bought with Resources, waiting for the next test.
@@ -477,7 +520,7 @@ class RollSession(BaseModel):
         if not PROFILES[self.profile_id].has_standing:
             raise ValueError(f"{PROFILES[self.profile_id].name} has no Standing.")
         try:
-            standing = TypeAdapter(Standing).validate_python(standing)
+            standing = TypeAdapter(StandingDot).validate_python(standing)
         except ValidationError as error:
             raise ValueError(
                 "Standing runs from Esteemed (dot 1) to Scandalous (dot 5)."

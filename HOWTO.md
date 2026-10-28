@@ -99,8 +99,11 @@ scenario, press **New scenario** to empty every slot again. **Undo** takes eithe
 
 **Standing (Ball Season).** A five-dot track: **Esteemed** on the left, **Scandalous** on the
 right, and **Reputable** for the three dots in between. You start on the centre dot. Click a dot,
-or click the track and press ← and →, to move. Standing never changes your dice; the GM uses it
-to set how many hits a test needs.
+or click the track and press ← and →, to move. Standing never changes your dice, but it can
+change how many hits a test needs: when a test involves standing, choose the other side's tier
+in **Target standing** before rolling, and the pool line and the result say how many more hits
+the test needs to pass, one for each tier between you. Like **Assisted**, it applies to one
+roll and clears itself afterwards.
 
 **Corruption (Oldheart).** Tick dice in the result, then press **Reroll selected**: each rerolled
 die costs 1 Corruption. For Corruption from anything else, such as a Danger or strain you chose
@@ -213,7 +216,9 @@ them. Opening a GM save (`wid scene.json`) starts this mode by itself.
 - Tick **Dangers fight each other** when the Dangers are hostile to one another; at the end
   of a round, **Dangers clash** rolls 1d6 and commits it.
 - For a task the PCs undertake, choose its complexity in **Task** and press **Task strain**:
-  the strain total for the PCs to share, worked out from **PCs**, goes to the history.
+  the strain total for the PCs to share, worked out from **PCs**, goes to the history. In Ball
+  Season, **PCs of another standing** adds 1 strain for each PC whose standing differs from the
+  task's.
 
 Three kits add a tracker to the scene, shown in that kit only, saved with the scene and taken
 back by **Undo**:

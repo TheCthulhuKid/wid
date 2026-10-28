@@ -4,6 +4,7 @@ import pytest
 from helpers import ScriptedRandom
 from pydantic import ValidationError
 
+from wid.formatting import pool_line
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     DieResult,
@@ -11,6 +12,7 @@ from wid.rolls import (
     PowerMode,
     RollRequest,
     RollSession,
+    Standing,
     StrainTracker,
     TechPiece,
 )
@@ -28,6 +30,14 @@ def test_pool_size_and_hit_threshold():
     assert assisted.pool_size == 3
     assert assisted.hit_threshold == 4
     assert RollRequest().hit_threshold == 5
+    # Ball Season: a test against another tier of standing needs a hit more per tier apart.
+    against = RollRequest(
+        profile_id=Genre.BALL_SEASON, standing=0, target_standing=Standing.SCANDALOUS
+    )
+    assert against.extra_hits == 2
+    assert pool_line(against).endswith("(+2 hits to pass for the standing)")
+    with pytest.raises(ValidationError, match="Core WiD has no Standing"):
+        RollRequest(target_standing=Standing.ESTEEMED)
 
 
 def test_dice_are_hits_misses_or_fumbles():

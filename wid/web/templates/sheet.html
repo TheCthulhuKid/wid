@@ -57,6 +57,14 @@
         </label>
         <label class="tick"><input type="checkbox" name="assisted" data-action="update" {% if game.assisted %}checked{% endif %}> Assisted</label>
         <label class="tick"><input type="checkbox" name="expertise" data-action="update" {% if game.expertise %}checked{% endif %}> Expertise</label>
+        {% if kit.has_standing %}
+        <label class="field narrow">Target standing
+          <select name="target-standing" data-action="update" title="The tier the test is made against: each tier apart is 1 more hit to pass">
+            <option value="">No standing</option>
+            {% for standing in standings %}<option value="{{ standing }}" {% if standing == game.target_standing %}selected{% endif %}>{{ standing.label }}</option>{% endfor %}
+          </select>
+        </label>
+        {% endif %}
       </div>
       <div class="row named">
         <label class="field grow">Expertise
@@ -264,6 +272,7 @@
       {% endfor %}
     </ol>
     <p class="totals">{% for text, outcome in totals %}<span class="{{ outcome }}">{{ text }}</span>{% endfor %}</p>
+    {% if extra_hits %}<p class="hint">{{ extra_hits }}</p>{% endif %}
     <p class="resources">{{ resources }}</p>
     {% if reminder %}<p class="hint">{{ reminder }}</p>{% endif %}
     {% if kit.has_rerolls %}<button formaction="/actions/reroll">Reroll selected</button>{% endif %}

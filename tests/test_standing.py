@@ -29,7 +29,9 @@ def test_track_moves_by_keys_and_clicks_for_ball_season_only():
         app = RollerApp()
         async with app.run_test(size=(120, 50)) as pilot:
             assert not app.query_one("#standing-field").display
+            assert not app.query_one("#target-standing-row").display
             await change_genre(app, pilot, Genre.BALL_SEASON)
+            assert app.query_one("#target-standing-row").display
             track = await reveal(app, pilot, "#standing")
             assert str(track.render()) == "○ ○ ● ○ ○  Reputable"
             track.focus()

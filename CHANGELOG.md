@@ -27,6 +27,9 @@ What changed in each release of wid, newest first. The format follows
   back, or This Isn't Happening gains the Resources.
 - This Isn't Happening: **Build barricade** and **Strengthen barricade** spend Resources and note
   the strength, and **Sacrifice** beside an item gives it up for 3 Resources.
+- Ball Season: **Target standing** before a roll says how many more hits the test needs to pass,
+  one per tier of standing between you and the target; in the GM mode, **PCs of another
+  standing** adds their strain to a task.
 
 ### Changed
 

@@ -73,6 +73,11 @@
             {% for complexity in complexities %}<option value="{{ complexity }}">{{ complexity.label }}</option>{% endfor %}
           </select>
         </label>
+        {% if kit.has_standing %}
+        <label class="field narrow">PCs of another standing
+          <select name="mismatched">{% for count in mismatched_counts %}<option>{{ count }}</option>{% endfor %}</select>
+        </label>
+        {% endif %}
         <button formaction="/actions/task-strain" title="Log the strain a task taxes">Task strain</button>
       </div>
 

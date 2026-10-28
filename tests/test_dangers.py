@@ -47,6 +47,9 @@ def test_danger_numbers_and_loadout():
     assert Danger(danger_class=DangerClass.BRUTE, difficulty=Difficulty.PETTY).threshold(3) == 4
     assert [complexity.strain_total(3) for complexity in Complexity] == [3, 6, 9]
     assert task_strain_line(Complexity.MEDIUM, 4) == "Medium task: 8 strain for 4 PCs to share."
+    assert task_strain_line(Complexity.MEDIUM, 4, 2) == (
+        "Medium task: 10 strain for 4 PCs to share (8, +2 for the PCs of another standing)."
+    )
 
     assert classes_for(Genre.CORE) == (
         DangerClass.BRUTE,

@@ -261,7 +261,7 @@ class BaseApp(App):
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.value != event.select.value:
             return
-        if event.select.id == "genre" and event.value != Select.BLANK:
+        if event.select.id == "genre" and event.value != Select.NULL:
             self.request_genre(Genre(event.value))
         else:
             self.select_changed(event)
