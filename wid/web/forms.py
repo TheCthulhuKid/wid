@@ -9,7 +9,7 @@ from collections.abc import Callable, Sequence
 from typing import NamedTuple
 from urllib.parse import parse_qs
 
-from wid.dangers import DangerClass, Difficulty
+from wid.dangers import Complexity, DangerClass, Difficulty
 from wid.formatting import (
     GM_KIT_QUESTION,
     NEW_CHARACTER_QUESTION,
@@ -340,5 +340,6 @@ GM_ACTIONS: dict[str, Callable[[GmGame, SheetForm], str]] = {
     "hostile": lambda game, form: game.set_hostile(form.ticked("hostile")),
     "activate": lambda game, form: game.activate(),
     "clash": lambda game, form: game.clash(),
+    "task-strain": lambda game, form: game.task_strain(Complexity(form.text("task"))),
     "change-kit": change_gm_kit,
 }

@@ -20,7 +20,7 @@ from textual.widgets import (
     TextArea,
 )
 
-from wid.dangers import DANGERS_MAX, PC_MAX, PC_MIN, DangerClass, Difficulty
+from wid.dangers import DANGERS_MAX, PC_MAX, PC_MIN, Complexity, DangerClass, Difficulty
 from wid.formatting import (
     BONUS_LABELS,
     CHARACTER_LABELS,
@@ -560,6 +560,16 @@ class SceneGroup(Vertical):
         with Horizontal(id="hostile-row"):
             yield Checkbox("Dangers fight each other", id="hostile")
             yield Button("Dangers clash", id="clash", tooltip="End of round: 1d6 off the threshold")
+        with Horizontal(id="task-row"):
+            with Vertical(classes="field", id="task-field"):
+                yield Label("Task")
+                yield Select(
+                    [(complexity.label, complexity) for complexity in Complexity],
+                    value=Complexity.LOW,
+                    allow_blank=False,
+                    id="task",
+                )
+            yield Button("Task strain", id="task-strain", tooltip="Log the strain a task taxes")
 
 
 class ActivationGroup(VerticalScroll):

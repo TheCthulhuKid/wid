@@ -2,7 +2,15 @@
 
 from collections.abc import Callable
 
-from wid.dangers import TARGETS, Ability, Activation, Danger, Scene, defending_attribute
+from wid.dangers import (
+    TARGETS,
+    Ability,
+    Activation,
+    Complexity,
+    Danger,
+    Scene,
+    defending_attribute,
+)
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     MANIFESTATION_EFFECTS,
@@ -402,6 +410,12 @@ def scene_summary(scene: Scene) -> str:
     if scene.hostile:
         text += ". Dangers fight each other"
     return text
+
+
+def task_strain_line(complexity: Complexity, pc_count: int) -> str:
+    """History line for a task, such as ``Medium task: 8 strain for 4 PCs to share.``"""
+    total = complexity.strain_total(pc_count)
+    return f"{complexity.label} task: {total} strain for {pc_count} PCs to share."
 
 
 def activation_line(activation: Activation) -> str:

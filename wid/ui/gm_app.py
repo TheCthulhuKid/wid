@@ -191,6 +191,10 @@ class GmApp(SessionActions, BaseApp):
         amount = self.query_one("#amount", Select).value
         self.act(lambda: self.game.raise_threshold(amount))
 
+    def task_strain(self) -> None:
+        complexity = self.query_one("#task", Select).value
+        self.act(lambda: self.game.task_strain(complexity))
+
     def select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "pc-count":
             count = event.value
@@ -239,4 +243,5 @@ APP_BUTTONS: dict[str, Callable[[GmApp], None]] = {
     "add-danger": GmApp.add_danger,
     "commit-hits": GmApp.commit_hits,
     "raise-threshold": GmApp.raise_threshold,
+    "task-strain": GmApp.task_strain,
 }

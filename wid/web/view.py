@@ -2,7 +2,15 @@
 
 from markdown_it import MarkdownIt
 
-from wid.dangers import DANGERS_MAX, PC_MAX, PC_MIN, DangerClass, Difficulty, classes_for
+from wid.dangers import (
+    DANGERS_MAX,
+    PC_MAX,
+    PC_MIN,
+    Complexity,
+    DangerClass,
+    Difficulty,
+    classes_for,
+)
 from wid.formatting import (
     BONUS_LABELS,
     CHARACTER_LABELS,
@@ -205,6 +213,7 @@ def gm_context(
         "loadout_rows": loadout_rows(scene.loadout, game.genre),
         "classes": classes_for(game.genre),
         "difficulties": tuple(Difficulty),
+        "complexities": tuple(Complexity),
         "default_class": DangerClass.BRUTE,
         "default_difficulty": Difficulty.COMPETENT,
         "pc_counts": range(PC_MIN, PC_MAX + 1),

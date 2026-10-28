@@ -60,6 +60,14 @@
         <button formaction="/actions/clash" title="End of round: 1d6 off the threshold"
                 {% if not (scene.dangers and scene.hostile) %}disabled{% endif %}>Dangers clash</button>
       </div>
+      <div class="row named">
+        <label class="field narrow">Task
+          <select name="task">
+            {% for complexity in complexities %}<option value="{{ complexity }}">{{ complexity.label }}</option>{% endfor %}
+          </select>
+        </label>
+        <button formaction="/actions/task-strain" title="Log the strain a task taxes">Task strain</button>
+      </div>
     </section>
 
     {% include "session.html" %}

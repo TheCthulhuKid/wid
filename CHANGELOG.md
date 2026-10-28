@@ -15,6 +15,8 @@ What changed in each release of wid, newest first. The format follows
   GM mode by themselves.
 - **Save first** on the question asked when changing kit with unsaved changes, in the terminal
   and the browser.
+- **Task strain** in the GM mode: choose a task's complexity and wid logs the strain total the
+  PCs share.
 
 ### Changed
 

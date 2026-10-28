@@ -12,6 +12,7 @@ from typing import Any
 from wid.dangers import (
     DANGERS_MAX,
     Activation,
+    Complexity,
     Danger,
     DangerClass,
     Difficulty,
@@ -19,7 +20,7 @@ from wid.dangers import (
     activate,
     classes_for,
 )
-from wid.formatting import activation_line, danger_summary, scene_summary
+from wid.formatting import activation_line, danger_summary, scene_summary, task_strain_line
 from wid.game import BaseGame
 from wid.profiles import PROFILES, Genre, WiDProfile
 from wid.rolls import roll_d6
@@ -161,6 +162,10 @@ class GmGame(BaseGame):
             die = roll_d6(self.rng)
             self.scene = self.scene.commit(die)
         return self.notice(f"Dangers clash: rolled {die}. {self.summary()}")
+
+    def task_strain(self, complexity: Complexity) -> str:
+        """Log the strain a task taxes the PCs; it changes nothing in the scene."""
+        return self.notice(task_strain_line(complexity, self.scene.pc_count))
 
     def keep_scene(self, genre: Genre) -> str:
         """Change kit and keep the scene, less the Dangers of a class the new kit lacks."""

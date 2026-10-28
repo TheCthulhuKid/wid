@@ -112,6 +112,22 @@ DIFFICULTY_RULES = {
     Difficulty.MEGA: DifficultyRule(ability=Ability.KILL, hits_to_pass=2, multiplier=4),
 }
 
+
+class Complexity(_Word):
+    """A task's complexity, which sets the strain the PCs share: the PC count times this."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+    @property
+    def multiplier(self) -> int:
+        return list(Complexity).index(self) + 1
+
+    def strain_total(self, pc_count: int) -> int:
+        return pc_count * self.multiplier
+
+
 # Dice 1 to 3 of every loadout.
 DEFAULT_ABILITIES = (Ability.HARASS, Ability.SCARE, Ability.KILL)
 

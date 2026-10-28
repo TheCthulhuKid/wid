@@ -4,7 +4,7 @@ import pytest
 from helpers import ScriptedRandom, click, text
 from textual.widgets import DataTable, Input, Select
 
-from wid.dangers import DangerClass, Difficulty
+from wid.dangers import Complexity, DangerClass, Difficulty
 from wid.formatting import NO_DANGER_HINT
 from wid.profiles import Genre
 from wid.ui.gm_app import GmApp
@@ -37,6 +37,9 @@ def test_a_danger_is_added_activated_removed_and_kept_across_a_kit_change():
             assert text(app, "#activation").startswith("Activation (4, 2, 5): Dominate")
             await click(app, pilot, "#commit-hits")
             assert "progress 1" in text(app, "#scene-summary")
+            app.query_one("#task", Select).value = Complexity.HIGH
+            await click(app, pilot, "#task-strain")
+            assert text(app, "#feedback") == "High task: 12 strain for 4 PCs to share."
 
             app.query_one("#genre", Select).value = Genre.CORE
             await pilot.pause()

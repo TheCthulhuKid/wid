@@ -70,6 +70,8 @@ SCREEN_LABELS = [
     "Keep scene",
     "Start new",
     "Save first",
+    "Task",
+    "Task strain",
 ]
 
 KIT_NAMES = [

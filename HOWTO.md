@@ -199,6 +199,8 @@ them. Opening a GM save (`wid scene.json`) starts this mode by itself.
   threshold.
 - Tick **Dangers fight each other** when the Dangers are hostile to one another; at the end
   of a round, **Dangers clash** rolls 1d6 and commits it.
+- For a task the PCs undertake, choose its complexity in **Task** and press **Task strain**:
+  the strain total for the PCs to share, worked out from **PCs**, goes to the history.
 
 On the right, **Activate Danger** (or **Ctrl+R**) rolls 3d6 and shows which ability the Danger
 uses, who it targets and the attribute the targets defend with, in the words of the current

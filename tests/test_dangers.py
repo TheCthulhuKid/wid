@@ -1,13 +1,23 @@
 import pytest
 from helpers import ScriptedRandom
 
-from wid.dangers import Ability, Danger, DangerClass, Difficulty, Scene, activate, classes_for
+from wid.dangers import (
+    Ability,
+    Complexity,
+    Danger,
+    DangerClass,
+    Difficulty,
+    Scene,
+    activate,
+    classes_for,
+)
 from wid.formatting import (
     NO_DANGER_HINT,
     activation_line,
     danger_summary,
     loadout_rows,
     scene_summary,
+    task_strain_line,
 )
 from wid.profiles import Genre
 
@@ -33,6 +43,8 @@ def test_danger_numbers_and_loadout():
     assert TITAN.hits_to_pass == 2
     assert TITAN.loadout[3:] == (Ability.DOMINATE, Ability.DOMINATE, Ability.KILL)
     assert Danger(danger_class=DangerClass.BRUTE, difficulty=Difficulty.PETTY).threshold(3) == 4
+    assert [complexity.strain_total(3) for complexity in Complexity] == [3, 6, 9]
+    assert task_strain_line(Complexity.MEDIUM, 4) == "Medium task: 8 strain for 4 PCs to share."
 
     assert classes_for(Genre.CORE) == (
         DangerClass.BRUTE,
