@@ -5,6 +5,9 @@ What changed in each release of wid, newest first. The format follows
 
 ## [Unreleased]
 
+
+## [0.5.0] - 2026-10-28
+
 ### Added
 
 - **GM mode**: `wid --gm` runs the Game Master's screen, and `wid --web --gm` the same page in
