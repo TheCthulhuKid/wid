@@ -183,8 +183,10 @@ random generator's state are not saved, and the theme lives in the settings file
 
 **GM session files** are the same kind of file with `kind: "gm"` and their own `version: 1`
 (`GmSave` in `wid/sessions.py`). One holds the session name, the genre kit, the PC count, the
-Dangers with their names, classes and difficulties, the hits committed, the raised threshold,
-whether the Dangers fight each other, the notes and the history. The last activation is not
+Dangers with their names, classes, difficulties and (Ball Season) standing, the hits committed,
+the raised threshold, whether the Dangers fight each other, the barricade (This Isn't
+Happening), the revelations track and how many revelations there are (Oldheart), the notes and
+the history. A file whose scene holds something its kit lacks is refused. The last activation is not
 saved; the history has it. A player's file has no `kind`, and each mode refuses the other's
 file with a message naming the flag to start wid with. A change to the GM format bumps
 `GmSave.version` and gets its own upgrade table, separate from the player's.

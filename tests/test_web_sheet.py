@@ -111,6 +111,10 @@ def test_the_gm_page_runs_a_scene_and_refuses_a_player_save():
     sheet = act(client, "change-kit", **{"keep-scene": "core"}).text
     assert "Kit changed to Core WiD. Dropped Jupiter." in sheet
     assert game.genre == Genre.CORE
+    assert 'formaction="/actions/hits-spent"' not in sheet
+    sheet = act(client, "change-kit", **{"keep-scene": "oldheart"}).text
+    assert 'formaction="/actions/hits-spent"' in sheet
+    assert "Revelations: 3 of 12 advanced" in act(client, "task-done", task="medium").text
     player_save = Game()
     player_save.start_game((1, 2, 3))
     refused = act(client, "upload", **{"session-file": player_save.save_text()}).text

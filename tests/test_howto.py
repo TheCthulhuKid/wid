@@ -72,6 +72,11 @@ SCREEN_LABELS = [
     "Save first",
     "Task",
     "Task strain",
+    "Barricade +1",
+    "Barricade −1",
+    "Revelations",
+    "Hits spent",
+    "Task done",
 ]
 
 KIT_NAMES = [

@@ -54,5 +54,20 @@ def test_a_danger_is_added_activated_removed_and_kept_across_a_kit_change():
             await click(app, pilot, "#remove-danger-0")
             assert text(app, "#feedback") == "Removed Zeus."
             assert not app.query_one("#danger-row-0").display
+            # A kit's tracker shows in that kit only.
+            app.query_one("#genre", Select).value = Genre.THIS_ISNT_HAPPENING
+            await pilot.pause()
+            await pilot.click("#keep-scene")
+            await pilot.pause()
+            assert app.query_one("#barricade-row").display
+            assert not app.query_one("#revelations-field").display
+            await click(app, pilot, "#barricade-up")
+            assert text(app, "#feedback") == "Barricade +1: barricade 1 of 6."
+            app.query_one("#genre", Select).value = Genre.CORE
+            await pilot.pause()
+            await pilot.click("#keep-scene")
+            await pilot.pause()
+            assert not app.query_one("#barricade-row").display
+            assert app.game.scene.barricade == 0
 
     asyncio.run(scenario())

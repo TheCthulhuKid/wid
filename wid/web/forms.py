@@ -9,7 +9,7 @@ from collections.abc import Callable, Sequence
 from typing import NamedTuple
 from urllib.parse import parse_qs
 
-from wid.dangers import Complexity, DangerClass, Difficulty
+from wid.dangers import Complexity, DangerClass, Difficulty, Standing
 from wid.formatting import (
     GM_KIT_QUESTION,
     NEW_CHARACTER_QUESTION,
@@ -333,6 +333,7 @@ GM_ACTIONS: dict[str, Callable[[GmGame, SheetForm], str]] = {
         form.text("new-danger-name"),
         DangerClass(form.text("danger-class")),
         Difficulty(form.text("difficulty")),
+        Standing(form.text("standing")) if form.get("standing") else None,
     ),
     "remove-danger": lambda game, form: game.remove_danger(form.number("index")),
     "commit-hits": lambda game, form: game.commit_hits(form.number("amount")),
@@ -341,5 +342,9 @@ GM_ACTIONS: dict[str, Callable[[GmGame, SheetForm], str]] = {
     "activate": lambda game, form: game.activate(),
     "clash": lambda game, form: game.clash(),
     "task-strain": lambda game, form: game.task_strain(Complexity(form.text("task"))),
+    "barricade": lambda game, form: game.move_barricade(form.number("step")),
+    "hits-spent": lambda game, form: game.spend_hits(form.number("amount")),
+    "task-done": lambda game, form: game.task_done(Complexity(form.text("task"))),
+    "set-revelations": lambda game, form: game.set_revelations(form.number("revelations")),
     "change-kit": change_gm_kit,
 }

@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from wid.dangers import Scene, classes_for
+from wid.dangers import Scene
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import STANDING_START, FrozenModel, Index, RollRequest, RollSession
@@ -208,10 +208,9 @@ class GmSave(SaveFile):
     history: tuple[HistoryEntry, ...] = ()
 
     @model_validator(mode="after")
-    def validate_classes(self) -> Self:
-        allowed = classes_for(self.genre)
-        if any(danger.danger_class not in allowed for danger in self.scene.dangers):
-            raise ValueError(f"{PROFILES[self.genre].name} has no such Danger class.")
+    def validate_kit(self) -> Self:
+        if not self.scene.fits(self.genre):
+            raise ValueError(f"The scene holds something {PROFILES[self.genre].name} lacks.")
         return self
 
 

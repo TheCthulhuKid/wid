@@ -26,6 +26,9 @@ class WiDProfile(BaseModel):
     has_rerolls: bool = False
     has_standing: bool = False
     has_resources: bool = False
+    # The scene trackers a kit gives the GM.
+    has_barricade: bool = False
+    has_revelations: bool = False
 
 
 PROFILES = {
@@ -49,6 +52,7 @@ PROFILES = {
         name="Oldheart",
         attributes=("Depravity", "Hospitality", "Fitness"),
         has_rerolls=True,
+        has_revelations=True,
     ),
     Genre.BALL_SEASON: WiDProfile(
         genre=Genre.BALL_SEASON,
@@ -61,5 +65,6 @@ PROFILES = {
         name="This Isn't Happening",
         attributes=("Instincts", "Endurance", "Charity"),
         has_resources=True,
+        has_barricade=True,
     ),
 }

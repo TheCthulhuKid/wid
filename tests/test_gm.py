@@ -64,4 +64,8 @@ def test_keep_scene_drops_what_the_kit_lacks_then_start_new():
         [],
         False,
     )
-    assert game.sheet_lines() == ["Kit: Oldheart", "PCs: 4"]
+    assert game.sheet_lines() == [
+        "Kit: Oldheart",
+        "PCs: 4",
+        "Revelations: 0 of 12 advanced, 0 of 3 revealed",
+    ]

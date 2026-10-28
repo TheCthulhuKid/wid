@@ -126,6 +126,16 @@ SceneGroup { height: auto; }
 #task-row { height: 4; }
 #task-field { width: 12; margin-right: 1; }
 #task-strain { margin-top: 1; }
+#standing-row { height: 3; }
+#standing-row Label { width: 10; padding: 1 0; }
+#danger-standing { width: 16; }
+#barricade-row { height: 3; }
+#barricade { width: 20; padding: 1 0; }
+#barricade-row Button { margin-right: 1; }
+#revelations-field, #revelations-row { height: auto; }
+#revelations-row { height: 4; }
+#revelation-count-field { width: 13; margin-right: 1; }
+#revelations-row Button { margin-top: 1; margin-right: 1; }
 #hostile { width: 1fr; padding: 0; border: tall transparent; }
 ActivationGroup { height: 1fr; padding: 1; border: solid $primary; }
 #activation { margin-bottom: 1; }
@@ -135,6 +145,11 @@ ActivationGroup { height: 1fr; padding: 1; border: solid $primary; }
 .short #new-danger, .short #threshold-row { height: 2; }
 .short #add-danger, .short #threshold-row Button, .short #task-strain { margin-top: 0; }
 .short #task-row { height: 2; }
+.short #barricade-row, .short #standing-row { height: 1; }
+.short #standing-row Label { padding: 0; }
+.short #barricade { padding: 0; }
+.short #revelations-row { height: 2; }
+.short #revelations-row Button { margin-top: 0; }
 .short .danger-row { margin-top: 0; }
 .short .danger-controls, .short #hostile-row { height: 1; }
 .short #hostile { height: 1; border: none; }

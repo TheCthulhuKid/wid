@@ -20,7 +20,17 @@ from textual.widgets import (
     TextArea,
 )
 
-from wid.dangers import DANGERS_MAX, PC_MAX, PC_MIN, Complexity, DangerClass, Difficulty
+from wid.dangers import (
+    DANGERS_MAX,
+    PC_MAX,
+    PC_MIN,
+    REVELATIONS_DEFAULT,
+    REVELATIONS_MAX,
+    Complexity,
+    DangerClass,
+    Difficulty,
+    Standing,
+)
 from wid.formatting import (
     BONUS_LABELS,
     CHARACTER_LABELS,
@@ -538,6 +548,16 @@ class SceneGroup(Vertical):
                     id="difficulty",
                 )
             yield Button("Add Danger", id="add-danger", variant="primary")
+        # Ball Season: the standing of the Danger being added, on its own row so the add row
+        # still fits 80 columns.
+        with Horizontal(id="standing-row"):
+            yield Label("Standing")
+            yield Select(
+                [(standing.label, standing) for standing in Standing],
+                value=Standing.REPUTABLE,
+                allow_blank=False,
+                id="danger-standing",
+            )
         with Vertical(id="danger-rows"):
             for index in range(DANGERS_MAX):
                 with Vertical(classes="danger-row", id=f"danger-row-{index}"):
@@ -570,6 +590,25 @@ class SceneGroup(Vertical):
                     id="task",
                 )
             yield Button("Task strain", id="task-strain", tooltip="Log the strain a task taxes")
+        with Horizontal(id="barricade-row"):
+            yield Static(id="barricade", markup=False)
+            yield Button("Barricade +1", id="barricade-up")
+            yield Button("Barricade −1", id="barricade-down")
+        with Vertical(id="revelations-field"):
+            yield Static(id="revelations", markup=False)
+            with Horizontal(id="revelations-row"):
+                with Vertical(classes="field", id="revelation-count-field"):
+                    yield Label("Revelations")
+                    yield Select(
+                        [(str(count), count) for count in range(1, REVELATIONS_MAX + 1)],
+                        value=REVELATIONS_DEFAULT,
+                        allow_blank=False,
+                        id="revelation-count",
+                    )
+                yield Button("Hits spent", id="hits-spent", tooltip="Advance by the Amount")
+                yield Button(
+                    "Task done", id="task-done", tooltip="Advance by the Task's complexity"
+                )
 
 
 class ActivationGroup(VerticalScroll):

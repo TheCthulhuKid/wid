@@ -32,6 +32,13 @@
             {% for difficulty in difficulties %}<option value="{{ difficulty }}" {% if difficulty == default_difficulty %}selected{% endif %}>{{ difficulty.label }}</option>{% endfor %}
           </select>
         </label>
+        {% if kit.has_standing %}
+        <label class="field narrow">Standing
+          <select name="standing">
+            {% for standing in standings %}<option value="{{ standing }}" {% if standing == default_standing %}selected{% endif %}>{{ standing.label }}</option>{% endfor %}
+          </select>
+        </label>
+        {% endif %}
         <button class="primary" formaction="/actions/add-danger" {% if scene_full %}disabled{% endif %}>Add Danger</button>
       </div>
 
@@ -68,6 +75,29 @@
         </label>
         <button formaction="/actions/task-strain" title="Log the strain a task taxes">Task strain</button>
       </div>
+
+      {% if kit.has_barricade %}
+      <div class="kit-controls row">
+        <span class="field-label">{{ "Barricade %d of %d" % (scene.barricade, barricade_max) if scene.barricade else "No barricade" }}</span>
+        <button formaction="/actions/barricade" name="step" value="1" {% if scene.barricade >= barricade_max %}disabled{% endif %}>Barricade +1</button>
+        <button formaction="/actions/barricade" name="step" value="-1" {% if not scene.barricade %}disabled{% endif %}>Barricade −1</button>
+      </div>
+      {% endif %}
+
+      {% if kit.has_revelations %}
+      <div class="kit-controls">
+        <p class="status">{{ revelations_line }}</p>
+        <div class="row named">
+          <label class="field narrow">Revelations
+            <select name="revelations" data-action="set-revelations">
+              {% for count in revelation_counts %}<option {% if count == scene.revelations %}selected{% endif %}>{{ count }}</option>{% endfor %}
+            </select>
+          </label>
+          <button formaction="/actions/hits-spent" title="Advance by the Amount" {% if revelations_done %}disabled{% endif %}>Hits spent</button>
+          <button formaction="/actions/task-done" title="Advance by the Task's complexity" {% if revelations_done %}disabled{% endif %}>Task done</button>
+        </div>
+      </div>
+      {% endif %}
     </section>
 
     {% include "session.html" %}

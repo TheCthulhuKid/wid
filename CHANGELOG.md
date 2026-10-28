@@ -17,6 +17,9 @@ What changed in each release of wid, newest first. The format follows
   and the browser.
 - **Task strain** in the GM mode: choose a task's complexity and wid logs the strain total the
   PCs share.
+- The kits' scene trackers in the GM mode: a Danger's **Standing** in Ball Season, the
+  **Barricade** in This Isn't Happening, and the **Revelations** track in Oldheart, each saved
+  with the scene and undoable.
 
 ### Changed
 

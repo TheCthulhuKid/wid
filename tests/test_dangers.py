@@ -8,6 +8,7 @@ from wid.dangers import (
     DangerClass,
     Difficulty,
     Scene,
+    Standing,
     activate,
     classes_for,
 )
@@ -16,6 +17,7 @@ from wid.formatting import (
     activation_line,
     danger_summary,
     loadout_rows,
+    revelations_line,
     scene_summary,
     task_strain_line,
 )
@@ -89,6 +91,55 @@ def test_scene_combines_its_dangers():
     assert core.dangers == (BRUTE,)
     assert dropped == ["Zeus"]
     assert committed.in_kit(Genre.HECKBOY) == (committed, [])
+
+
+def test_each_kits_scene_tracker_counts_and_is_refused_elsewhere():
+    schemer = Danger(danger_class=DangerClass.SCHEMER, difficulty=Difficulty.BOSS)
+    esteemed = schemer.replace(standing=Standing.ESTEEMED)
+    scene = Scene(pc_count=2).with_danger(esteemed, Genre.BALL_SEASON)
+    assert danger_summary(esteemed, 0, 2) == (
+        "Danger 1: Boss Schemer, Esteemed — threshold 6, 2 hits to pass"
+    )
+    activation = activate(scene, Genre.BALL_SEASON, ScriptedRandom([1, 1, 1]))
+    assert activation_line(activation).endswith("defending with Propriety; the Danger is Esteemed")
+    with pytest.raises(ValueError, match="Core WiD has no Standing"):
+        Scene().with_danger(BRUTE.replace(standing=Standing.ESTEEMED), Genre.CORE)
+    with pytest.raises(ValueError, match="Core WiD has no Schemers"):
+        Scene().with_danger(schemer, Genre.CORE)
+
+    walled = (
+        Scene()
+        .move_barricade(1, Genre.THIS_ISNT_HAPPENING)
+        .move_barricade(1, Genre.THIS_ISNT_HAPPENING)
+    )
+    assert walled.barricade == 2
+    assert scene_summary(walled.with_danger(BRUTE, Genre.CORE)).endswith("Barricade 2 of 6")
+    with pytest.raises(ValueError, match="no barricade"):
+        Scene().move_barricade(-1, Genre.THIS_ISNT_HAPPENING)
+    with pytest.raises(ValueError, match="Core WiD has no barricade"):
+        Scene().move_barricade(1, Genre.CORE)
+
+    track = Scene().advance_revelations(Complexity.HIGH.revelation_advance, Genre.OLDHEART)
+    track = track.advance_revelations(3, Genre.OLDHEART)
+    assert (track.revelation_progress, track.revealed) == (7, 1)
+    assert revelations_line(track) == "Revelations: 7 of 12 advanced, 1 of 3 revealed"
+    assert track.advance_revelations(20, Genre.OLDHEART).revelation_progress == 12
+    assert track.with_revelations(1, Genre.OLDHEART).revelation_progress == 4
+    with pytest.raises(ValueError, match="Core WiD has no revelations track"):
+        Scene().advance_revelations(1, Genre.CORE)
+
+    # Another kit keeps none of them.
+    everything = Scene(dangers=(esteemed,), barricade=3, revelation_progress=5)
+    core, dropped = everything.in_kit(Genre.CORE)
+    assert (core.dangers, core.barricade, core.revelation_progress, dropped) == (
+        (),
+        0,
+        0,
+        ["Danger 1"],
+    )
+    assert not everything.fits(Genre.BALL_SEASON) and everything.in_kit(Genre.BALL_SEASON)[0].fits(
+        Genre.BALL_SEASON
+    )
 
 
 def test_activation_uses_the_kits_attributes():

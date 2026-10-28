@@ -10,17 +10,23 @@ from random import Random
 from typing import Any
 
 from wid.dangers import (
-    DANGERS_MAX,
     Activation,
     Complexity,
     Danger,
     DangerClass,
     Difficulty,
     Scene,
+    Standing,
     activate,
-    classes_for,
 )
-from wid.formatting import activation_line, danger_summary, scene_summary, task_strain_line
+from wid.formatting import (
+    activation_line,
+    barricade_text,
+    danger_summary,
+    revelations_line,
+    scene_summary,
+    task_strain_line,
+)
 from wid.game import BaseGame
 from wid.profiles import PROFILES, Genre, WiDProfile
 from wid.rolls import roll_d6
@@ -97,6 +103,8 @@ class GmGame(BaseGame):
         ]
         if scene.dangers:
             lines.append(scene_summary(scene))
+        if self.profile.has_revelations:
+            lines.append(revelations_line(scene))
         return lines
 
     def set_pc_count(self, pc_count: int) -> str:
@@ -106,14 +114,19 @@ class GmGame(BaseGame):
             self.scene = self.scene.with_pc_count(pc_count)
         return self.notice(f"PCs: {pc_count}.")
 
-    def add_danger(self, name: str, danger_class: DangerClass, difficulty: Difficulty) -> str:
-        if danger_class not in classes_for(self.genre):
-            raise ValueError(f"{self.profile.name} has no {danger_class.label}s.")
-        if len(self.scene.dangers) >= DANGERS_MAX:
-            raise ValueError(f"A scene holds up to {DANGERS_MAX} Dangers.")
-        danger = Danger(name=name, danger_class=danger_class, difficulty=difficulty)
+    def add_danger(
+        self,
+        name: str,
+        danger_class: DangerClass,
+        difficulty: Difficulty,
+        standing: Standing | None = None,
+    ) -> str:
+        """Add a Danger; ``standing`` is Ball Season's, and refused elsewhere."""
+        danger = Danger(
+            name=name, danger_class=danger_class, difficulty=difficulty, standing=standing
+        )
         with self.undoable("Danger added"):
-            self.scene = self.scene.replace(dangers=(*self.scene.dangers, danger))
+            self.scene = self.scene.with_danger(danger, self.genre)
         index = len(self.scene.dangers) - 1
         return self.notice(f"Added {danger_summary(danger, index, self.scene.pc_count)}")
 
@@ -166,6 +179,37 @@ class GmGame(BaseGame):
     def task_strain(self, complexity: Complexity) -> str:
         """Log the strain a task taxes the PCs; it changes nothing in the scene."""
         return self.notice(task_strain_line(complexity, self.scene.pc_count))
+
+    def move_barricade(self, step: int) -> str:
+        with self.undoable("barricade change"):
+            self.scene = self.scene.move_barricade(step, self.genre)
+        return self.notice(f"Barricade {step:+d}: {barricade_text(self.scene.barricade).lower()}.")
+
+    def spend_hits(self, hits: int) -> str:
+        """Hits spent on an investigation advance the revelations track by one each."""
+        if hits < 1:
+            raise ValueError("Spend at least 1 hit.")
+        return self.advance_revelations(f"Hits spent: {hits}", hits)
+
+    def task_done(self, complexity: Complexity) -> str:
+        advance = complexity.revelation_advance
+        return self.advance_revelations(f"{complexity.label} task done: +{advance}", advance)
+
+    def advance_revelations(self, change: str, amount: int) -> str:
+        revealed = self.scene.revealed
+        with self.undoable("revelations advance"):
+            self.scene = self.scene.advance_revelations(amount, self.genre)
+        text = f"{change}. {revelations_line(self.scene)}."
+        if self.scene.revealed > revealed:
+            text += " A revelation!"
+        return self.notice(text)
+
+    def set_revelations(self, count: int) -> str:
+        if count == self.scene.revelations:
+            return ""
+        with self.undoable("revelations change"):
+            self.scene = self.scene.with_revelations(count, self.genre)
+        return self.notice(f"Revelations to find: {count}. {revelations_line(self.scene)}.")
 
     def keep_scene(self, genre: Genre) -> str:
         """Change kit and keep the scene, less the Dangers of a class the new kit lacks."""

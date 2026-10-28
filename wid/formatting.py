@@ -3,6 +3,7 @@
 from collections.abc import Callable
 
 from wid.dangers import (
+    BARRICADE_MAX,
     TARGETS,
     Ability,
     Activation,
@@ -390,10 +391,14 @@ def hits_text(hits: int) -> str:
 
 
 def danger_summary(danger: Danger, index: int, pc_count: int) -> str:
-    """One Danger's line, such as ``Danger 1: Competent Brute — threshold 8, 1 hit to pass``."""
+    """One Danger's line, such as ``Danger 1: Competent Brute — threshold 8, 1 hit to pass``,
+    with its standing after the class in Ball Season."""
+    kind = f"{danger.difficulty.label} {danger.danger_class.label}"
+    if danger.standing is not None:
+        kind += f", {danger.standing.label}"
     return (
-        f"{one_line(danger.label(index))}: {danger.difficulty.label} {danger.danger_class.label} "
-        f"— threshold {danger.threshold(pc_count)}, {hits_text(danger.hits_to_pass)}"
+        f"{one_line(danger.label(index))}: {kind} — threshold {danger.threshold(pc_count)}, "
+        f"{hits_text(danger.hits_to_pass)}"
     )
 
 
@@ -409,7 +414,21 @@ def scene_summary(scene: Scene) -> str:
         text += ". Overcome"
     if scene.hostile:
         text += ". Dangers fight each other"
+    if scene.barricade:
+        text += f". {barricade_text(scene.barricade)}"
     return text
+
+
+def barricade_text(strength: int) -> str:
+    return f"Barricade {strength} of {BARRICADE_MAX}" if strength else "No barricade"
+
+
+def revelations_line(scene: Scene) -> str:
+    """Oldheart's track, such as ``Revelations: 5 of 12 advanced, 1 of 3 revealed``."""
+    return (
+        f"Revelations: {scene.revelation_progress} of {scene.revelation_total} advanced, "
+        f"{scene.revealed} of {scene.revelations} revealed"
+    )
 
 
 def task_strain_line(complexity: Complexity, pc_count: int) -> str:
@@ -421,10 +440,13 @@ def task_strain_line(complexity: Complexity, pc_count: int) -> str:
 def activation_line(activation: Activation) -> str:
     """History line for an activation, the three dice in the order they were rolled."""
     dice = ", ".join(str(die) for die in activation.dice)
-    return (
+    text = (
         f"Activation ({dice}): {activation.ability.label} — {activation.target}, "
         f"defending with {activation.attribute}"
     )
+    if activation.standing is not None:
+        text += f"; the Danger is {activation.standing.label}"
+    return text
 
 
 def loadout_rows(loadout: tuple[Ability, ...], genre: Genre) -> list[tuple[str, str, str, str]]:

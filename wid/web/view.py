@@ -3,12 +3,15 @@
 from markdown_it import MarkdownIt
 
 from wid.dangers import (
+    BARRICADE_MAX,
     DANGERS_MAX,
     PC_MAX,
     PC_MIN,
+    REVELATIONS_MAX,
     Complexity,
     DangerClass,
     Difficulty,
+    Standing,
     classes_for,
 )
 from wid.formatting import (
@@ -29,6 +32,7 @@ from wid.formatting import (
     resources_line,
     resources_reminder,
     result_text,
+    revelations_line,
     scene_summary,
     strain_box_name,
     strain_status,
@@ -214,6 +218,12 @@ def gm_context(
         "classes": classes_for(game.genre),
         "difficulties": tuple(Difficulty),
         "complexities": tuple(Complexity),
+        "standings": tuple(Standing),
+        "default_standing": Standing.REPUTABLE,
+        "barricade_max": BARRICADE_MAX,
+        "revelations_line": revelations_line(scene),
+        "revelation_counts": range(1, REVELATIONS_MAX + 1),
+        "revelations_done": scene.revelation_progress >= scene.revelation_total,
         "default_class": DangerClass.BRUTE,
         "default_difficulty": Difficulty.COMPETENT,
         "pc_counts": range(PC_MIN, PC_MAX + 1),

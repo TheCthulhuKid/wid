@@ -20,17 +20,19 @@ from textual.widgets import (
 )
 from textual.widgets.tabbed_content import ContentTabs
 
-from wid.dangers import DANGERS_MAX, classes_for
+from wid.dangers import BARRICADE_MAX, DANGERS_MAX, classes_for
 from wid.formatting import (
     GM_KIT_QUESTION,
     NO_ACTIVATION_HINT,
     activation_line,
+    barricade_text,
     danger_summary,
     loadout_rows,
+    revelations_line,
     scene_summary,
 )
 from wid.gm import GmGame
-from wid.profiles import Genre
+from wid.profiles import Genre, WiDProfile
 from wid.ui.base import BaseApp, ButtonTables, PaletteCommand
 from wid.ui.dialogs import CANCEL, Answer
 from wid.ui.sessions import SessionActions
@@ -54,6 +56,8 @@ GAME_BUTTONS: dict[str, Callable[[GmGame], str]] = {
     "roll-d6": GmGame.roll_one_die,
     "activate": GmGame.activate,
     "clash": GmGame.clash,
+    "barricade-up": lambda game: game.move_barricade(1),
+    "barricade-down": lambda game: game.move_barricade(-1),
 }
 
 
@@ -137,6 +141,7 @@ class GmApp(SessionActions, BaseApp):
         for button_id in ("commit-hits", "activate"):
             self.query_one(f"#{button_id}", Button).disabled = not scene.dangers
         self.query_one("#clash", Button).disabled = not (scene.dangers and scene.hostile)
+        self.update_trackers()
         activation = self.game.last_activation
         self.query_one("#activation", Static).update(
             activation_line(activation) if activation else NO_ACTIVATION_HINT
@@ -145,6 +150,26 @@ class GmApp(SessionActions, BaseApp):
         table.clear()
         table.add_rows(loadout_rows(scene.loadout, self.genre))
         self.finish_refresh()
+
+    def update_trackers(self) -> None:
+        """Show the kit's trackers only: a Danger's standing, the barricade, the revelations."""
+        profile, scene = self.profile, self.game.scene
+        self.query_one("#standing-row").display = profile.has_standing
+        self.query_one("#barricade-row").display = profile.has_barricade
+        self.query_one("#barricade", Static).update(barricade_text(scene.barricade))
+        self.query_one("#barricade-up", Button).disabled = scene.barricade >= BARRICADE_MAX
+        self.query_one("#barricade-down", Button).disabled = scene.barricade == 0
+        self.query_one("#revelations-field").display = profile.has_revelations
+        self.query_one("#revelations", Static).update(revelations_line(scene))
+        with self.prevent(Select.Changed):
+            self.query_one("#revelation-count", Select).value = scene.revelations
+        done = scene.revelation_progress >= scene.revelation_total
+        for button_id in ("hits-spent", "task-done"):
+            self.query_one(f"#{button_id}", Button).disabled = done
+
+    @property
+    def profile(self) -> WiDProfile:
+        return self.game.profile
 
     def show_game(self) -> None:
         game = self.game
@@ -177,7 +202,10 @@ class GmApp(SessionActions, BaseApp):
         name = name_field.value
         danger_class = self.query_one("#danger-class", Select).value
         difficulty = self.query_one("#difficulty", Select).value
-        if self.act(lambda: self.game.add_danger(name, danger_class, difficulty)):
+        standing = self.query_one("#danger-standing", Select).value
+        if not self.profile.has_standing:
+            standing = None
+        if self.act(lambda: self.game.add_danger(name, danger_class, difficulty, standing)):
             name_field.value = ""
 
     def remove_danger(self, index: int) -> None:
@@ -195,10 +223,20 @@ class GmApp(SessionActions, BaseApp):
         complexity = self.query_one("#task", Select).value
         self.act(lambda: self.game.task_strain(complexity))
 
+    def spend_hits(self) -> None:
+        amount = self.query_one("#amount", Select).value
+        self.act(lambda: self.game.spend_hits(amount))
+
+    def task_done(self) -> None:
+        complexity = self.query_one("#task", Select).value
+        self.act(lambda: self.game.task_done(complexity))
+
     def select_changed(self, event: Select.Changed) -> None:
+        value = event.value
         if event.select.id == "pc-count":
-            count = event.value
-            self.act(lambda: self.game.set_pc_count(count))
+            self.act(lambda: self.game.set_pc_count(value))
+        elif event.select.id == "revelation-count":
+            self.act(lambda: self.game.set_revelations(value))
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         if event.checkbox.id == "hostile" and event.value == event.checkbox.value:
@@ -244,4 +282,6 @@ APP_BUTTONS: dict[str, Callable[[GmApp], None]] = {
     "commit-hits": GmApp.commit_hits,
     "raise-threshold": GmApp.raise_threshold,
     "task-strain": GmApp.task_strain,
+    "hits-spent": GmApp.spend_hits,
+    "task-done": GmApp.task_done,
 }

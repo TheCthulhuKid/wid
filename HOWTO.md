@@ -202,6 +202,19 @@ them. Opening a GM save (`wid scene.json`) starts this mode by itself.
 - For a task the PCs undertake, choose its complexity in **Task** and press **Task strain**:
   the strain total for the PCs to share, worked out from **PCs**, goes to the history.
 
+Three kits add a tracker to the scene, shown in that kit only, saved with the scene and taken
+back by **Undo**:
+
+- **Ball Season**: a Danger has a **Standing** (Esteemed, Reputable or Scandalous), chosen
+  when it is added. Its summary and each activation name it.
+- **This Isn't Happening**: the PCs' barricade, from none to 6. **Barricade +1** and
+  **Barricade −1** move it as the book says, and the scene line shows it while it stands.
+- **Oldheart**: the revelations track. **Hits spent** advances it by the **Amount**, and
+  **Task done** by the **Task**'s complexity; the line above says how far the PCs are and how
+  many revelations they have reached. **Revelations** sets how many there are to find.
+
+Changing kit with **Keep scene** drops the trackers the new kit lacks along with its Dangers.
+
 On the right, **Activate Danger** (or **Ctrl+R**) rolls 3d6 and shows which ability the Danger
 uses, who it targets and the attribute the targets defend with, in the words of the current
 kit. The table below it is the loadout of the strongest Danger, one row per die. **Roll 1d6**
