@@ -1,0 +1,10 @@
+{#- The action history, newest first, on both pages. -#}
+    <h2>History</h2>
+    {% if statistics %}<p class="hint">{{ statistics }}</p>{% endif %}
+    {% if history %}
+    <ol class="history" reversed>
+      {% for entry in history %}<li><pre>{{ entry }}</pre></li>{% endfor %}
+    </ol>
+    {% else %}
+    <p class="empty">Nothing has happened yet.</p>
+    {% endif %}

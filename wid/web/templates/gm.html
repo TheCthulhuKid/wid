@@ -1,0 +1,129 @@
+{#- The GM's page: one form like the sheet, with the scene on the left and the activations on
+    the right. The session block, the history and the question dialog are the sheet's. -#}
+<form id="sheet" class="sheet" method="post" action="/actions/update" autocomplete="off"
+      {%- if game.has_unsaved_state() %} data-unsaved{% endif %}>
+  <input type="hidden" name="sheet" value="1">
+
+  {% include "band.html" %}
+
+  <div class="columns">
+  <div class="main">
+
+    <section class="block scene" aria-labelledby="scene-title">
+      <h2 id="scene-title">Scene</h2>
+      <div class="row">
+        <label class="field narrow">PCs
+          <select name="pcs" data-action="set-pcs">
+            {% for count in pc_counts %}<option {% if count == scene.pc_count %}selected{% endif %}>{{ count }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="row named">
+        <label class="field grow">Name
+          <input name="new-danger-name" placeholder="Optional">
+        </label>
+        <label class="field narrow">Class
+          <select name="danger-class">
+            {% for kind in classes %}<option value="{{ kind }}" {% if kind == default_class %}selected{% endif %}>{{ kind.label }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field narrow">Difficulty
+          <select name="difficulty">
+            {% for difficulty in difficulties %}<option value="{{ difficulty }}" {% if difficulty == default_difficulty %}selected{% endif %}>{{ difficulty.label }}</option>{% endfor %}
+          </select>
+        </label>
+        {% if kit.has_standing %}
+        <label class="field narrow">Standing
+          <select name="standing">
+            {% for standing in standings %}<option value="{{ standing }}" {% if standing == default_standing %}selected{% endif %}>{{ standing.label }}</option>{% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        <button class="primary" formaction="/actions/add-danger" {% if scene_full %}disabled{% endif %}>Add Danger</button>
+      </div>
+
+      {% for summary in dangers %}
+      <div class="danger">
+        <p class="status">{{ summary }}</p>
+        <div class="row named">
+          <label class="field grow"><span class="visually-hidden">Name of Danger {{ loop.index }}</span>
+            <input name="danger-name-{{ loop.index0 }}" value="{{ scene.dangers[loop.index0].name }}" placeholder="Danger {{ loop.index }}">
+          </label>
+          <button formaction="/actions/remove-danger" name="index" value="{{ loop.index0 }}">Remove</button>
+        </div>
+      </div>
+      {% endfor %}
+      <p class="pool">{{ scene_summary }}</p>
+
+      <div class="row named">
+        <label class="field narrow">Amount
+          <select name="amount">{% for amount in amounts %}<option>{{ amount }}</option>{% endfor %}</select>
+        </label>
+        <button class="primary" formaction="/actions/commit-hits" {% if not scene.dangers %}disabled{% endif %}>Commit hits</button>
+        <button formaction="/actions/raise-threshold">Raise threshold</button>
+      </div>
+      <div class="row">
+        <label class="tick"><input type="checkbox" name="hostile" data-action="hostile" {% if scene.hostile %}checked{% endif %}> Dangers fight each other</label>
+        <button formaction="/actions/clash" title="End of round: 1d6 off the threshold"
+                {% if not (scene.dangers and scene.hostile) %}disabled{% endif %}>Dangers clash</button>
+      </div>
+      <div class="row named">
+        <label class="field narrow">Task
+          <select name="task">
+            {% for complexity in complexities %}<option value="{{ complexity }}">{{ complexity.label }}</option>{% endfor %}
+          </select>
+        </label>
+        <button formaction="/actions/task-strain" title="Log the strain a task taxes">Task strain</button>
+      </div>
+
+      {% if kit.has_barricade %}
+      <div class="kit-controls row">
+        <span class="field-label">{{ "Barricade %d of %d" % (scene.barricade, barricade_max) if scene.barricade else "No barricade" }}</span>
+        <button formaction="/actions/barricade" name="step" value="1" {% if scene.barricade >= barricade_max %}disabled{% endif %}>Barricade +1</button>
+        <button formaction="/actions/barricade" name="step" value="-1" {% if not scene.barricade %}disabled{% endif %}>Barricade −1</button>
+      </div>
+      {% endif %}
+
+      {% if kit.has_revelations %}
+      <div class="kit-controls">
+        <p class="status">{{ revelations_line }}</p>
+        <div class="row named">
+          <label class="field narrow">Revelations
+            <select name="revelations" data-action="set-revelations">
+              {% for count in revelation_counts %}<option {% if count == scene.revelations %}selected{% endif %}>{{ count }}</option>{% endfor %}
+            </select>
+          </label>
+          <button formaction="/actions/hits-spent" title="Advance by the Amount" {% if revelations_done %}disabled{% endif %}>Hits spent</button>
+          <button formaction="/actions/task-done" title="Advance by the Task's complexity" {% if revelations_done %}disabled{% endif %}>Task done</button>
+        </div>
+      </div>
+      {% endif %}
+    </section>
+
+    {% include "session.html" %}
+  </div>
+
+  <aside class="table" aria-label="Activation and history">
+    <p class="feedback" role="status">{{ message }}</p>
+    <h2>Activation</h2>
+    <p class="{{ 'status' if game.last_activation else 'empty' }}">{{ activation }}</p>
+    {% if loadout_rows %}
+    <table class="loadout">
+      <thead><tr>{% for column in loadout_columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for row in loadout_rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <div class="row">
+      <button class="primary" formaction="/actions/activate" data-repeat title="Roll the Danger's ability, target and attribute (Ctrl+R)"
+              {% if not scene.dangers %}disabled{% endif %}>Activate Danger</button>
+      <button formaction="/actions/roll-d6">Roll 1d6</button>
+      <button formaction="/actions/undo" title="Take back the last change" {% if not game.can_undo %}disabled{% endif %}>Undo</button>
+    </div>
+    {% include "history.html" %}
+  </aside>
+  </div>
+
+  {% include "ask.html" %}
+</form>

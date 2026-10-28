@@ -24,7 +24,7 @@ def heading_for(index: int, entry: HistoryEntry) -> str:
 
 def history_markdown(
     name: str,
-    character: CharacterDetails,
+    character: CharacterDetails | None,
     entries: Sequence[HistoryEntry],
     *,
     sheet: Sequence[str] = (),
@@ -39,7 +39,7 @@ def history_markdown(
     """
     title = one_line(name) or "Session history"
     lines = [f"# {title}", ""]
-    details = [value for value in (character.name, character.looks, character.nature) if value]
+    details = [value for value in (character.model_dump().values() if character else ()) if value]
     if details:
         lines += ["Character: " + ", ".join(one_line(value) for value in details), ""]
     if sheet:

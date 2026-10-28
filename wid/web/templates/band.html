@@ -1,0 +1,18 @@
+{#- The title band: the colours switch and the kit picker, on both pages. -#}
+  <header class="band">
+    <h1>We're in Danger</h1>
+    <div class="band-tools">
+      <button type="button" class="theme-toggle" data-theme-toggle
+              title="Switch between your browser's colours (Auto), light and dark">
+        Colours: <span class="theme-auto">Auto</span><span class="theme-light">Light</span><span class="theme-dark">Dark</span>
+      </button>
+      <label class="kit-picker">
+        <span class="visually-hidden">Genre kit</span>
+        <select name="genre" data-action="change-kit">
+          {% for genre, profile in kits.items() %}
+          <option value="{{ genre }}" {% if genre == game.profile.genre %}selected{% endif %}>{{ profile.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+  </header>

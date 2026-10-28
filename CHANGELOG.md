@@ -5,8 +5,25 @@ What changed in each release of wid, newest first. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **GM mode**: `wid --gm` runs the Game Master's screen, and `wid --web --gm` the same page in
+  the browser. Choose the **PCs**, a Danger's **Class** and **Difficulty**, and wid gives its
+  threshold, hits to pass and loadout; **Activate Danger** rolls its ability, target and
+  defending attribute in the current kit's words, and the scene tracks hits committed, a raised
+  threshold and Dangers that fight each other. GM saves are their own kind of file and open in
+  GM mode by themselves.
+- **Save first** on the question asked when changing kit with unsaved changes, in the terminal
+  and the browser.
+- **Task strain** in the GM mode: choose a task's complexity and wid logs the strain total the
+  PCs share.
+- The kits' scene trackers in the GM mode: a Danger's **Standing** in Ball Season, the
+  **Barricade** in This Isn't Happening, and the **Revelations** track in Oldheart, each saved
+  with the scene and undoable.
+
 ### Changed
 
+- `wid --self-test` also starts the GM screen, activates a Danger and serves the GM page.
 - **Load game** is now **Load session**, the Session tab's path box is **Session file (JSON)**,
   and the name box says "Name this session": a session is what you save and load.
 - **Gain Corruption** and **Crafted Item** are written as the rules write them.

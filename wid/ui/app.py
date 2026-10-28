@@ -1,23 +1,17 @@
-from collections.abc import Callable, Iterable
-from functools import partial
+from collections.abc import Callable, Sequence
 from operator import attrgetter
 from pathlib import Path
 from random import Random
 from typing import ClassVar
 
-from textual.app import App, ComposeResult, SystemCommand
-from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.events import Resize
-from textual.screen import Screen
+from textual.app import ComposeResult
+from textual.containers import Horizontal
 from textual.widgets import (
     Button,
     Checkbox,
     Collapsible,
-    Footer,
-    Header,
     Input,
     Label,
-    RichLog,
     Select,
     Static,
     TabbedContent,
@@ -28,6 +22,7 @@ from textual.widgets.tabbed_content import ContentTabs
 
 from wid.formatting import (
     CHARACTER_LABELS,
+    NEW_CHARACTER_QUESTION,
     NEW_GAME_QUESTION,
     NO_RESULT_HINT,
     RANKS_HINT,
@@ -42,8 +37,7 @@ from wid.formatting import (
     tech_slot_label,
     tech_starting_line,
 )
-from wid.game import Game, NameField, player_message
-from wid.history import HistoryEntry, history_statistics
+from wid.game import Game, NameField
 from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     RESOURCES_MAX,
@@ -56,11 +50,10 @@ from wid.rolls import (
     StrainTracker,
 )
 from wid.sessions import CharacterDetails
-from wid.settings import load_settings, save_settings
-from wid.ui.dialogs import ConfirmSessionAction, SpendResources
+from wid.ui.base import SHORT_HEIGHT, SMALL_WIDTH, BaseApp, ButtonTables, PaletteCommand
+from wid.ui.dialogs import CANCEL, CONFIRM, Answer, ConfirmSessionAction, SpendResources
 from wid.ui.outcomes import dice_content, summary_content
 from wid.ui.sessions import SessionActions
-from wid.ui.themes import DANGER, DANGER_THEME
 from wid.ui.widgets import (
     TECH_SLOTS,
     AttributeRollButton,
@@ -89,9 +82,6 @@ from wid.ui.widgets import (
     TechUseButton,
 )
 
-# Below these sizes the panel switches to one-row controls and starts with sections collapsed.
-SHORT_HEIGHT = 30
-SMALL_WIDTH = 100
 TAB_NAMES = ("character", "session")
 SECTION_NAMES = ("strain", "items")
 
@@ -110,11 +100,14 @@ GAME_BUTTONS: dict[str, Callable[[Game], str]] = {
 }
 
 
-class RollerApp(SessionActions, App):
-    """The terminal front end: widgets that show the game and pass the player's actions to it."""
+class RollerApp(SessionActions, BaseApp):
+    """The player's terminal screen: the character sheet, with the rolls on the right."""
 
-    CSS_PATH = "roller.tcss"
-    TITLE = "We're in Danger"
+    KIT_QUESTION = NEW_GAME_QUESTION
+    KIT_ANSWERS = (
+        Answer(CONFIRM, "Start new game", "warning"),
+        Answer(CANCEL, "Keep current game"),
+    )
     BINDINGS: ClassVar = [
         ("d", "change_theme", "Theme"),
         ("c", "show_tab('character')", "Character"),
@@ -125,78 +118,42 @@ class RollerApp(SessionActions, App):
         ("ctrl+l", "toggle_history", "Log"),
     ]
 
-    def __init__(
-        self,
-        *,
-        rng: Random | None = None,
-        settings_path: Path | None = None,
-        recovery_path: Path | None = None,
-        open_path: str | None = None,
-    ):
-        super().__init__()
-        self.settings_path = settings_path
-        self.settings = load_settings(settings_path)
-        self.register_theme(DANGER)
-        self.layout: dict[str, object] = {}
-        self.game = Game(rng=rng, recovery_path=recovery_path)
-        # A save named on the command line, opened once the screen is up.
-        self.open_path = open_path
-        # How many history entries the log shows, so only new ones are written.
-        self.logged = 0
-        self.pending_genre: Genre | None = None
+    def make_game(self, rng: Random | None, recovery_path: Path | None) -> Game:
+        return Game(rng=rng, recovery_path=recovery_path)
 
     @property
     def session(self) -> RollSession:
         return self.game.session
 
     @property
-    def history(self) -> list[HistoryEntry]:
-        return self.game.history
+    def genre(self) -> Genre:
+        return self.session.profile_id
 
-    def compose(self) -> ComposeResult:
-        yield Header()
-        with Horizontal(id="workspace"):
-            with VerticalScroll(id="configuration"):
-                yield GameRow(id="profile-fields")
-                with TabbedContent(id="details"):
-                    with TabPane("Character", id="tab-character"):
-                        yield CharacterGroup(id="character-fields")
-                        yield AttributeSetup(id="attribute-setup")
-                    with TabPane("Session", id="tab-session"):
-                        yield SessionName()
-                        yield NotesGroup()
-                        yield SessionFile()
-                yield RollOptions(id="test-options")
-                yield KitControls()
-                with Collapsible(title="Items", collapsed=False, id="items-section"):
-                    yield ItemsGroup(id="items")
-                with Collapsible(
-                    title=strain_summary(StrainTracker()), collapsed=False, id="strain-section"
-                ):
-                    yield StrainGroup()
-            with Vertical(id="output"):
-                with Horizontal(id="actions"):
-                    yield Button("Show log", id="toggle-history")
-                    yield Button("Roll 1d6", id="roll-d6", tooltip="Roll one die outside a test")
-                yield Static(id="feedback", markup=False)
-                yield RollerGroup()
-        with Vertical(id="history-panel"):
-            yield Label("Action history")
-            yield Static(id="history-statistics", markup=False)
-            yield RichLog(id="log", wrap=True, markup=False)
-        yield Footer()
+    def compose_configuration(self) -> ComposeResult:
+        yield GameRow(id="profile-fields")
+        with TabbedContent(id="details"):
+            with TabPane("Character", id="tab-character"):
+                yield CharacterGroup(id="character-fields")
+                yield AttributeSetup(id="attribute-setup")
+            with TabPane("Session", id="tab-session"):
+                yield SessionName()
+                yield NotesGroup()
+                yield SessionFile()
+        yield RollOptions(id="test-options")
+        yield KitControls()
+        with Collapsible(title="Items", collapsed=False, id="items-section"):
+            yield ItemsGroup(id="items")
+        with Collapsible(
+            title=strain_summary(StrainTracker()), collapsed=False, id="strain-section"
+        ):
+            yield StrainGroup()
 
-    def on_resize(self, event: Resize) -> None:
-        self.set_class(event.size.width < 112, "compact")
-        self.query_one(Footer).compact = event.size.width < 90
-        self.set_short_mode(event.size.height < SHORT_HEIGHT)
-
-    def set_short_mode(self, short: bool) -> None:
-        """In a short terminal, use one-row controls so more of the panel fits."""
-        self.set_class(short, "short")
-        controls = self.query_one("#configuration").query("Button, Input, Select, Checkbox")
-        for control in controls.exclude(".strain-box, .strain-ending"):
-            control.compact = short
+    def compose_output(self) -> ComposeResult:
+        with Horizontal(id="actions"):
+            yield Button("Show log", id="toggle-history")
+            yield Button("Roll 1d6", id="roll-d6", tooltip="Roll one die outside a test")
+        yield Static(id="feedback", markup=False)
+        yield RollerGroup()
 
     def restore_layout(self) -> None:
         """Apply the remembered tab and sections, or the defaults for this terminal size."""
@@ -248,33 +205,7 @@ class RollerApp(SessionActions, App):
         if section.collapsed:
             section.query_one("CollapsibleTitle").focus()
 
-    def action_toggle_history(self) -> None:
-        panel = self.query_one("#history-panel")
-        toggle = self.query_one("#toggle-history", Button)
-        if panel.display and self.query_one("#log").has_focus:
-            toggle.focus()
-        panel.display = not panel.display
-        toggle.label = "Hide log" if panel.display else "Show log"
-
-    def on_mount(self) -> None:
-        self.restore_theme()
-        self.set_short_mode(self.size.height < SHORT_HEIGHT)
-        self.restore_layout()
-        self.refresh_sheet()
-        if self.open_path:
-            message = self.game.open_file(self.open_path)
-            self.show_game()
-            self.feedback(message)
-        self.offer_recovery()
-
-    def restore_theme(self) -> None:
-        self.theme = (
-            self.settings.theme if self.settings.theme in self.available_themes else DANGER_THEME
-        )
-        self.watch(self, "theme", self.remember_theme, init=False)
-        self.watch(self, "theme", self.redraw_outcomes, init=False)
-
-    def redraw_outcomes(self) -> None:
+    def redraw_for_theme(self) -> None:
         result = self.session.current_result
         if result is None:
             return
@@ -282,18 +213,7 @@ class RollerApp(SessionActions, App):
         self.query_one("#dice", Static).update(dice_content(result, variables))
         self.query_one("#summary", Static).update(summary_content(result, variables))
 
-    def remember_theme(self, theme: str) -> None:
-        self.save_settings_change(theme=theme)
-
-    def save_settings_change(self, **changes: object) -> None:
-        self.settings = self.settings.model_copy(update=changes)
-        try:
-            save_settings(self.settings, self.settings_path)
-        except OSError as error:
-            self.feedback(f"Could not save settings: {error}")
-
     def collect(self) -> None:
-        """Copy what the player typed, ticked or chose into the game before it acts."""
         game = self.game
         game.character = CharacterDetails.model_validate(
             {
@@ -313,26 +233,7 @@ class RollerApp(SessionActions, App):
             item_target=self.query_one("#item-target", Select).value,
         )
 
-    def act(self, action: Callable[[], str]) -> bool:
-        """Run a game action, show its message or why it was refused, and refresh the screen.
-
-        Nothing runs while the kit-change dialog is open, since the game may be about to go.
-        """
-        if self.pending_genre is not None:
-            return False
-        self.collect()
-        try:
-            message = action()
-        except ValueError as error:
-            self.feedback(player_message(error))
-            self.refresh_sheet()
-            return False
-        self.feedback(message)
-        self.refresh_sheet()
-        return True
-
     def refresh_sheet(self) -> None:
-        """Bring every control up to date with the game."""
         self.show_draft()
         self.update_attribute_controls()
         self.update_kit_controls()
@@ -343,15 +244,10 @@ class RollerApp(SessionActions, App):
         else:
             self.show_result(result)
         self.update_preview()
-        self.write_new_history()
-        self.query_one("#undo", Button).disabled = not self.game.can_undo
         self.query_one("#copy-result", Button).disabled = self.session.current_result is None
-        # Every change ends here, so this is where the recovery copy follows the game.
-        if warning := self.game.keep_recovery():
-            self.feedback(warning)
+        self.finish_refresh()
 
     def show_game(self) -> None:
-        """Show a game that was replaced (loaded, a new character or kit), text fields included."""
         game = self.game
         with self.prevent(Input.Changed, Select.Changed):
             for field in CHARACTER_LABELS:
@@ -368,9 +264,12 @@ class RollerApp(SessionActions, App):
                     self.query_one(f"#attribute-rank-{index}", Select).value = index + 1
         self.query_one("#session-notes", TextArea).load_text(game.notes)
         self.sub_title = game.name
-        self.query_one("#log", RichLog).clear()
-        self.logged = 0
+        self.clear_log()
         self.refresh_sheet()
+        # The die an item was aimed at, once the selector has the dice of the shown result.
+        if game.item_target is not None:
+            with self.prevent(Select.Changed):
+                self.query_one("#item-target", Select).value = game.item_target
 
     def show_draft(self) -> None:
         """Show the options for the next test, which a roll clears."""
@@ -380,15 +279,6 @@ class RollerApp(SessionActions, App):
             self.query_one("#assisted", Checkbox).value = game.assisted
             self.query_one("#expertise", Checkbox).value = game.expertise
             self.set_power(game.power)
-
-    def write_new_history(self) -> None:
-        """Add the entries the log does not show yet; ``show_game`` clears it for a new game."""
-        log = self.query_one("#log", RichLog)
-        for entry in self.history[self.logged :]:
-            log.write(str(entry))
-        self.logged = len(self.history)
-        statistics = self.query_one("#history-statistics", Static)
-        statistics.update(history_statistics(self.history))
 
     def update_strain_controls(self) -> None:
         tracker = self.session.strain
@@ -521,26 +411,26 @@ class RollerApp(SessionActions, App):
             self.query_one(f"#use-tech-{index}", Button).disabled = not self.game.tech_usable(index)
             self.query_one(f"#sacrifice-tech-{index}", Button).disabled = not piece.working
 
-    def request_genre(self, genre: Genre) -> None:
-        if genre == self.session.profile_id or self.pending_genre is not None:
+    def change_kit(self, genre: Genre, answer: str) -> str | None:
+        return self.game.change_kit(genre) if answer == CONFIRM else None
+
+    def action_new_character(self) -> None:
+        if self.pending_genre is not None:
             return
-        self.pending_genre = genre
         self.collect()
         if self.game.has_unsaved_state():
-            question = ConfirmSessionAction(
-                NEW_GAME_QUESTION, "Start new game", "Keep current game"
+            self.push_screen(
+                ConfirmSessionAction(NEW_CHARACTER_QUESTION),
+                self.finish_new_character,
             )
-            self.push_screen(question, self.finish_genre_change)
         else:
-            self.finish_genre_change(True)
+            self.finish_new_character(True)
 
-    def finish_genre_change(self, confirmed: bool) -> None:
-        genre = self.pending_genre
-        self.pending_genre = None
-        if not confirmed or genre is None:
-            self.query_one("#genre", Select).value = self.session.profile_id
+    def finish_new_character(self, confirmed: bool) -> None:
+        if not confirmed:
+            self.feedback("New character cancelled; current character unchanged.")
             return
-        message = self.game.change_kit(genre)
+        message = self.game.new_character()
         self.show_game()
         self.feedback(message)
 
@@ -549,9 +439,6 @@ class RollerApp(SessionActions, App):
         self.query_one("#dice", Static).update(NO_RESULT_HINT)
         self.query_one("#summary", Static).update("")
         self.query_one("#resources", Static).update("")
-
-    def feedback(self, message: str) -> None:
-        self.query_one("#feedback", Static).update(message)
 
     def chosen_power(self) -> PowerMode:
         return next(
@@ -571,12 +458,8 @@ class RollerApp(SessionActions, App):
         self.collect()
         self.update_preview()
 
-    def on_select_changed(self, event: Select.Changed) -> None:
-        if event.value != event.select.value:
-            return
-        if event.select.id == "genre" and event.value != Select.BLANK:
-            self.request_genre(Genre(event.value))
-        elif event.select.id == "fear":
+    def select_changed(self, event: Select.Changed) -> None:
+        if event.select.id == "fear":
             self.options_changed()
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
@@ -610,26 +493,11 @@ class RollerApp(SessionActions, App):
     def on_standing_track_moved(self, event: StandingTrack.Moved) -> None:
         self.act(lambda: self.game.set_standing(event.standing))
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        button = event.button
-        if (typed := TYPED_BUTTONS.get(type(button))) is not None:
-            typed(self, button)
-        elif (action := GAME_BUTTONS.get(button.id)) is not None:
-            self.act(lambda: action(self.game))
-        elif (handler := APP_BUTTONS.get(button.id)) is not None:
-            handler(self)
+    def button_tables(self) -> ButtonTables:
+        return TYPED_BUTTONS, GAME_BUTTONS, APP_BUTTONS
 
-    def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
-        """The command palette (Ctrl+P): Textual's own commands, then the game's main actions.
-
-        The game's actions are left out over a dialog, so none runs behind it or asks a second
-        question on top of it.
-        """
-        yield from super().get_system_commands(screen)
-        if screen is not self.screen_stack[0]:
-            return
-        for title, help_text, handler in PALETTE_COMMANDS:
-            yield SystemCommand(title, help_text, partial(handler, self))
+    def palette_commands(self) -> Sequence[PaletteCommand]:
+        return PALETTE_COMMANDS
 
     def copy_result(self) -> None:
         """Copy the shown result as text, for pasting into a chat; most terminals pass it on."""
@@ -721,7 +589,7 @@ TYPED_BUTTONS: dict[type[Button], Callable[[RollerApp, Button], None]] = {
 }
 
 # The game's actions in the command palette, beside the buttons that run the same handlers.
-PALETTE_COMMANDS: tuple[tuple[str, str, Callable[[RollerApp], object]], ...] = (
+PALETTE_COMMANDS: tuple[PaletteCommand, ...] = (
     ("Save session", "Save the game to the session file", RollerApp.action_save_session),
     ("Load session", "Open a saved session", RollerApp.action_load_session),
     (

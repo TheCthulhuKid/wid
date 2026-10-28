@@ -178,6 +178,71 @@ keeps the copy until the new game has something to lose, and quitting with Ctrl+
 you will lose your changes removes it. Two games running at once share the one copy, so it
 holds whichever changed last.
 
+## GM mode
+
+Running the game rather than playing a character? Start wid with `wid --gm` (from a release
+download, `.\wid.exe --gm` on Windows or `./wid --gm` on Linux and macOS). The screen has no
+character sheet: the **Scene** tab on the left holds the Dangers, and the right side rolls for
+them. Opening a GM save (`wid scene.json`) starts this mode by itself.
+
+**Scene** tab:
+
+- **PCs**: how many player characters are in the scene (1 to 8). The Dangers' thresholds follow.
+- To add a Danger, type a name (optional), choose its **Class** and **Difficulty** and press
+  **Add Danger**. The four base classes are always offered; each kit adds its own class.
+  Each Danger is listed with its threshold and the hits a PC needs to pass; type its name in
+  the box beneath, or press **Remove** to take it out of the scene. A scene holds up to four.
+- The line under the Dangers is the scene: the combined threshold, what has been committed
+  and the hits to pass of the strongest Danger.
+- Choose an **Amount**, then press **Commit hits** to progress the threshold, or press
+  **Raise threshold** when a Danger's ability raises it. Committed hits never go past the
+  threshold.
+- Tick **Dangers fight each other** when the Dangers are hostile to one another; at the end
+  of a round, **Dangers clash** rolls 1d6 and commits it.
+- For a task the PCs undertake, choose its complexity in **Task** and press **Task strain**:
+  the strain total for the PCs to share, worked out from **PCs**, goes to the history.
+
+Three kits add a tracker to the scene, shown in that kit only, saved with the scene and taken
+back by **Undo**:
+
+- **Ball Season**: a Danger has a **Standing** (Esteemed, Reputable or Scandalous), chosen
+  when it is added. Its summary and each activation name it.
+- **This Isn't Happening**: the PCs' barricade, from none to 6. **Barricade +1** and
+  **Barricade −1** move it as the book says, and the scene line shows it while it stands.
+- **Oldheart**: the revelations track. **Hits spent** advances it by the **Amount**, and
+  **Task done** by the **Task**'s complexity; the line above says how far the PCs are and how
+  many revelations they have reached. **Revelations** sets how many there are to find.
+
+Changing kit with **Keep scene** drops the trackers the new kit lacks along with its Dangers.
+
+On the right, **Activate Danger** (or **Ctrl+R**) rolls 3d6 and shows which ability the Danger
+uses, who it targets and the attribute the targets defend with, in the words of the current
+kit. The table below it is the loadout of the strongest Danger, one row per die. **Roll 1d6**
+rolls a single die, and **Undo** takes back the last change to the scene (not an activation).
+
+The **Session** tab, **Save session**, **Load session**, **Export history**, the history log,
+the theme and the command palette work as in the player's mode. A GM save is its own kind of
+file: the player's mode refuses it, and this mode refuses a player's save, each saying which
+way to start wid. The recovery copy is separate too, so a GM and a player on one computer
+never overwrite each other's.
+
+**Changing kit** asks what to do with the scene when there is anything unsaved: **Save first**
+saves and then changes kit, **Keep scene** keeps the Dangers, history and notes (a Danger of a
+class the new kit lacks is dropped and named; **Undo** brings it back), **Start new** clears
+everything, and **Cancel** keeps the current kit. The player's mode offers **Save first** too,
+beside **Start new game** and **Keep current game**.
+
+Keys: **E** opens the Scene tab and **S** the Session tab; **Ctrl+R** activates the Danger. The
+other keys are the ones below, except **C**, **T** and **I**, which belong to the character
+sheet.
+
+**In the browser**, `wid --web --gm` serves the GM page instead of the character sheet, with
+the same controls. The scene is a section on the left (on a phone, first), the activation, the
+loadout table and the history on the right. The **PCs** box and **Dangers fight each other**
+send themselves as soon as they change, as the sheet's boxes do; everything else is a button.
+**Ctrl+R** presses **Activate Danger**. The session block, downloads, uploads and the colours
+work as on the sheet, and a player's save uploaded here is refused the same way.
+
 ## Play in the browser
 
 Prefer a web browser to the terminal? Start wid with `wid --web` (from a release download,
@@ -234,5 +299,5 @@ keys that work at that moment.
 - A small terminal (80 by 24) works; the strain tracker and items start folded, so press **T** or
   **I** to open them.
 - Your theme, last tab and folded sections are remembered between runs.
-- `wid --self-test` checks the program, the browser version included, and reports which part
-  failed, if any.
+- `wid --self-test` checks the program, the browser version and the GM mode included, and
+  reports which part failed, if any.

@@ -52,9 +52,11 @@ powershell -ExecutionPolicy Bypass -File release\build_release.ps1 -Smoke
 ```
 
 It installs the pinned environment, builds, runs `wid.exe --self-test` (which also serves the
-browser version once through uvicorn, proving its by-name imports, templates and static files
-were bundled), and (with `-Smoke`)
-presses real keys in a Windows pseudo console, then writes the zip and its checksum to `dist\`.
+character sheet and the GM page once each through uvicorn, proving its by-name imports,
+templates and static files were bundled, and activates a Danger on the GM screen), and (with
+`-Smoke`) presses real keys in a Windows pseudo console, then writes the zip and its checksum
+to `dist\`. The smoke test drives the player's screen only; the GM mode is covered by the
+self-test.
 Add `-Python 3.13` to choose the interpreter.
 
 On Linux or macOS:
@@ -96,11 +98,13 @@ history (`fetch-depth: 0`) so the tag is visible to `hatch-vcs`.
 wid/
 ├── __init__.py         # Lightweight package marker
 ├── __main__.py         # python -m wid
-├── cli.py              # wid command: a save, --web, --port, --no-browser, --self-test, --version
+├── cli.py              # wid command: a save, --gm, --web, --port, --no-browser, --self-test, --version
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
+├── dangers.py          # The GM's Dangers: loadouts, a scene's threshold and activation
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
-├── game.py             # One sitting: the state and actions every front end drives
+├── game.py             # One sitting: BaseGame (history, save, undo, recovery) and the player's Game
+├── gm.py               # The GM's game: the kit, the scene and an action for each control
 ├── export.py           # Markdown export: the sheet, the notes and the action history
 ├── history.py          # Structured action history entries, their text, and dice statistics
 ├── sessions.py         # The versioned save format and the session file path rules
@@ -108,19 +112,21 @@ wid/
 ├── selftest.py         # `wid --self-test`: the app checked headless, for release builds
 ├── settings.py         # Remembered preferences in a small JSON file
 ├── ui/
-│   ├── app.py          # Textual front end: shows the game, passes actions to it
-│   ├── sessions.py     # Save, load, export, new-character, quit and recovery dialogs
-│   ├── widgets.py      # Character, options, session, and result widgets
-│   ├── dialogs.py      # Confirmation screens
+│   ├── base.py         # What both Textual screens share: theme, feedback, act, log, kit question
+│   ├── app.py          # The player's screen: shows the sheet, passes actions to the game
+│   ├── gm_app.py       # The GM's screen: the scene and the activations
+│   ├── sessions.py     # Save, load, export, quit and recovery dialogs, mixed into both apps
+│   ├── widgets.py      # Character, options, session, result and scene widgets
+│   ├── dialogs.py      # Questions with any number of answers, and the path prompts
 │   ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
 │   ├── themes.py       # The default danger theme: cream paper, lavender fields, red highlights
 │   └── roller.tcss     # Bundled interface styles
 └── web/
     ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser with a token
     ├── app.py          # FastAPI app: the page, POST /actions/<name>, downloads, safety checks
-    ├── forms.py        # The posted sheet fields copied into the game, and the action table
-    ├── view.py         # Colours (light and dark), the notes preview, the template context
-    ├── templates/      # Jinja2 page and sheet: one form, each button posts to its action
+    ├── forms.py        # The posted fields copied into the game, and each page's action table
+    ├── view.py         # Colours (light and dark), the notes preview, each page's template context
+    ├── templates/      # Jinja2 page, sheet and GM page: one form, each button posts to its action
     └── static/         # sheet.css, and sheet.js: posts the form and swaps the reply in
 .github/workflows/      # ci.yml: tests, ruff; release.yml: builds for each system, draft release
 release/                # PyInstaller spec, build scripts, readmes, smoke test, icon, release notes
@@ -132,10 +138,18 @@ CHANGELOG.md            # What changed in each release, for players
 
 Front ends call `Game` (`wid/game.py`), which owns the session, history, roll options,
 character, notes and file path, records history and words the feedback; game rules stay in
-the domain models, independent of Textual. The terminal app copies what the player typed into
+the domain models, independent of Textual. What is not the character sheet (the history, the
+session name, notes and file path, Undo, saving, loading, exporting and the recovery copy) is
+`BaseGame`, so another mode of play only supplies its own state and save model. The terminal
+screens split the same way: `BaseApp` (`wid/ui/base.py`) holds the theme and settings, the
+feedback line, `act`, the history log, the kit question and the command palette, and
+`RollerApp` and `GmApp` (`wid/ui/gm_app.py`) compose their panels and name their buttons. The terminal app copies what the player typed into
 the game before each action (`collect`), then redraws from it (`refresh_sheet`), so a second
 front end only needs the same two steps; the browser version does them per request (each action
-posts the whole sheet, `collect` copies it in, the action runs, the sheet comes back). Every web
+posts the whole sheet, `collect` copies it in, the action runs, the sheet comes back). The GM
+page is a second `Mode` in `wid/web/app.py` (its template, action table, `collect` and context),
+and `gm.html` shares the band, the session block, the history and the question dialog with
+`sheet.html` through includes. Every web
 request must come from `127.0.0.1` or `localhost`, carry the per-launch token cookie, and, for
 actions, the `HX-Request` header that `sheet.js` adds (see `wid/web/app.py` for why each check
 is needed). The cookie is named after its token, so two `wid --web` games can run at once in one
@@ -167,8 +181,19 @@ random generator's state are not saved, and the theme lives in the settings file
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.
 
-**Recovery copy** (JSON): `recovery.json` beside the settings. While the game has unsaved
-changes and has started, `Game.keep_recovery` writes it after every change (the terminal from
+**GM session files** are the same kind of file with `kind: "gm"` and their own `version: 1`
+(`GmSave` in `wid/sessions.py`). One holds the session name, the genre kit, the PC count, the
+Dangers with their names, classes, difficulties and (Ball Season) standing, the hits committed,
+the raised threshold, whether the Dangers fight each other, the barricade (This Isn't
+Happening), the revelations track and how many revelations there are (Oldheart), the notes and
+the history. A file whose scene holds something its kit lacks is refused. The last activation is not
+saved; the history has it. A player's file has no `kind`, and each mode refuses the other's
+file with a message naming the flag to start wid with. A change to the GM format bumps
+`GmSave.version` and gets its own upgrade table, separate from the player's.
+
+**Recovery copy** (JSON): `recovery.json` beside the settings, and `gm-recovery.json` for the
+GM mode, so a GM and a player on one computer never overwrite each other's. While the game has
+unsaved changes and has started, `BaseGame.keep_recovery` writes it after every change (the terminal from
 `refresh_sheet`, the browser after each action), in the save format with the typed session name
 and file path beside it. It goes once nothing is unsaved (a save, a load, a new kit) or when
 the player quits after agreeing to lose the changes. On start, an untouched game offers it back;

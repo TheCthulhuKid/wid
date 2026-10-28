@@ -1,13 +1,17 @@
 """What the browser sends: the sheet's fields, and the game action each request asks for.
 
 Every action posts the whole sheet form, so the fields are copied into the game first (as the
-terminal's ``collect`` does) and the action then runs on an up-to-date game.
+terminal's ``collect`` does) and the action then runs on an up-to-date game. The player's page
+and the GM's page each have their own ``collect`` and action table, sharing the session actions.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from typing import NamedTuple
 from urllib.parse import parse_qs
 
+from wid.dangers import Complexity, DangerClass, Difficulty, Standing
 from wid.formatting import (
+    GM_KIT_QUESTION,
     NEW_CHARACTER_QUESTION,
     NEW_GAME_QUESTION,
     RECOVERY_QUESTION,
@@ -15,33 +19,44 @@ from wid.formatting import (
     recovery_decline,
     replace_question,
 )
-from wid.game import Game, NameField
+from wid.game import BaseGame, Game, NameField
+from wid.gm import GmGame
 from wid.profiles import Genre
 from wid.rolls import BonusKind, PowerMode, ResourceEffect
 from wid.sessions import CharacterDetails
 
 
+class Answer(NamedTuple):
+    """One button of a question: its label, and the field it sends with the action again."""
+
+    label: str
+    name: str
+    value: str = "1"
+
+
 class NeedsConfirmation(Exception):
     """An action that would replace something; the sheet asks, then sends ``action`` again
-    with ``flag`` set to ``value`` (the browser's version of the terminal's confirmations)."""
+    with the chosen answer's field set (the browser's version of the terminal's questions).
+
+    A single ``flag`` makes a yes-or-no question; ``answers`` gives one button per answer.
+    """
 
     def __init__(
         self,
         question: str,
         action: str,
-        flag: str,
+        flag: str = "confirm",
         value: str = "1",
         *,
         confirm: str = "Replace",
         cancel: str = "Cancel",
+        answers: Sequence[Answer] = (),
         carry: dict[str, str] | None = None,
     ):
         super().__init__(question)
         self.question = question
         self.action = action
-        self.flag = flag
-        self.value = value
-        self.confirm = confirm
+        self.answers = tuple(answers) or (Answer(confirm, flag, value),)
         self.cancel = cancel
         # Fields the page no longer holds that the confirmed action needs again (an upload).
         self.carry = carry or {}
@@ -145,18 +160,67 @@ def collect(game: Game, form: SheetForm) -> None:
     )
 
 
+SAVE_FIRST = "save-first"
+
+
+def chosen_kit(form: SheetForm, answers: dict[str, str]) -> tuple[Genre, str | None]:
+    """The kit picked, and the answer to the kit question when one was given.
+
+    The sheet shows the old kit again while asking, so each answer carries the new one.
+    """
+    for name in (SAVE_FIRST, *answers):
+        if (value := form.get(name)) is not None:
+            return Genre(value), name
+    return Genre(form.text("genre")), None
+
+
+def kit_question(
+    question: str, genre: Genre, answers: dict[str, str], cancel: str
+) -> NeedsConfirmation:
+    buttons = [Answer("Save first", SAVE_FIRST, genre)]
+    buttons += [Answer(label, name, genre) for name, label in answers.items()]
+    return NeedsConfirmation(question, "change-kit", answers=buttons, cancel=cancel)
+
+
+def save_first(game: BaseGame, form: SheetForm, genre: Genre) -> str:
+    """Save before changing kit; a question about replacing the file keeps the kit change."""
+    try:
+        return save(game, form)
+    except NeedsConfirmation as question:
+        raise NeedsConfirmation(
+            question.question, "change-kit", "overwrite", carry={SAVE_FIRST: genre}
+        ) from None
+
+
+PLAYER_KIT_ANSWERS = {"confirm-genre": "Start new game"}
+
+
 def change_kit(game: Game, form: SheetForm) -> str:
-    """The sheet still shows the old kit while asking, so Replace carries the new one."""
-    confirmed = form.get("confirm-genre")
-    genre = Genre(confirmed or form.text("genre"))
+    genre, answer = chosen_kit(form, PLAYER_KIT_ANSWERS)
     if genre == game.session.profile_id:
         return ""
-    if confirmed is None and game.has_unsaved_state():
-        raise NeedsConfirmation(NEW_GAME_QUESTION, "change-kit", "confirm-genre", genre)
-    return game.change_kit(genre)
+    if answer is None and game.has_unsaved_state():
+        raise kit_question(NEW_GAME_QUESTION, genre, PLAYER_KIT_ANSWERS, "Keep current game")
+    saved = save_first(game, form, genre) if answer == SAVE_FIRST else ""
+    return f"{saved} {game.change_kit(genre)}".strip()
 
 
-def recovery_question(game: Game) -> NeedsConfirmation | None:
+GM_KIT_ANSWERS = {"keep-scene": "Keep scene", "start-new": "Start new"}
+
+
+def change_gm_kit(game: GmGame, form: SheetForm) -> str:
+    """After Save first nothing is left to lose, so the scene is kept, as the terminal does."""
+    genre, answer = chosen_kit(form, GM_KIT_ANSWERS)
+    if genre == game.genre:
+        return ""
+    if answer is None and game.has_unsaved_state():
+        raise kit_question(GM_KIT_QUESTION, genre, GM_KIT_ANSWERS, "Cancel")
+    saved = save_first(game, form, genre) if answer == SAVE_FIRST else ""
+    changed = game.start_new(genre) if answer == "start-new" else game.keep_scene(genre)
+    return f"{saved} {changed}".strip()
+
+
+def recovery_question(game: BaseGame) -> NeedsConfirmation | None:
     """On opening the page, offer back the game an earlier run closed without saving."""
     if not game.recovery_available():
         return None
@@ -172,7 +236,7 @@ def new_character(game: Game, form: SheetForm) -> str:
     return game.new_character()
 
 
-def save(game: Game, form: SheetForm) -> str:
+def save(game: BaseGame, form: SheetForm) -> str:
     try:
         return game.save(overwrite=form.ticked("overwrite"))
     except FileExistsError as error:
@@ -180,14 +244,14 @@ def save(game: Game, form: SheetForm) -> str:
         raise NeedsConfirmation(question, "save", "overwrite") from error
 
 
-def load(game: Game, form: SheetForm) -> str:
+def load(game: BaseGame, form: SheetForm) -> str:
     saved, path = game.read_save(form.text("session-path"))
     if game.has_unsaved_state() and not form.ticked("confirm"):
         raise NeedsConfirmation(load_question(saved.name), "load", "confirm")
     return game.load(saved, path)
 
 
-def upload(game: Game, form: SheetForm) -> str:
+def upload(game: BaseGame, form: SheetForm) -> str:
     text = form.text("session-file")
     saved = game.read_save_text(text)
     if game.has_unsaved_state() and not form.ticked("confirm"):
@@ -196,7 +260,7 @@ def upload(game: Game, form: SheetForm) -> str:
     return game.load(saved, None)
 
 
-def export(game: Game, form: SheetForm) -> str:
+def export(game: BaseGame, form: SheetForm) -> str:
     try:
         return game.export_history(form.text("export-path"), overwrite=form.ticked("overwrite"))
     except FileExistsError as error:
@@ -204,8 +268,23 @@ def export(game: Game, form: SheetForm) -> str:
         raise NeedsConfirmation(question, "export", "overwrite") from error
 
 
-# Each route name, as in ``POST /actions/<name>``, and the game call it makes.
+# The route names both pages have, as in ``POST /actions/<name>``, and the game call each makes.
+SESSION_ACTIONS: dict[str, Callable[[BaseGame, SheetForm], str]] = {
+    "undo": lambda game, form: game.undo(),
+    "roll-d6": lambda game, form: game.roll_one_die(),
+    "restore": lambda game, form: game.restore_recovery(),
+    # Shows the sheet again with the fields taken in, for changes such as Scared or the notes
+    # preview that alter what the sheet shows without being a game action.
+    "update": lambda game, form: "",
+    "save": save,
+    "load": load,
+    "upload": upload,
+    "export": export,
+}
+
+# The player's page.
 ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
+    **SESSION_ACTIONS,
     "start-game": lambda game, form: game.start_game(tuple(form.numbers("rank"))),
     "roll": lambda game, form: game.roll(form.get("attribute")),
     "reroll": lambda game, form: game.reroll(set(form.numbers("reroll"))),
@@ -213,7 +292,6 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
         BonusKind(form.text("kind")), form.number("die")
     ),
     "apply-tech": lambda game, form: game.apply_tech(form.number("index"), form.number("die")),
-    "undo": lambda game, form: game.undo(),
     "strain-box": lambda game, form: game.set_strain_box(
         form.number("index"), form.ticked("marked")
     ),
@@ -228,15 +306,45 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     "add-manifestation": lambda game, form: game.add_manifestation(),
     "remove-manifestation": lambda game, form: game.remove_manifestation(),
     "standing": lambda game, form: game.set_standing(form.number("standing")),
-    "roll-d6": lambda game, form: game.roll_one_die(),
-    "restore": lambda game, form: game.restore_recovery(),
     "new-character": new_character,
     "change-kit": change_kit,
-    # Shows the sheet again with the fields taken in, for changes such as Scared or the notes
-    # preview that alter what the sheet shows without being a game action.
-    "update": lambda game, form: "",
-    "save": save,
-    "load": load,
-    "upload": upload,
-    "export": export,
+}
+
+
+def collect_gm(game: GmGame, form: SheetForm) -> None:
+    """Copy the GM page's fields into the game: the session text and the Dangers' names."""
+    if not form.has_sheet:
+        return
+    for name, apply in (
+        ("session-name", lambda value: setattr(game, "name", value)),
+        ("session-path", lambda value: setattr(game, "path", value)),
+        ("notes", lambda value: setattr(game, "notes", value)),
+    ):
+        if (value := form.get(name)) is not None:
+            apply(value)
+    take_numbered(form, "danger-name", len(game.scene.dangers), game.rename_danger)
+
+
+# The GM's page.
+GM_ACTIONS: dict[str, Callable[[GmGame, SheetForm], str]] = {
+    **SESSION_ACTIONS,
+    "set-pcs": lambda game, form: game.set_pc_count(form.number("pcs")),
+    "add-danger": lambda game, form: game.add_danger(
+        form.text("new-danger-name"),
+        DangerClass(form.text("danger-class")),
+        Difficulty(form.text("difficulty")),
+        Standing(form.text("standing")) if form.get("standing") else None,
+    ),
+    "remove-danger": lambda game, form: game.remove_danger(form.number("index")),
+    "commit-hits": lambda game, form: game.commit_hits(form.number("amount")),
+    "raise-threshold": lambda game, form: game.raise_threshold(form.number("amount")),
+    "hostile": lambda game, form: game.set_hostile(form.ticked("hostile")),
+    "activate": lambda game, form: game.activate(),
+    "clash": lambda game, form: game.clash(),
+    "task-strain": lambda game, form: game.task_strain(Complexity(form.text("task"))),
+    "barricade": lambda game, form: game.move_barricade(form.number("step")),
+    "hits-spent": lambda game, form: game.spend_hits(form.number("amount")),
+    "task-done": lambda game, form: game.task_done(Complexity(form.text("task"))),
+    "set-revelations": lambda game, form: game.set_revelations(form.number("revelations")),
+    "change-kit": change_gm_kit,
 }

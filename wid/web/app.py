@@ -17,7 +17,9 @@ import asyncio
 import hashlib
 import re
 import secrets
+from collections.abc import Callable
 from pathlib import Path
+from typing import NamedTuple
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
@@ -25,15 +27,39 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.templating import Jinja2Templates
 
-from wid.game import Game, player_message
-from wid.web.forms import ACTIONS, NeedsConfirmation, SheetForm, collect, recovery_question
-from wid.web.view import COLOURS, css_variables, sheet_context
+from wid.game import BaseGame, Game, player_message
+from wid.gm import GmGame
+from wid.web.forms import (
+    ACTIONS,
+    GM_ACTIONS,
+    NeedsConfirmation,
+    SheetForm,
+    collect,
+    collect_gm,
+    recovery_question,
+)
+from wid.web.view import COLOURS, css_variables, gm_context, sheet_context
 
 HOSTS = ["127.0.0.1", "localhost"]
 HERE = Path(__file__).parent
 # The page's colours as CSS variables, worked out once (only page.html uses them).
 COLOUR_VARIABLES = {scheme: css_variables(colours) for scheme, colours in COLOURS.items()}
 TEMPLATES = Jinja2Templates(directory=HERE / "templates")
+
+
+class Mode(NamedTuple):
+    """A page: its template, its action table, and how it reads and shows its game."""
+
+    template: str
+    actions: dict[str, Callable[[BaseGame, SheetForm], str]]
+    collect: Callable[[BaseGame, SheetForm], None]
+    context: Callable[..., dict[str, object]]
+
+
+MODES = {
+    Game: Mode("sheet.html", ACTIONS, collect, sheet_context),
+    GmGame: Mode("gm.html", GM_ACTIONS, collect_gm, gm_context),
+}
 
 
 def token_cookie(token: str) -> str:
@@ -58,19 +84,22 @@ def attachment(text: str, media_type: str, name: str) -> Response:
 def render(
     request: Request,
     template: str,
-    game: Game,
+    mode: Mode,
+    game: BaseGame,
     message: str,
     *,
     preview: bool = False,
     ask: NeedsConfirmation | None = None,
     export_path: str = "",
 ) -> Response:
-    context = sheet_context(game, message, preview=preview, ask=ask, export_path=export_path)
+    context = mode.context(game, message, preview=preview, ask=ask, export_path=export_path)
     return TEMPLATES.TemplateResponse(request, template, context | COLOUR_VARIABLES)
 
 
-def create_app(game: Game, token: str, *, greeting: str = "") -> FastAPI:
-    """The app for ``game``; ``greeting`` is shown once, on the first page (a file opened, say)."""
+def create_app(game: BaseGame, token: str, *, greeting: str = "") -> FastAPI:
+    """The app for ``game``, a player's or a GM's; ``greeting`` is shown once, on the first page
+    (a file opened, say)."""
+    mode = MODES[type(game)]
     # No interactive API docs: this app serves one local player, not API clients.
     app = FastAPI(title="wid", docs_url=None, redoc_url=None, openapi_url=None)
     # Requests are handled concurrently, so one action finishes before the next one starts.
@@ -100,11 +129,11 @@ def create_app(game: Game, token: str, *, greeting: str = "") -> FastAPI:
         nonlocal greeting
         async with lock:
             message, greeting = greeting, ""
-            return render(request, "page.html", game, message, ask=recovery_question(game))
+            return render(request, "page.html", mode, game, message, ask=recovery_question(game))
 
     @app.post("/actions/{name}", response_class=HTMLResponse)
     async def act(name: str, request: Request) -> Response:
-        action = ACTIONS.get(name)
+        action = mode.actions.get(name)
         if action is None:
             raise HTTPException(404, "No such action")
         body = await request.body()
@@ -114,7 +143,7 @@ def create_app(game: Game, token: str, *, greeting: str = "") -> FastAPI:
                 form = SheetForm(body)
                 preview = form.ticked("notes-preview")
                 export_path = form.text("export-path")
-                collect(game, form)
+                mode.collect(game, form)
                 message = action(game, form)
             except NeedsConfirmation as question:
                 message, ask = "", question
@@ -124,7 +153,8 @@ def create_app(game: Game, token: str, *, greeting: str = "") -> FastAPI:
                 message = f"{message} {warning}".strip()
             return render(
                 request,
-                "sheet.html",
+                mode.template,
+                mode,
                 game,
                 message,
                 preview=preview,

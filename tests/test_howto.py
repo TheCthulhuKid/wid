@@ -55,6 +55,28 @@ SCREEN_LABELS = [
     "New character",
     "Preview",
     "Roll",
+    "Scene",
+    "PCs",
+    "Class",
+    "Difficulty",
+    "Add Danger",
+    "Remove",
+    "Amount",
+    "Commit hits",
+    "Raise threshold",
+    "Dangers fight each other",
+    "Dangers clash",
+    "Activate Danger",
+    "Keep scene",
+    "Start new",
+    "Save first",
+    "Task",
+    "Task strain",
+    "Barricade +1",
+    "Barricade −1",
+    "Revelations",
+    "Hits spent",
+    "Task done",
 ]
 
 KIT_NAMES = [
@@ -90,8 +112,9 @@ def test_every_kits_attributes_are_listed():
 
 def test_every_shortcut_in_the_how_to_is_a_real_binding():
     from wid.ui.app import RollerApp
+    from wid.ui.gm_app import GmApp
 
-    keys = {binding[0] for binding in RollerApp.BINDINGS}
+    keys = {binding[0] for binding in RollerApp.BINDINGS + GmApp.BINDINGS}
     documented = re.findall(
         r"^\| \*\*(?:Ctrl\+)?([A-Z])\*\*(?: / \*\*([A-Z])\*\*)? \|", HOWTO, re.M
     )

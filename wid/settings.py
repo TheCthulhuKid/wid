@@ -51,8 +51,17 @@ def recovery_path() -> Path | None:
 
     None when there is no home directory to keep it in; wid then plays without a copy.
     """
+    return recovery_file("recovery.json")
+
+
+def gm_recovery_path() -> Path | None:
+    """The GM mode's own copy, so a GM and a player on one computer never overwrite each other's."""
+    return recovery_file("gm-recovery.json")
+
+
+def recovery_file(name: str) -> Path | None:
     try:
-        return config_root() / "wid" / "recovery.json"
+        return config_root() / "wid" / name
     except OSError:
         return None
 

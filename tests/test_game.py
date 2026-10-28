@@ -2,6 +2,7 @@ import pytest
 from helpers import ScriptedRandom
 
 from wid.game import Game
+from wid.gm import GmGame
 from wid.profiles import Genre
 from wid.rolls import BonusKind, PowerMode
 from wid.sessions import CharacterDetails
@@ -122,6 +123,12 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     with pytest.raises(ValueError, match="Could not load session"):
         loaded.read_save(str(tmp_path / "missing.json"))
     assert Game().open_file(game.path) == f"Loaded Friday from {game.path}."
+    gm_path = tmp_path / "gm.json"
+    GmGame().saved_session("GM").save(gm_path)
+    with pytest.raises(ValueError, match="start wid with --gm"):
+        Game().read_save(str(gm_path))
+    with pytest.raises(ValueError, match="start wid without --gm"):
+        GmGame().read_save(game.path)
     assert Game().open_file(str(tmp_path / "missing.json")).startswith("Could not load session")
     loaded.name, loaded.path = "Friday", str(tmp_path)
     with pytest.raises(ValueError, match="That path is a folder; add a file name."):

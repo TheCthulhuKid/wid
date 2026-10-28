@@ -2,7 +2,17 @@
 
 from collections.abc import Callable
 
-from wid.profiles import PROFILES
+from wid.dangers import (
+    BARRICADE_MAX,
+    TARGETS,
+    Ability,
+    Activation,
+    Complexity,
+    Danger,
+    Scene,
+    defending_attribute,
+)
+from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     MANIFESTATION_EFFECTS,
     MANIFESTATION_LIMIT,
@@ -178,6 +188,10 @@ NEW_GAME_QUESTION = (
 NEW_CHARACTER_QUESTION = (
     "Start a new character? This clears the character, ranks, items, strain and the current "
     "roll. The session name, history, notes and file path stay."
+)
+GM_KIT_QUESTION = (
+    "Change the genre kit? Keep scene keeps the Dangers, history and notes (a Danger of a class "
+    "the new kit lacks is dropped). Start new clears them. Unsaved changes will be lost."
 )
 QUIT_QUESTION = "Quit? Unsaved changes will be lost."
 RECOVERY_QUESTION = (
@@ -364,3 +378,80 @@ SHEET_LINES: tuple[Callable[[RollSession], str], ...] = (
 def sheet_lines(session: RollSession) -> list[str]:
     """The sheet as short lines for an export: ranks, strain, names and the kit's own state."""
     return [text for line in SHEET_LINES if (text := line(session))]
+
+
+# The GM's scene. The rules behind these numbers are the book's.
+NO_DANGER_HINT = "Add a Danger to start the scene."
+NO_ACTIVATION_HINT = "Activate the Danger to see its roll here."
+LOADOUT_COLUMNS = ("Die", "Ability", "Target", "Attribute")
+
+
+def hits_text(hits: int) -> str:
+    return f"{hits} {'hit' if hits == 1 else 'hits'} to pass"
+
+
+def danger_summary(danger: Danger, index: int, pc_count: int) -> str:
+    """One Danger's line, such as ``Danger 1: Competent Brute — threshold 8, 1 hit to pass``,
+    with its standing after the class in Ball Season."""
+    kind = f"{danger.difficulty.label} {danger.danger_class.label}"
+    if danger.standing is not None:
+        kind += f", {danger.standing.label}"
+    return (
+        f"{one_line(danger.label(index))}: {kind} — threshold {danger.threshold(pc_count)}, "
+        f"{hits_text(danger.hits_to_pass)}"
+    )
+
+
+def scene_summary(scene: Scene) -> str:
+    """The combined threshold, what is raised and committed, and the strongest Danger's hits."""
+    if not scene.dangers:
+        return NO_DANGER_HINT
+    text = f"Threshold {scene.threshold}"
+    if scene.raised:
+        text += f" (raised {scene.raised})"
+    text += f", progress {scene.progress} — {hits_text(scene.hits_to_pass)}"
+    if scene.overcome:
+        text += ". Overcome"
+    if scene.hostile:
+        text += ". Dangers fight each other"
+    if scene.barricade:
+        text += f". {barricade_text(scene.barricade)}"
+    return text
+
+
+def barricade_text(strength: int) -> str:
+    return f"Barricade {strength} of {BARRICADE_MAX}" if strength else "No barricade"
+
+
+def revelations_line(scene: Scene) -> str:
+    """Oldheart's track, such as ``Revelations: 5 of 12 advanced, 1 of 3 revealed``."""
+    return (
+        f"Revelations: {scene.revelation_progress} of {scene.revelation_total} advanced, "
+        f"{scene.revealed} of {scene.revelations} revealed"
+    )
+
+
+def task_strain_line(complexity: Complexity, pc_count: int) -> str:
+    """History line for a task, such as ``Medium task: 8 strain for 4 PCs to share.``"""
+    total = complexity.strain_total(pc_count)
+    return f"{complexity.label} task: {total} strain for {pc_count} PCs to share."
+
+
+def activation_line(activation: Activation) -> str:
+    """History line for an activation, the three dice in the order they were rolled."""
+    dice = ", ".join(str(die) for die in activation.dice)
+    text = (
+        f"Activation ({dice}): {activation.ability.label} — {activation.target}, "
+        f"defending with {activation.attribute}"
+    )
+    if activation.standing is not None:
+        text += f"; the Danger is {activation.standing.label}"
+    return text
+
+
+def loadout_rows(loadout: tuple[Ability, ...], genre: Genre) -> list[tuple[str, str, str, str]]:
+    """The activation table for a loadout, a row per die under ``LOADOUT_COLUMNS``."""
+    return [
+        (str(die), ability.label, TARGETS[die - 1], defending_attribute(genre, die))
+        for die, ability in enumerate(loadout, start=1)
+    ]

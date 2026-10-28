@@ -1,46 +1,51 @@
+from collections.abc import Callable
 from pathlib import Path
 
-from textual.widgets import Input, Select
+from textual.widgets import Input
 
 from wid.formatting import (
-    NEW_CHARACTER_QUESTION,
     QUIT_QUESTION,
     RECOVERY_QUESTION,
     load_question,
     recovery_decline,
     replace_question,
 )
-from wid.game import Game, player_message
+from wid.game import BaseGame, player_message
 from wid.profiles import Genre
-from wid.sessions import SavedSession
+from wid.sessions import SaveFile
 from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
 
 
 class SessionActions:
-    """The save, load, export, new-character and quit dialogs mixed into ``RollerApp``.
+    """The save, load, export and quit dialogs mixed into both terminal apps.
 
     The game does the work; these methods only ask the player to confirm and show the outcome.
     """
 
-    game: Game
+    game: BaseGame
     pending_genre: Genre | None
 
-    def action_save_session(self, overwrite: bool = False) -> None:
+    def action_save_session(
+        self, overwrite: bool = False, then: Callable[[], None] | None = None
+    ) -> None:
+        """Save; ``then`` runs once the save is done, after any question about replacing."""
         try:
             done = self.act(lambda: self.game.save(overwrite=overwrite))
         except FileExistsError as error:
             self.push_screen(
                 ConfirmSessionAction(replace_question("save", error.filename)),
-                self.finish_save,
+                lambda confirmed: self.finish_save(confirmed, then),
             )
             return
         if done:
             self.query_one("#session-name", Input).value = self.game.name
             self.sub_title = self.game.name
+            if then is not None:
+                then()
 
-    def finish_save(self, confirmed: bool) -> None:
+    def finish_save(self, confirmed: bool, then: Callable[[], None] | None = None) -> None:
         if confirmed:
-            self.action_save_session(overwrite=True)
+            self.action_save_session(overwrite=True, then=then)
         else:
             self.feedback("Save cancelled; existing file unchanged.")
 
@@ -71,26 +76,6 @@ class SessionActions:
             self.export_history_path(value, overwrite=True)
         else:
             self.feedback("Export cancelled; existing file unchanged.")
-
-    def action_new_character(self) -> None:
-        if self.pending_genre is not None:
-            return
-        self.collect()
-        if self.game.has_unsaved_state():
-            self.push_screen(
-                ConfirmSessionAction(NEW_CHARACTER_QUESTION),
-                self.finish_new_character,
-            )
-        else:
-            self.finish_new_character(True)
-
-    def finish_new_character(self, confirmed: bool) -> None:
-        if not confirmed:
-            self.feedback("New character cancelled; current character unchanged.")
-            return
-        message = self.game.new_character()
-        self.show_game()
-        self.feedback(message)
 
     async def action_quit(self) -> None:
         """Ctrl+Q, which asks first when quitting would lose unsaved changes."""
@@ -153,13 +138,10 @@ class SessionActions:
         else:
             self.finish_load(saved, path, True)
 
-    def finish_load(self, saved: SavedSession, path: Path, confirmed: bool) -> None:
+    def finish_load(self, saved: SaveFile, path: Path, confirmed: bool) -> None:
         if not confirmed:
             self.feedback("Load cancelled; current game unchanged.")
             return
         message = self.game.load(saved, path)
         self.show_game()
-        if saved.item_target is not None:
-            with self.prevent(Select.Changed):
-                self.query_one("#item-target", Select).value = saved.item_target
         self.feedback(message)

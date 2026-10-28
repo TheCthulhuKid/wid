@@ -6,7 +6,7 @@ from helpers import read_saved
 
 from wid.profiles import Genre
 from wid.rolls import RollRequest
-from wid.sessions import SavedSession
+from wid.sessions import SavedSession, parse_save
 
 
 @pytest.mark.parametrize("genre", list(Genre))
@@ -36,6 +36,8 @@ def test_invalid_or_corrupt_files_are_rejected(tmp_path, saved_session_factory):
     data["version"] = 3
     with pytest.raises(ValueError, match="saved by a newer wid"):
         SavedSession.model_validate(data)
+    with pytest.raises(ValueError, match="unknown save kind"):
+        parse_save('{"kind": "referee"}', "player")
 
 
 def test_an_older_save_loads_without_notes(tmp_path, saved_session_factory):

@@ -14,7 +14,9 @@ def test_every_check_passes_without_touching_the_users_config(capsys):
 
     lines = capsys.readouterr().out.splitlines()
     assert lines[-1] == "wid self-test passed"
-    assert [line[5:] for line in lines[:-1]] == [name for name, _ in selftest.CHECKS]
+    names = [name for _, checks in selftest.SUITES for name, _ in checks]
+    assert [line[5:] for line in lines[:-1]] == names
+    assert "GM page served" in names
     assert list(Path(os.environ["XDG_CONFIG_HOME"]).iterdir()) == []
 
 
@@ -23,7 +25,7 @@ def test_a_failing_check_is_reported(capsys):
     async def broken(app, pilot, folder):
         selftest.require(False, "boom")
 
-    with patch.object(selftest, "CHECKS", (("broken", broken),)):
+    with patch.object(selftest, "SUITES", ((selftest.RollerApp, (("broken", broken),)),)):
         assert selftest.run_self_test() == 1
 
     out = capsys.readouterr().out.splitlines()

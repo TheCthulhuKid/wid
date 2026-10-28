@@ -1,4 +1,5 @@
-from typing import ClassVar
+from collections.abc import Sequence
+from typing import ClassVar, NamedTuple
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
@@ -9,22 +10,50 @@ from wid.formatting import SPEND_LABELS
 from wid.rolls import RESOURCES_MAX, ResourceEffect
 
 
-class ConfirmSessionAction(ModalScreen[bool]):
-    def __init__(self, message: str, confirm: str = "Replace", cancel: str = "Cancel"):
+class Answer(NamedTuple):
+    """One button of a question: the id the dialog dismisses with, its label and its look."""
+
+    id: str
+    label: str
+    variant: str = "default"
+
+
+CONFIRM = "confirm-session"
+CANCEL = "cancel-session"
+SAVE_FIRST = Answer("save-first", "Save first")
+
+
+class Question(ModalScreen[str]):
+    """Ask ``message`` with any number of answers; dismisses with the chosen answer's id."""
+
+    def __init__(self, message: str, answers: Sequence[Answer]):
         super().__init__()
         self.message = message
-        self.confirm = confirm
-        self.cancel = cancel
+        self.answers = tuple(answers)
 
     def compose(self) -> ComposeResult:
         with Vertical(id="confirmation"):
             yield Static(self.message, markup=False)
-            yield Button(self.confirm, id="confirm-session", variant="warning")
-            yield Button(self.cancel, id="cancel-session")
+            for answer in self.answers:
+                yield Button(answer.label, id=answer.id, variant=answer.variant)
 
+    # Textual runs the handler of every class that defines one, so only this class has it.
     def on_button_pressed(self, event: Button.Pressed) -> None:
         event.stop()
-        self.dismiss(event.button.id == "confirm-session")
+        self.dismiss(self.result(event.button.id))
+
+    def result(self, answer: str) -> object:
+        return answer
+
+
+class ConfirmSessionAction(Question):
+    """A yes-or-no question; dismisses with whether the player confirmed."""
+
+    def __init__(self, message: str, confirm: str = "Replace", cancel: str = "Cancel"):
+        super().__init__(message, (Answer(CONFIRM, confirm, "warning"), Answer(CANCEL, cancel)))
+
+    def result(self, answer: str) -> bool:
+        return answer == CONFIRM
 
 
 class SpendResources(ModalScreen[ResourceEffect | None]):

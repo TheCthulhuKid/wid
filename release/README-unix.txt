@@ -15,6 +15,10 @@ MACOS: "WID CANNOT BE OPENED" OR "NOT VERIFIED"
 LINUX
   The program needs glibc 2.35 or newer (Ubuntu 22.04, Debian 12, Fedora 36 and later).
 
+RUNNING THE GAME
+  The Game Master's screen, with the Dangers instead of a character:   ./wid --gm
+  The same in your browser:   ./wid --web --gm
+
 PLAY IN YOUR BROWSER
   In the folder, run:   ./wid --web
   Your browser opens the character sheet. Keep the terminal open while you play;
