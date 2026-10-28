@@ -618,8 +618,14 @@ class RollerApp(SessionActions, App):
             handler(self)
 
     def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
-        """The command palette (Ctrl+P): Textual's own commands, then the game's main actions."""
+        """The command palette (Ctrl+P): Textual's own commands, then the game's main actions.
+
+        The game's actions are left out over a dialog, so none runs behind it or asks a second
+        question on top of it.
+        """
         yield from super().get_system_commands(screen)
+        if screen is not self.screen_stack[0]:
+            return
         for title, help_text, handler in PALETTE_COMMANDS:
             yield SystemCommand(title, help_text, partial(handler, self))
 

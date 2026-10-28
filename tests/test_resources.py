@@ -122,6 +122,7 @@ def test_resource_controls_spend_and_roll_one_die():
             assert text(app, "#resource-count") == "6 / 6"
             assert app.query_one("#resources-up").disabled
             await click(app, pilot, "#spend-resources")
+            assert app.screen.query_one("#spend-dialog").size.width < app.size.width
             await pilot.click("#spend-craft_item")
             await pilot.pause()
             assert text(app, "#resource-count") == "3 / 6"

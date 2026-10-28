@@ -216,7 +216,7 @@ changes every time wid starts.
 | **T** / **I** | Fold or unfold the strain tracker / the items (Tech in Second Contact) |
 | **D** | Pick a colour theme, which is remembered (the default, "danger", is cream and red) |
 | **Ctrl+L** | Show or hide the history log |
-| **Ctrl+P** | Search the commands: Save session, Load game, Export history, Undo and more |
+| **Ctrl+P** | Search the commands: Save session, Load game, Undo and more (not over a dialog) |
 | **Tab** / **Shift+Tab** | Move between controls |
 | **Ctrl+Q** | Quit (asks first if anything is unsaved) |
 
