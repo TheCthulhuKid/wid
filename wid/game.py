@@ -662,9 +662,17 @@ class Game(BaseGame):
         return self.notice("Lost the crafted item; its slot is free again.")
 
     def gain_corruption(self, amount: int) -> str:
+        return self.take_corruption(amount, f"Gained {amount} Corruption.")
+
+    def avoid_strain(self, amount: int) -> str:
+        """Strain avoided on a task costs as much Corruption, as Oldheart has it."""
+        change = f"Avoided {amount} strain on a task: gained {amount} Corruption."
+        return self.take_corruption(amount, change)
+
+    def take_corruption(self, amount: int, change: str) -> str:
         with self.undoable("Corruption gain"):
             check = self.session.add_corruption(amount, rng=self.rng)
-        return self.notice(f"Gained {amount} Corruption. {check_summary(check)}")
+        return self.notice(f"{change} {check_summary(check)}")
 
     def add_manifestation(self) -> str:
         with self.undoable("manifestation change"):

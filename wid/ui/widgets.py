@@ -453,6 +453,11 @@ class KitControls(Vertical):
                     tooltip="Corruption gained at once, such as from a Danger or avoided strain",
                 )
                 yield Button("Gain Corruption", id="gain-corruption", variant="primary")
+                yield Button(
+                    "Avoid strain",
+                    id="avoid-strain",
+                    tooltip="Strain avoided on a task costs as much Corruption",
+                )
             for index in range(MANIFESTATION_LIMIT):
                 yield ManifestationName(index)
             with Horizontal(classes="button-row"):

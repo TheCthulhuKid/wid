@@ -96,6 +96,7 @@
             <select name="corruption-amount">{% for amount in corruption_amounts %}<option>{{ amount }}</option>{% endfor %}</select>
           </label>
           <button formaction="/actions/gain-corruption">Gain Corruption</button>
+          <button formaction="/actions/avoid-strain" title="Strain avoided on a task costs as much Corruption">Avoid strain</button>
         </div>
         {% for name in session.manifestations %}
         <label class="field">Manifestation {{ loop.index }}

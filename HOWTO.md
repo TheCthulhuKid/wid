@@ -106,8 +106,9 @@ the test needs to pass, one for each tier between you. Like **Assisted**, it app
 roll and clears itself afterwards.
 
 **Corruption (Oldheart).** Tick dice in the result, then press **Reroll selected**: each rerolled
-die costs 1 Corruption. For Corruption from anything else, such as a Danger or strain you chose
-to avoid, choose how much in the box beside **Gain Corruption** and press it. Corruption never
+die costs 1 Corruption. For Corruption from anything else, such as a Danger, choose how much in
+the box beside **Gain Corruption** and press it; for strain you chose to avoid on a task, choose
+the strain avoided and press **Avoid strain** instead, and the history says so. Corruption never
 goes down during a scenario. Every gain makes a manifestation check for you: one die per point
 just gained, and a total at or under your new Corruption means a manifestation. The dice and the
 outcome go to the history. Name each manifestation in its box. Use **Add manifestation** for one

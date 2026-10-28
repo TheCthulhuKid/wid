@@ -83,6 +83,7 @@ SCREEN_LABELS = [
     "Strengthen barricade",
     "Target standing",
     "PCs of another standing",
+    "Avoid strain",
 ]
 
 KIT_NAMES = [

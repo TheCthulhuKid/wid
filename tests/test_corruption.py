@@ -48,7 +48,7 @@ def test_manifestations_change_depravity_and_hospitality_pools():
 @pytest.mark.ui
 def test_gaining_corruption_by_hand_checks_and_shows_manifestations():
     async def scenario():
-        app = RollerApp(rng=ScriptedRandom([1, 1]))
+        app = RollerApp(rng=ScriptedRandom([1, 1, 6, 6]))
         async with app.run_test(size=(120, 50)) as pilot:
             assert not app.query_one("#corruption-field").display
             await change_genre(app, pilot, KIT)
@@ -57,6 +57,11 @@ def test_gaining_corruption_by_hand_checks_and_shows_manifestations():
             await click(app, pilot, "#gain-corruption")
             assert text(app, "#corruption-status") == "Corruption 2 — 1 of 3 manifestations"
             assert str(app.history[-1]).startswith("Gained 2 Corruption. Manifestation check")
+            await click(app, pilot, "#avoid-strain")
+            assert str(app.history[-1]).startswith(
+                "Avoided 2 strain on a task: gained 2 Corruption."
+            )
+            assert text(app, "#corruption-status") == "Corruption 4 — 1 of 3 manifestations"
             assert not app.query_one("#manifestation-name-0", Input).disabled
             app.query_one("#manifestation-name-0", Input).value = "Scaly arm"
             await pilot.pause()

@@ -544,9 +544,10 @@ class RollerApp(SessionActions, BaseApp):
         difficulty = self.query_one("#recovery-difficulty", Select).value
         self.act(lambda: self.game.recover_after(difficulty))
 
-    def gain_corruption(self) -> None:
+    def take_corruption(self, action: Callable[[Game, int], str]) -> None:
+        """Run a Corruption action with the amount chosen beside Gain Corruption."""
         amount = self.query_one("#corruption-amount", Select).value
-        self.act(lambda: self.game.gain_corruption(amount))
+        self.act(lambda: action(self.game, amount))
 
     def apply_bonus(self, kind: BonusKind) -> None:
         die = self.query_one("#item-target", Select).value
@@ -640,7 +641,8 @@ APP_BUTTONS: dict[str, Callable[[RollerApp], None]] = {
     "start-game": RollerApp.start_game,
     "reroll_button": RollerApp.action_reroll,
     "spend-resources": RollerApp.ask_spend_resources,
-    "gain-corruption": RollerApp.gain_corruption,
+    "gain-corruption": lambda app: app.take_corruption(Game.gain_corruption),
+    "avoid-strain": lambda app: app.take_corruption(Game.avoid_strain),
     "recover": RollerApp.recover_after,
     "build-barricade": lambda app: app.spend_on_barricade(build=True),
     "strengthen-barricade": lambda app: app.spend_on_barricade(build=False),

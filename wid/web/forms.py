@@ -318,6 +318,7 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
         form.number("barricade-spend")
     ),
     "gain-corruption": lambda game, form: game.gain_corruption(form.number("corruption-amount")),
+    "avoid-strain": lambda game, form: game.avoid_strain(form.number("corruption-amount")),
     "recover": lambda game, form: game.recover_after(Difficulty(form.text("recovery-difficulty"))),
     "add-manifestation": lambda game, form: game.add_manifestation(),
     "remove-manifestation": lambda game, form: game.remove_manifestation(),

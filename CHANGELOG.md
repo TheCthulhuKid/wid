@@ -30,6 +30,8 @@ What changed in each release of wid, newest first. The format follows
 - Ball Season: **Target standing** before a roll says how many more hits the test needs to pass,
   one per tier of standing between you and the target; in the GM mode, **PCs of another
   standing** adds their strain to a task.
+- Oldheart: **Avoid strain** beside **Gain Corruption** takes the Corruption for strain avoided
+  on a task and says so in the history.
 
 ### Changed
 
