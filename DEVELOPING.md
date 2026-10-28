@@ -96,7 +96,7 @@ history (`fetch-depth: 0`) so the tag is visible to `hatch-vcs`.
 wid/
 ├── __init__.py         # Lightweight package marker
 ├── __main__.py         # python -m wid
-├── cli.py              # wid command: a save, --web, --port, --no-browser, --self-test, --version
+├── cli.py              # wid command: a save, --gm, --web, --port, --no-browser, --self-test, --version
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── dangers.py          # The GM's Dangers: loadouts, a scene's threshold and activation
@@ -110,10 +110,12 @@ wid/
 ├── selftest.py         # `wid --self-test`: the app checked headless, for release builds
 ├── settings.py         # Remembered preferences in a small JSON file
 ├── ui/
-│   ├── app.py          # Textual front end: shows the game, passes actions to it
-│   ├── sessions.py     # Save, load, export, new-character, quit and recovery dialogs
-│   ├── widgets.py      # Character, options, session, and result widgets
-│   ├── dialogs.py      # Confirmation screens
+│   ├── base.py         # What both Textual screens share: theme, feedback, act, log, kit question
+│   ├── app.py          # The player's screen: shows the sheet, passes actions to the game
+│   ├── gm_app.py       # The GM's screen: the scene and the activations
+│   ├── sessions.py     # Save, load, export, quit and recovery dialogs, mixed into both apps
+│   ├── widgets.py      # Character, options, session, result and scene widgets
+│   ├── dialogs.py      # Questions with any number of answers, and the path prompts
 │   ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
 │   ├── themes.py       # The default danger theme: cream paper, lavender fields, red highlights
 │   └── roller.tcss     # Bundled interface styles
@@ -136,7 +138,10 @@ Front ends call `Game` (`wid/game.py`), which owns the session, history, roll op
 character, notes and file path, records history and words the feedback; game rules stay in
 the domain models, independent of Textual. What is not the character sheet (the history, the
 session name, notes and file path, Undo, saving, loading, exporting and the recovery copy) is
-`BaseGame`, so another mode of play only supplies its own state and save model. The terminal app copies what the player typed into
+`BaseGame`, so another mode of play only supplies its own state and save model. The terminal
+screens split the same way: `BaseApp` (`wid/ui/base.py`) holds the theme and settings, the
+feedback line, `act`, the history log, the kit question and the command palette, and
+`RollerApp` and `GmApp` (`wid/ui/gm_app.py`) compose their panels and name their buttons. The terminal app copies what the player typed into
 the game before each action (`collect`), then redraws from it (`refresh_sheet`), so a second
 front end only needs the same two steps; the browser version does them per request (each action
 posts the whole sheet, `collect` copies it in, the action runs, the sheet comes back). Every web

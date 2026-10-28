@@ -11,6 +11,9 @@ HOW TO RUN
   The program is not code-signed, so Windows SmartScreen may warn the first time.
   Choose "More info", then "Run anyway".
 
+RUNNING THE GAME
+  The Game Master's screen, with the Dangers instead of a character:   .\wid.exe --gm
+
 PLAY IN YOUR BROWSER
   In the folder, run:   .\wid.exe --web
   Your browser opens the character sheet. Keep the window open while you play;

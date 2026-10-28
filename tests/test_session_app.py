@@ -2,7 +2,7 @@ import asyncio
 from random import Random
 
 import pytest
-from helpers import change_genre, click, load_game, read_saved, start_game, text
+from helpers import click, load_game, read_saved, start_game, text
 from textual.widgets import Button, Input, Select, TextArea
 
 from wid.formatting import QUIT_QUESTION
@@ -99,7 +99,7 @@ def test_load_and_save_ask_before_replacing(tmp_path, saved_session_factory):
     asyncio.run(scenario())
 
 
-def test_new_character_and_a_new_kit_clear_the_screen():
+def test_new_character_and_a_new_kit_clear_the_screen(tmp_path):
     async def scenario():
         app = RollerApp(rng=Random(1))
         async with app.run_test(size=(100, 40)) as pilot:
@@ -118,7 +118,20 @@ def test_new_character_and_a_new_kit_clear_the_screen():
             await pilot.click("#cancel-session")
             await pilot.pause()
             assert app.query_one("#genre", Select).value == Genre.CORE
-            await change_genre(app, pilot, Genre.HECKBOY)
+            app.query_one("#genre", Select).value = Genre.HECKBOY
+            await pilot.pause()
+            await pilot.click("#save-first")
+            await pilot.pause()
+            assert text(app, "#feedback") == "Name the session before saving."
+            assert app.query_one("#genre", Select).value == Genre.CORE
+            await start_game(app, pilot)
+            app.query_one("#session-name", Input).value = "Friday"
+            app.query_one("#session-path", Input).value = str(tmp_path / "game.json")
+            app.query_one("#genre", Select).value = Genre.HECKBOY
+            await pilot.pause()
+            await pilot.click("#save-first")
+            await pilot.pause()
+            assert (tmp_path / "game.json").is_file()
             assert app.query_one("#session-path", Input).value == ""
             assert text(app, "#feedback") == "New Heckboy game started."
 

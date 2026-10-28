@@ -180,6 +180,10 @@ NEW_CHARACTER_QUESTION = (
     "Start a new character? This clears the character, ranks, items, strain and the current "
     "roll. The session name, history, notes and file path stay."
 )
+GM_KIT_QUESTION = (
+    "Change the genre kit? Keep scene keeps the Dangers, history and notes (a Danger of a class "
+    "the new kit lacks is dropped). Start new clears them. Unsaved changes will be lost."
+)
 QUIT_QUESTION = "Quit? Unsaved changes will be lost."
 RECOVERY_QUESTION = (
     "wid closed last time with unsaved changes, and kept a copy. Restore that game? If not, the "
@@ -369,6 +373,7 @@ def sheet_lines(session: RollSession) -> list[str]:
 
 # The GM's scene. The rules behind these numbers are the book's.
 NO_DANGER_HINT = "Add a Danger to start the scene."
+NO_ACTIVATION_HINT = "Activate the Danger to see its roll here."
 LOADOUT_COLUMNS = ("Die", "Ability", "Target", "Attribute")
 
 

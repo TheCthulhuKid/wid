@@ -231,6 +231,15 @@ OTHER_MODE = {
 }
 
 
+def file_kind(path: str) -> str | None:
+    """The kind of the save at ``path``, or None when it cannot be read: the mode started then
+    reports why."""
+    try:
+        return SaveHeader.model_validate_json(Path(path).read_text(encoding="utf-8")).kind
+    except (OSError, ValueError):
+        return None
+
+
 def parse_save(text: str, kind: str) -> SavedSession | GmSave:
     """A save of ``kind`` from its JSON; a file of the other mode says which flag opens it."""
     found = SaveHeader.model_validate_json(text).kind

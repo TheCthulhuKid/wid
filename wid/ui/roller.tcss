@@ -105,6 +105,37 @@ ConfirmSessionAction, LoadGame, ExportHistory, SpendResources {
 .short .named-bonus Button, .short .named-bonus PowerToggle { margin: 0 0 0 1; }
 .short .button-row, .short #notes-toolbar { height: 1; }
 
+/* The GM's scene tab. */
+SceneGroup { height: auto; }
+#pc-row { height: 3; }
+#pc-row Label { width: 6; padding: 1 0; }
+#pc-count { width: 8; }
+#new-danger { height: 4; }
+#new-danger .field { width: 1fr; margin-right: 1; }
+#class-field, #difficulty-field { width: 16; }
+#add-danger { margin-top: 1; }
+#danger-rows { height: auto; }
+.danger-row { height: auto; margin-top: 1; }
+.danger-controls { height: 3; }
+.danger-controls RemoveDangerButton { width: 10; min-width: 10; margin-left: 1; }
+#scene-summary { margin: 1 0; }
+#threshold-row { height: 4; }
+#amount-field { width: 10; margin-right: 1; }
+#threshold-row Button { margin-top: 1; margin-right: 1; }
+#hostile-row { height: 3; }
+#hostile { width: 1fr; padding: 0; border: tall transparent; }
+ActivationGroup { height: 1fr; padding: 1; border: solid $primary; }
+#activation { margin-bottom: 1; }
+#loadout { height: auto; }
+.short #pc-row { height: 1; }
+.short #pc-row Label { padding: 0; }
+.short #new-danger, .short #threshold-row { height: 2; }
+.short #add-danger, .short #threshold-row Button { margin-top: 0; }
+.short .danger-row { margin-top: 0; }
+.short .danger-controls, .short #hostile-row { height: 1; }
+.short #hostile { height: 1; border: none; }
+.short #scene-summary { margin: 0; }
+
 /* Danger theme: cream paper behind lavender fields, with a charcoal title bar. */
 .-theme-danger Screen { background: $background; }
 .-theme-danger Header { background: $secondary; color: $background; }

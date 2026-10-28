@@ -2,12 +2,13 @@ import runpy
 import sys
 from importlib.metadata import PackageNotFoundError, distribution, version
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import pytest
 
 from wid.cli import main, package_version
-from wid.settings import recovery_path
+from wid.gm import GmGame
+from wid.settings import gm_recovery_path, recovery_path
 
 ENTRY_SCRIPT = Path(__file__).resolve().parents[1] / "release" / "wid_entry.py"
 
@@ -18,6 +19,20 @@ def test_main_launches_roller_app():
 
     app.assert_called_once_with(recovery_path=recovery_path(), open_path="game.json")
     app.return_value.run.assert_called_once_with()
+
+
+def test_gm_flag_and_a_gm_file_launch_the_gm_app(tmp_path):
+    gm_file = tmp_path / "gm.json"
+    GmGame().saved_session("GM").save(gm_file)
+    with patch("wid.ui.gm_app.GmApp") as app, patch("wid.ui.app.RollerApp") as roller:
+        main(["--gm"])
+        main([str(gm_file)])
+
+    assert app.call_args_list == [
+        call(recovery_path=gm_recovery_path(), open_path=None),
+        call(recovery_path=gm_recovery_path(), open_path=str(gm_file)),
+    ]
+    roller.assert_not_called()
 
 
 def test_installed_command_entry_point():

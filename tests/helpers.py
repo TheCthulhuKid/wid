@@ -10,7 +10,7 @@ from textual.widgets import Collapsible, Input, Select, Static, TabbedContent, T
 
 from wid.sessions import SavedSession
 from wid.ui.app import RollerApp
-from wid.ui.dialogs import ConfirmSessionAction
+from wid.ui.dialogs import Question
 from wid.web.app import create_app
 
 # The header the browser page sends with every action (see wid/web/app.py).
@@ -121,7 +121,7 @@ async def change_genre(app, pilot, genre) -> None:
     """Switch the genre kit, confirming the new game if the app asks."""
     app.query_one("#genre", Select).value = genre
     await pilot.pause()
-    if isinstance(app.screen, ConfirmSessionAction):
+    if isinstance(app.screen, Question):
         await pilot.click("#confirm-session")
         await pilot.pause()
 

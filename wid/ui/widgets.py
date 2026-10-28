@@ -10,18 +10,24 @@ from textual.widget import Widget
 from textual.widgets import (
     Button,
     Checkbox,
+    DataTable,
     Input,
     Label,
     Markdown,
+    RichLog,
     Select,
     Static,
     TextArea,
 )
 
+from wid.dangers import DANGERS_MAX, PC_MAX, PC_MIN, DangerClass, Difficulty
 from wid.formatting import (
     BONUS_LABELS,
     CHARACTER_LABELS,
     CORRUPTION_AMOUNTS,
+    LOADOUT_COLUMNS,
+    NO_ACTIVATION_HINT,
+    NO_DANGER_HINT,
     NO_RESULT_HINT,
     POWER_LABELS,
     RANKS_HINT,
@@ -170,7 +176,11 @@ class RerollDie(Checkbox):
 
 
 class GameRow(Horizontal):
-    """Genre kit selector beside the Start and Load buttons."""
+    """Genre kit selector beside the Load button and, for a player, the Start button."""
+
+    def __init__(self, *, start: bool = True, **kwargs):
+        super().__init__(**kwargs)
+        self.start = start
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="field"):
@@ -182,7 +192,8 @@ class GameRow(Horizontal):
                 id="genre",
             )
         with Horizontal(id="game-controls"):
-            yield Button("Start game", id="start-game", variant="primary")
+            if self.start:
+                yield Button("Start game", id="start-game", variant="primary")
             yield Button("Load session", id="load-session")
 
 
@@ -271,13 +282,29 @@ class SessionName(Vertical):
 
 
 class SessionFile(Vertical):
+    """The file path with Save and Export and, for a player, New character."""
+
+    def __init__(self, *, new_character: bool = True, **kwargs):
+        super().__init__(**kwargs)
+        self.new_character = new_character
+
     def compose(self) -> ComposeResult:
         yield Label("Session file (JSON)")
         yield Input(placeholder="/path/to/session.json", id="session-path")
         with Horizontal(classes="button-row"):
             yield Button("Save session", id="save-session", variant="primary")
             yield Button("Export history", id="export-history")
-            yield Button("New character", id="new-character")
+            if self.new_character:
+                yield Button("New character", id="new-character")
+
+
+class HistoryPanel(Vertical):
+    """The action history, shown and hidden with Show log; both apps have one."""
+
+    def compose(self) -> ComposeResult:
+        yield Label("Action history")
+        yield Static(id="history-statistics", markup=False)
+        yield RichLog(id="log", wrap=True, markup=False)
 
 
 class RollOptions(Horizontal):
@@ -456,3 +483,91 @@ class RollerGroup(VerticalScroll):
             for index in range(OLDHEART_MAX_POOL):
                 yield RerollDie(index)
             yield Button("Reroll selected", id="reroll_button", disabled=True)
+
+
+class DangerName(Input):
+    """Text box naming the Danger at ``index`` of the scene."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__(placeholder=f"Danger {index + 1}", id=f"danger-name-{index}", **kwargs)
+        self.index = index
+
+
+class RemoveDangerButton(Button):
+    """Takes the Danger at ``index`` out of the scene."""
+
+    def __init__(self, index: int, **kwargs):
+        super().__init__("Remove", id=f"remove-danger-{index}", **kwargs)
+        self.index = index
+
+
+# The amounts the GM commits to the threshold or raises it by at once.
+AMOUNTS = range(1, 7)
+
+
+class SceneGroup(Vertical):
+    """The GM's scene: the PCs, the Dangers, the threshold and whether the Dangers clash."""
+
+    def compose(self) -> ComposeResult:
+        with Horizontal(id="pc-row"):
+            yield Label("PCs")
+            yield Select(
+                [(str(count), count) for count in range(PC_MIN, PC_MAX + 1)],
+                value=4,
+                allow_blank=False,
+                id="pc-count",
+            )
+        with Horizontal(id="new-danger"):
+            with Vertical(classes="field"):
+                yield Label("Name")
+                yield Input(placeholder="Optional", id="new-danger-name")
+            with Vertical(classes="field", id="class-field"):
+                yield Label("Class")
+                yield Select(
+                    [(kind.label, kind) for kind in DangerClass],
+                    value=DangerClass.BRUTE,
+                    allow_blank=False,
+                    id="danger-class",
+                )
+            with Vertical(classes="field", id="difficulty-field"):
+                yield Label("Difficulty")
+                yield Select(
+                    [(difficulty.label, difficulty) for difficulty in Difficulty],
+                    value=Difficulty.COMPETENT,
+                    allow_blank=False,
+                    id="difficulty",
+                )
+            yield Button("Add Danger", id="add-danger", variant="primary")
+        with Vertical(id="danger-rows"):
+            for index in range(DANGERS_MAX):
+                with Vertical(classes="danger-row", id=f"danger-row-{index}"):
+                    yield Static(id=f"danger-summary-{index}", markup=False)
+                    with Horizontal(classes="danger-controls"):
+                        yield DangerName(index)
+                        yield RemoveDangerButton(index)
+        yield Static(NO_DANGER_HINT, id="scene-summary", markup=False)
+        with Horizontal(id="threshold-row"):
+            with Vertical(classes="field", id="amount-field"):
+                yield Label("Amount")
+                yield Select(
+                    [(str(amount), amount) for amount in AMOUNTS],
+                    value=1,
+                    allow_blank=False,
+                    id="amount",
+                )
+            yield Button("Commit hits", id="commit-hits", variant="primary")
+            yield Button("Raise threshold", id="raise-threshold")
+        with Horizontal(id="hostile-row"):
+            yield Checkbox("Dangers fight each other", id="hostile")
+            yield Button("Dangers clash", id="clash", tooltip="End of round: 1d6 off the threshold")
+
+
+class ActivationGroup(VerticalScroll):
+    """The last activation and the loadout table of the scene's strongest Danger."""
+
+    def compose(self) -> ComposeResult:
+        yield Static(NO_ACTIVATION_HINT, id="activation", markup=False)
+        yield DataTable(id="loadout", cursor_type="none", zebra_stripes=True)
+
+    def on_mount(self) -> None:
+        self.query_one(DataTable).add_columns(*LOADOUT_COLUMNS)

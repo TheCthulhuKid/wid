@@ -32,6 +32,11 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="check that this installation works, without a terminal, then exit",
     )
     parser.add_argument(
+        "--gm",
+        action="store_true",
+        help="run the Game Master's screen: Dangers and the scene instead of a character",
+    )
+    parser.add_argument(
         "--web",
         action="store_true",
         help="play in a web browser on this computer instead of the terminal",
@@ -60,7 +65,15 @@ def main(argv: Sequence[str] | None = None) -> None:
             )
         )
     # Imported here so --web and --self-test do not load the terminal interface first.
-    from wid.settings import recovery_path
+    from wid.sessions import file_kind
+    from wid.settings import gm_recovery_path, recovery_path
+
+    # A save opens in the mode it was saved in; --gm on a player's file is refused on screen.
+    if arguments.gm or (arguments.session and file_kind(arguments.session) == "gm"):
+        from wid.ui.gm_app import GmApp
+
+        GmApp(recovery_path=gm_recovery_path(), open_path=arguments.session).run()
+        return
     from wid.ui.app import RollerApp
 
     RollerApp(recovery_path=recovery_path(), open_path=arguments.session).run()
