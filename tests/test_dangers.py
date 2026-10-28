@@ -62,6 +62,8 @@ def test_scene_combines_its_dangers():
     assert committed.overcome
     assert scene_summary(committed).endswith("— 2 hits to pass. Overcome. Dangers fight each other")
 
+    assert committed.with_pc_count(1).progress == committed.with_pc_count(1).threshold == 8
+    assert committed.rename(1, "Jupiter").dangers[1].name == "Jupiter"
     removed = committed.without(1)
     assert removed.dangers == (BRUTE,)
     assert removed.threshold == 8

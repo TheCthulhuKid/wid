@@ -102,6 +102,7 @@ wid/
 ├── dangers.py          # The GM's Dangers: loadouts, a scene's threshold and activation
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
 ├── game.py             # One sitting: BaseGame (history, save, undo, recovery) and the player's Game
+├── gm.py               # The GM's game: the kit, the scene and an action for each control
 ├── export.py           # Markdown export: the sheet, the notes and the action history
 ├── history.py          # Structured action history entries, their text, and dice statistics
 ├── sessions.py         # The versioned save format and the session file path rules
@@ -170,8 +171,17 @@ random generator's state are not saved, and the theme lives in the settings file
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.
 
-**Recovery copy** (JSON): `recovery.json` beside the settings. While the game has unsaved
-changes and has started, `Game.keep_recovery` writes it after every change (the terminal from
+**GM session files** are the same kind of file with `kind: "gm"` and their own `version: 1`
+(`GmSave` in `wid/sessions.py`). One holds the session name, the genre kit, the PC count, the
+Dangers with their names, classes and difficulties, the hits committed, the raised threshold,
+whether the Dangers fight each other, the notes and the history. The last activation is not
+saved; the history has it. A player's file has no `kind`, and each mode refuses the other's
+file with a message naming the flag to start wid with. A change to the GM format bumps
+`GmSave.version` and gets its own upgrade table, separate from the player's.
+
+**Recovery copy** (JSON): `recovery.json` beside the settings, and `gm-recovery.json` for the
+GM mode, so a GM and a player on one computer never overwrite each other's. While the game has
+unsaved changes and has started, `BaseGame.keep_recovery` writes it after every change (the terminal from
 `refresh_sheet`, the browser after each action), in the save format with the typed session name
 and file path beside it. It goes once nothing is unsaved (a save, a load, a new kit) or when
 the player quits after agreeing to lose the changes. On start, an untouched game offers it back;

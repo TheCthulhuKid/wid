@@ -2,8 +2,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import Field, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
+from wid.dangers import Scene, classes_for
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import STANDING_START, FrozenModel, Index, RollRequest, RollSession
@@ -61,7 +62,12 @@ SessionName = Annotated[
 ]
 
 
-class SavedSession(FrozenModel):
+class SaveFile(FrozenModel):
+    def save(self, path: Path, *, overwrite: bool = False) -> None:
+        write_text(path, self.model_dump_json(indent=2), overwrite=overwrite)
+
+
+class SavedSession(SaveFile):
     version: Literal[2] = 2
     name: SessionName
     session: RollSession
@@ -188,8 +194,51 @@ class SavedSession(FrozenModel):
         if any(index >= len(result.dice) for index in self.reroll_indices):
             raise ValueError("Reroll selection is outside the current result.")
 
-    def save(self, path: Path, *, overwrite: bool = False) -> None:
-        write_text(path, self.model_dump_json(indent=2), overwrite=overwrite)
+
+class GmSave(SaveFile):
+    """A GM's game: the kit and the scene. ``kind`` tells it from a player's save, which has
+    none, and its version counts on its own."""
+
+    kind: Literal["gm"] = "gm"
+    version: Literal[1] = 1
+    name: SessionName
+    genre: Genre
+    scene: Scene
+    notes: str = ""
+    history: tuple[HistoryEntry, ...] = ()
+
+    @model_validator(mode="after")
+    def validate_classes(self) -> Self:
+        allowed = classes_for(self.genre)
+        if any(danger.danger_class not in allowed for danger in self.scene.dangers):
+            raise ValueError(f"{PROFILES[self.genre].name} has no such Danger class.")
+        return self
+
+
+class SaveHeader(BaseModel):
+    """Only the field that says which mode wrote a save file."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    kind: str = "player"
+
+
+SAVE_MODELS = {"player": SavedSession, "gm": GmSave}
+# What a file of the other mode says: the flag that opens it.
+OTHER_MODE = {
+    "player": "This file holds a player's game; start wid without --gm to open it.",
+    "gm": "This file holds a GM's game; start wid with --gm to open it.",
+}
+
+
+def parse_save(text: str, kind: str) -> SavedSession | GmSave:
+    """A save of ``kind`` from its JSON; a file of the other mode says which flag opens it."""
+    found = SaveHeader.model_validate_json(text).kind
+    if found not in SAVE_MODELS:
+        raise ValueError(f"This file has an unknown save kind ({found!r}).")
+    if found != kind:
+        raise ValueError(OTHER_MODE[found])
+    return SAVE_MODELS[kind].model_validate_json(text)
 
 
 class Recovery(FrozenModel):
@@ -201,4 +250,4 @@ class Recovery(FrozenModel):
 
     name: str = ""
     path: str = ""
-    game: SavedSession
+    game: SavedSession | GmSave

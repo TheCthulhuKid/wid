@@ -116,7 +116,13 @@ DIFFICULTY_RULES = {
 DEFAULT_ABILITIES = (Ability.HARASS, Ability.SCARE, Ability.KILL)
 
 
-class Danger(FrozenModel):
+class Replaceable(FrozenModel):
+    def replace(self, **changes: object) -> Self:
+        """A copy with ``changes``, built anew rather than copied so it is validated."""
+        return type(self)(**{**dict(self), **changes})
+
+
+class Danger(Replaceable):
     name: str = ""
     danger_class: DangerClass
     difficulty: Difficulty
@@ -144,7 +150,7 @@ DANGERS_MAX = 4
 Count = Annotated[int, Field(strict=True, ge=0)]
 
 
-class Scene(FrozenModel):
+class Scene(Replaceable):
     """A confrontation: the PCs against every Danger in it, sharing one threshold."""
 
     pc_count: Annotated[int, Field(strict=True, ge=PC_MIN, le=PC_MAX)] = 4
@@ -185,16 +191,30 @@ class Scene(FrozenModel):
 
     def commit(self, hits: int) -> Self:
         """Progress the threshold by ``hits``, never beyond it."""
-        return self._replace(progress=min(self.threshold, self.progress + hits))
+        return self.replace(progress=min(self.threshold, self.progress + hits))
 
     def raise_threshold(self, amount: int) -> Self:
-        return self._replace(raised=self.raised + amount)
+        return self.replace(raised=self.raised + amount)
+
+    def with_pc_count(self, pc_count: int) -> Self:
+        """The scene for ``pc_count`` PCs, the progress kept within the lower threshold."""
+        scene = self.replace(pc_count=pc_count, progress=0)
+        return scene.replace(progress=min(self.progress, scene.threshold))
+
+    def rename(self, index: int, name: str) -> Self:
+        danger = self.danger_at(index)
+        dangers = (*self.dangers[:index], danger.replace(name=name), *self.dangers[index + 1 :])
+        return self.replace(dangers=dangers)
 
     def without(self, index: int) -> Self:
         """The scene without the Danger at ``index``, the progress kept within the threshold."""
+        self.danger_at(index)
+        return self._with_dangers(self.dangers[:index] + self.dangers[index + 1 :])
+
+    def danger_at(self, index: int) -> Danger:
         if not 0 <= index < len(self.dangers):
             raise ValueError("No such Danger.")
-        return self._with_dangers(self.dangers[:index] + self.dangers[index + 1 :])
+        return self.dangers[index]
 
     def in_kit(self, genre: Genre) -> tuple[Self, list[str]]:
         """The scene with only the Dangers ``genre`` has a class for, and the labels of the rest."""
@@ -208,12 +228,8 @@ class Scene(FrozenModel):
         return self._with_dangers(kept), dropped
 
     def _with_dangers(self, dangers: tuple[Danger, ...]) -> Self:
-        scene = self._replace(dangers=dangers, progress=0)
-        return scene._replace(progress=min(self.progress, scene.threshold))
-
-    def _replace(self, **changes: object) -> Self:
-        # Built anew rather than copied, so the changed scene is validated.
-        return type(self)(**{**dict(self), **changes})
+        scene = self.replace(dangers=dangers, progress=0)
+        return scene.replace(progress=min(self.progress, scene.threshold))
 
 
 # The activation table's Target column, by die. It is the base game's in every kit.

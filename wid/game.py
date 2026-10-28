@@ -40,7 +40,14 @@ from wid.rolls import (
     RollSession,
     roll_d6,
 )
-from wid.sessions import NAME_MAX, CharacterDetails, Recovery, SavedSession, session_file_path
+from wid.sessions import (
+    NAME_MAX,
+    CharacterDetails,
+    Recovery,
+    SavedSession,
+    parse_save,
+    session_file_path,
+)
 from wid.storage import write_text
 
 type NameField = Literal["bonus", "power", "manifestation", "tech", "strain"]
@@ -684,7 +691,7 @@ class Game(BaseGame):
         )
 
     def parse_save(self, text: str) -> SavedSession:
-        return SavedSession.model_validate_json(text)
+        return parse_save(text, "player")
 
     def take_over(self, saved: SavedSession) -> None:
         """Replace this game with ``saved``: the sheet, history, name, notes and options."""
