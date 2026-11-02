@@ -10,6 +10,7 @@
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { {{ dark }} } }
   :root[data-theme="light"] { color-scheme: light; }
   :root[data-theme="dark"] { color-scheme: dark; {{ dark }} }
+  {{ kit_rules }}
 </style>
 <script>
   // Light or dark as the player last chose in this browser, set before the page is drawn so it

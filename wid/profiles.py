@@ -40,6 +40,9 @@ class WiDProfile(BaseModel):
     has_revelations: bool = False
     # Recovery after a Danger, where the kit's text gives the amount (the base game's is unknown).
     recovers: Recovers | None = None
+    # The kit's highlight on light paper and on dark paper (the browser's dark colours).
+    highlight: str = "#B22222"
+    dark_highlight: str = "#EF6A63"
 
 
 PROFILES = {
@@ -51,6 +54,8 @@ PROFILES = {
         strain_per_wound=4,
         has_powers=True,
         recovers=Recovers.STRAIN,
+        highlight="#D94F00",
+        dark_highlight="#FF8A4C",
     ),
     Genre.SECOND_CONTACT: WiDProfile(
         genre=Genre.SECOND_CONTACT,
@@ -59,6 +64,8 @@ PROFILES = {
         # Tech replaces items in this kit.
         uses_items=False,
         has_tech=True,
+        highlight="#0072B2",
+        dark_highlight="#5AB4F0",
     ),
     Genre.OLDHEART: WiDProfile(
         genre=Genre.OLDHEART,
@@ -66,12 +73,16 @@ PROFILES = {
         attributes=("Depravity", "Hospitality", "Fitness"),
         has_rerolls=True,
         has_revelations=True,
+        highlight="#3B2230",
+        dark_highlight="#C99AB5",
     ),
     Genre.BALL_SEASON: WiDProfile(
         genre=Genre.BALL_SEASON,
         name="Ball Season",
         attributes=("Propriety", "Stoutness", "Yearning"),
         has_standing=True,
+        highlight="#246F3C",
+        dark_highlight="#5CBF7A",
     ),
     Genre.THIS_ISNT_HAPPENING: WiDProfile(
         genre=Genre.THIS_ISNT_HAPPENING,
@@ -80,5 +91,7 @@ PROFILES = {
         has_resources=True,
         has_barricade=True,
         recovers=Recovers.RESOURCES,
+        highlight="#6E5015",
+        dark_highlight="#D2A85A",
     ),
 }

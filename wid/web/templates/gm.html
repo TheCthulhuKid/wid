@@ -1,6 +1,7 @@
 {#- The GM's page: one form like the sheet, with the scene on the left and the activations on
     the right. The session block, the history and the question dialog are the sheet's. -#}
 <form id="sheet" class="sheet" method="post" action="/actions/update" autocomplete="off"
+      data-kit="{{ game.profile.genre }}"
       {%- if game.has_unsaved_state() %} data-unsaved{% endif %}>
   <input type="hidden" name="sheet" value="1">
 

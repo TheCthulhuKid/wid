@@ -291,6 +291,7 @@ The browser sheet has the same game controls as the terminal, with these differe
   Closing or reloading the page with unsaved changes asks too.
 - The colours follow your browser's light or dark setting. **Colours** in the title band switches
   between Auto (your browser's setting), Light and Dark, and the browser remembers your choice.
+  The highlights take the genre kit's colour, as in the terminal's "danger" theme.
 
 Games saved in the browser open in the terminal, and the other way round. If the page says to
 open wid from the address it printed, use the address shown in the window: it carries a key that
@@ -303,7 +304,7 @@ changes every time wid starts.
 | **Ctrl+R** | Roll again with the last attribute |
 | **C** / **S** | Open the Character / Session tab, then Tab or the arrow keys to move in |
 | **T** / **I** | Fold or unfold the strain tracker / the items (Tech in Second Contact) |
-| **D** | Pick a colour theme, which is remembered (the default, "danger", is cream and red) |
+| **D** | Pick a colour theme, which is remembered (the default, "danger", takes the kit's colour) |
 | **Ctrl+L** | Show or hide the history log |
 | **Ctrl+P** | Search the commands: Save session, Load session, Undo and more (not over a dialog) |
 | **Tab** / **Shift+Tab** | Move between controls |

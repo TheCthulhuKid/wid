@@ -5,7 +5,7 @@ from wid.game import Game
 from wid.gm import GmGame
 from wid.profiles import PROFILES, Genre
 from wid.ui.outcomes import MIN_CONTRAST, contrast_ratio
-from wid.web.view import COLOURS
+from wid.web.view import COLOURS, kit_highlight
 
 # A control only one kit has, as it appears in the sheet, and the profile flag that shows it.
 KIT_CONTROLS = {
@@ -24,6 +24,8 @@ def test_each_kit_shows_only_its_own_controls():
     client = browser(Game())
     for genre, profile in PROFILES.items():
         sheet = act(client, "change-kit", genre=genre).text
+        # The kit's highlight comes from the page's rule for this data-kit.
+        assert f'data-kit="{genre}"' in sheet
         for control, flag in KIT_CONTROLS.items():
             assert (control in sheet) == bool(getattr(profile, flag)), (genre, control)
 
@@ -66,8 +68,10 @@ def test_outcome_and_button_colours_stay_readable_in_light_and_dark():
         for outcome in ("hit", "miss", "fumble"):
             ratio = contrast_ratio(Color.parse(colours[outcome]), paper)
             assert ratio >= MIN_CONTRAST, (scheme, outcome)
-        button = contrast_ratio(Color.parse(colours["on-danger"]), Color.parse(colours["danger"]))
-        assert button >= 4.5, scheme
+        for genre in Genre:
+            danger, on_danger = kit_highlight(scheme, genre)
+            button = contrast_ratio(Color.parse(on_danger), Color.parse(danger))
+            assert button >= 4.5, (scheme, genre)
 
 
 def test_the_notes_preview_renders_markdown_without_raw_html():

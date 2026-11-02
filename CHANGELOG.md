@@ -5,6 +5,11 @@ What changed in each release of wid, newest first. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Each genre kit has its own highlight colour in the default "danger" theme and in the browser:
+  green for Ball Season, orange for Heckboy, plum for Oldheart, brown for This Isn't Happening
+  and blue for Second Contact. Core WiD stays red, and fumbles stay red in every kit.
 
 ## [0.5.0] - 2026-10-28
 
