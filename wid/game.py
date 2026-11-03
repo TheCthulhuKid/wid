@@ -18,10 +18,13 @@ from typing import Any, Literal, NamedTuple
 
 from pydantic import BaseModel, ValidationError
 
+from wid.dangers import Difficulty, recovery_amount
 from wid.export import history_markdown
 from wid.formatting import (
     BONUS_LABELS,
     check_summary,
+    recovery_notice,
+    resources_gained,
     resources_notice,
     sheet_lines,
     spend_summary,
@@ -29,8 +32,9 @@ from wid.formatting import (
     strain_notice,
 )
 from wid.history import ROLL_ACTION, HistoryEntry, history_statistics
-from wid.profiles import PROFILES, Genre, WiDProfile
+from wid.profiles import PROFILES, Genre, Recovers, WiDProfile
 from wid.rolls import (
+    SACRIFICE_RESOURCES,
     SCARED_MAX,
     BonusKind,
     PowerMode,
@@ -38,6 +42,7 @@ from wid.rolls import (
     RollRequest,
     RollResult,
     RollSession,
+    Standing,
     roll_d6,
 )
 from wid.sessions import (
@@ -406,6 +411,7 @@ class Game(BaseGame):
         self.assisted = False
         self.expertise = False
         self.power = PowerMode.NONE
+        self.target_standing: Standing | None = None
         # Choices about the current result, kept so a save can restore them.
         self.reroll_selection: tuple[int, ...] = ()
         self.item_target: int | None = None
@@ -460,6 +466,7 @@ class Game(BaseGame):
         power: PowerMode,
         reroll: Iterable[int],
         item_target: int | None,
+        target_standing: Standing | None = None,
     ) -> None:
         """Take the options for the next test and the dice picked from the current result.
 
@@ -474,6 +481,7 @@ class Game(BaseGame):
         self.assisted = assisted
         self.expertise = expertise
         self.power = power
+        self.target_standing = target_standing if self.profile.has_standing else None
         picked = {index for index in reroll if 0 <= index < count}
         self.reroll_selection = tuple(sorted(picked)) if self.profile.has_rerolls else ()
         on_a_die = item_target is not None and 0 <= item_target < count
@@ -507,6 +515,8 @@ class Game(BaseGame):
             power=self.power if self.profile.has_powers else PowerMode.NONE,
             resource_die=session.resource_die,
             manifestations=len(session.manifestations),
+            standing=session.standing,
+            target_standing=self.target_standing,
         )
 
     def start_game(self, ranks: tuple[int, ...]) -> str:
@@ -523,6 +533,7 @@ class Game(BaseGame):
             self.log_result(result, ROLL_ACTION)
             self.assisted = self.expertise = False
             self.power = PowerMode.NONE
+            self.target_standing = None
         return ""
 
     def reroll(self, indices: set[int]) -> str:
@@ -590,6 +601,13 @@ class Game(BaseGame):
             self.session.strain = self.session.strain.take_wound()
         return self.notice(strain_notice("Took a wound", self.session.strain))
 
+    def second_wind(self) -> str:
+        with self.undoable("Second Wind"):
+            cleared = self.session.second_wind()
+        return self.notice(
+            strain_notice(f"Second Wind: cleared {cleared} strain", self.session.strain)
+        )
+
     def start_scenario(self) -> str:
         with self.undoable("new scenario"):
             tech = self.session.start_scenario()
@@ -610,15 +628,58 @@ class Game(BaseGame):
             spend = self.session.spend_resources(effect, rng=self.rng)
         return self.notice(spend_summary(spend, self.session.resources))
 
+    def recover_after(self, difficulty: Difficulty) -> str:
+        """Recovery after a Danger is overcome, as the kit states it: strain or Resources."""
+        amount = recovery_amount(self.session.profile_id, difficulty)
+        with self.undoable("recovery"):
+            if self.profile.recovers == Recovers.RESOURCES:
+                gained = self.session.gain_resources(amount)
+                change = resources_gained(gained, amount, self.session.resources)
+            else:
+                cleared = self.session.recover_strain(amount)
+                change = strain_notice(f"cleared {cleared} strain", self.session.strain)
+        return self.notice(recovery_notice(difficulty, change))
+
+    def build_barricade(self, spent: int) -> str:
+        with self.undoable("barricade"):
+            strength = self.session.spend_on_barricade(spent, build=True)
+        return self.notice(
+            f"Built a barricade of strength {strength} for {spent} Resources: "
+            f"{self.session.resources} in the pool."
+        )
+
+    def strengthen_barricade(self, spent: int) -> str:
+        with self.undoable("barricade"):
+            strength = self.session.spend_on_barricade(spent, build=False)
+        return self.notice(
+            f"Strengthened the barricade by {strength} for {spent} Resources: "
+            f"{self.session.resources} in the pool."
+        )
+
+    def sacrifice_item(self, kind: BonusKind) -> str:
+        name = getattr(self.session.bonuses, kind).strip()
+        with self.undoable("sacrifice"):
+            gained = self.session.sacrifice_item(kind)
+        change = resources_gained(gained, SACRIFICE_RESOURCES, self.session.resources)
+        return self.notice(f"Sacrificed {BONUS_LABELS[kind]} {name}: {change}")
+
     def lose_crafted_item(self) -> str:
         with self.undoable("lost crafted item"):
             self.session.lose_crafted_item()
         return self.notice("Lost the crafted item; its slot is free again.")
 
     def gain_corruption(self, amount: int) -> str:
+        return self.take_corruption(amount, f"Gained {amount} Corruption.")
+
+    def avoid_strain(self, amount: int) -> str:
+        """Strain avoided on a task costs as much Corruption, as Oldheart has it."""
+        change = f"Avoided {amount} strain on a task: gained {amount} Corruption."
+        return self.take_corruption(amount, change)
+
+    def take_corruption(self, amount: int, change: str) -> str:
         with self.undoable("Corruption gain"):
             check = self.session.add_corruption(amount, rng=self.rng)
-        return self.notice(f"Gained {amount} Corruption. {check_summary(check)}")
+        return self.notice(f"{change} {check_summary(check)}")
 
     def add_manifestation(self) -> str:
         with self.undoable("manifestation change"):
@@ -664,6 +725,7 @@ class Game(BaseGame):
                 self.assisted,
                 self.expertise,
                 self.power,
+                self.target_standing,
             ),
         }
 
@@ -704,6 +766,7 @@ class Game(BaseGame):
         self.assisted = draft.assisted
         self.expertise = draft.expertise
         self.power = draft.power
+        self.target_standing = draft.target_standing
         self.reroll_selection = saved.reroll_indices
         self.item_target = saved.item_target
 
@@ -713,6 +776,7 @@ class Game(BaseGame):
             self.assisted,
             self.expertise,
             self.power,
+            self.target_standing,
             self.reroll_selection,
             self.item_target,
         )
@@ -723,6 +787,7 @@ class Game(BaseGame):
             self.assisted,
             self.expertise,
             self.power,
+            self.target_standing,
             self.reroll_selection,
             self.item_target,
         ) = options

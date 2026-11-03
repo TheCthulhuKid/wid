@@ -139,6 +139,8 @@ class SavedSession(SaveFile):
         session = self.session
         if session.total_strain and session.profile_id != Genre.HECKBOY:
             raise ValueError("Only Heckboy can have strain.")
+        if session.second_wind_used and not PROFILES[session.profile_id].has_second_wind:
+            raise ValueError("Only Heckboy can have a Second Wind.")
         if session.total_corruption and session.profile_id != Genre.OLDHEART:
             raise ValueError("Only Oldheart can have Corruption.")
         if session.manifestations and session.profile_id != Genre.OLDHEART:

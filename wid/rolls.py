@@ -72,6 +72,8 @@ RANKS = range(1, RANK_MAX + 1)
 SCARED_MAX = 3
 RESOURCES_MIN = 1
 RESOURCES_MAX = 6
+# This Isn't Happening: what a sacrificed item is worth.
+SACRIFICE_RESOURCES = 3
 
 
 def roll_d6(rng: Random) -> int:
@@ -111,6 +113,47 @@ def manifestation_check(
     return ManifestationCheck(dice=dice, score=score, succumbed=succumbed)
 
 
+class Word(StrEnum):
+    """An enum whose value, capitalised, is its label on screen."""
+
+    @property
+    def label(self) -> str:
+        return self.value.capitalize()
+
+
+class Standing(Word):
+    """A tier of Ball Season's standing: a character's, a Danger's or a test's target's."""
+
+    ESTEEMED = "esteemed"
+    REPUTABLE = "reputable"
+    SCANDALOUS = "scandalous"
+
+    @property
+    def rank(self) -> int:
+        return list(Standing).index(self)
+
+
+# Ball Season's Standing track, from left to right; the game starts on the centre dot.
+STANDING_TIERS = (
+    Standing.ESTEEMED,
+    Standing.REPUTABLE,
+    Standing.REPUTABLE,
+    Standing.REPUTABLE,
+    Standing.SCANDALOUS,
+)
+STANDING_LABELS = tuple(tier.label for tier in STANDING_TIERS)
+STANDING_START = 2
+StandingDot = Annotated[int, Field(strict=True, ge=0, le=len(STANDING_TIERS) - 1)]
+
+
+def standing_tier(dot: int) -> Standing:
+    return STANDING_TIERS[dot]
+
+
+def standing_label(dot: int) -> str:
+    return standing_tier(dot).label
+
+
 class RollRequest(FrozenModel):
     profile_id: Genre = Genre.CORE
     assisted: bool = False
@@ -123,6 +166,16 @@ class RollRequest(FrozenModel):
     resource_die: bool = False
     # Oldheart manifestations the character had when rolling; they change some pools.
     manifestations: Annotated[int, Field(strict=True, ge=0, le=MANIFESTATION_LIMIT)] = 0
+    # Ball Season: the character's dot on the Standing track, and the tier of what the test is
+    # made against; each tier between them is one more hit to pass.
+    standing: StandingDot = STANDING_START
+    target_standing: Standing | None = None
+
+    @property
+    def extra_hits(self) -> int:
+        if self.target_standing is None:
+            return 0
+        return abs(standing_tier(self.standing).rank - self.target_standing.rank)
 
     @property
     def manifestation_dice(self) -> int:
@@ -145,6 +198,8 @@ class RollRequest(FrozenModel):
             raise ValueError(f"{PROFILES[self.profile_id].name} has no Resources.")
         if self.manifestations and not PROFILES[self.profile_id].has_rerolls:
             raise ValueError(f"{PROFILES[self.profile_id].name} has no manifestations.")
+        if self.target_standing is not None and not PROFILES[self.profile_id].has_standing:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Standing.")
         return self
 
     def validate_power(self) -> None:
@@ -274,20 +329,12 @@ class AttributeSetup(FrozenModel):
         return self.ranks[attributes.index(attribute)]
 
 
-# Ball Season's Standing track, from left to right; the game starts on the centre dot.
-STANDING_LABELS = ("Esteemed", "Reputable", "Reputable", "Reputable", "Scandalous")
-STANDING_START = 2
-Standing = Annotated[int, Field(strict=True, ge=0, le=len(STANDING_LABELS) - 1)]
-
-
-def standing_label(standing: int) -> str:
-    return STANDING_LABELS[standing]
-
-
 # The last box of each row: two wounds, then Defeat. Each is preceded by three strain boxes.
 STRAIN_ENDINGS = (3, 7, 11)
 LOCKED_NOTE = "Locked: boxes before a marked wound stay marked until that wound is cleared."
 NOT_READY_NOTE = "Mark all the strain before this wound first."
+# The strain Heckboy's Second Wind clears; wounds stay marked.
+SECOND_WIND_STRAIN = 2
 
 
 class StrainTracker(FrozenModel):
@@ -410,8 +457,10 @@ class RollSession(BaseModel):
     bonuses: NamedBonuses = Field(default_factory=NamedBonuses)
     # Heckboy power names, for the player's reference; they do not change rolls.
     power_names: tuple[str, str] = ("", "")
+    # Heckboy only: the Second Wind can be used once.
+    second_wind_used: bool = False
     # Ball Season only; it sets the GM's target numbers, so it never changes a roll here.
-    standing: Standing = STANDING_START
+    standing: StandingDot = STANDING_START
     # This Isn't Happening only: the pool starts at the Charity rank when the game starts.
     resources: Annotated[int, Field(strict=True, ge=RESOURCES_MIN, le=RESOURCES_MAX)] | None = None
     # A +1d6 bought with Resources, waiting for the next test.
@@ -445,7 +494,7 @@ class RollSession(BaseModel):
         if not PROFILES[self.profile_id].has_standing:
             raise ValueError(f"{PROFILES[self.profile_id].name} has no Standing.")
         try:
-            standing = TypeAdapter(Standing).validate_python(standing)
+            standing = TypeAdapter(StandingDot).validate_python(standing)
         except ValidationError as error:
             raise ValueError(
                 "Standing runs from Esteemed (dot 1) to Scandalous (dot 5)."
@@ -538,6 +587,65 @@ class RollSession(BaseModel):
             raise ValueError(f"{PROFILES[self.profile_id].name} has no Resources.")
         return self.resources
 
+    def gain_resources(self, amount: int) -> int:
+        """Add to the pool, which holds at most ``RESOURCES_MAX``; returns what was gained."""
+        pool = self._pool()
+        gained = min(amount, RESOURCES_MAX - pool)
+        self.resources = pool + gained
+        return gained
+
+    def spend_on_barricade(self, spent: int, *, build: bool) -> int:
+        """Spend Resources on a barricade and return the strength built or added.
+
+        Building costs the Endurance rank for strength 1 and 1 more per Resource beyond it;
+        strengthening adds 1 per Resource. The pool never drops below ``RESOURCES_MIN``.
+        """
+        spent = TypeAdapter(Annotated[int, Field(strict=True, ge=1)]).validate_python(spent)
+        pool = self._pool()
+        if pool - spent < RESOURCES_MIN:
+            raise ValueError(f"Spending {spent} would leave fewer than {RESOURCES_MIN} Resources.")
+        strength = spent
+        if build:
+            cost = self.attribute_rank("Endurance")
+            if spent < cost:
+                raise ValueError(f"A barricade costs at least {cost} Resources, your Endurance.")
+            strength = 1 + spent - cost
+        self.resources = pool - spent
+        return strength
+
+    def sacrifice_item(self, kind: BonusKind) -> int:
+        """Give up the named item for ``SACRIFICE_RESOURCES``; returns what the pool took."""
+        kind = TypeAdapter(BonusKind).validate_python(kind)
+        self._pool()
+        if kind == BonusKind.EXPERTISE:
+            raise ValueError("Expertise is not an item to sacrifice.")
+        if not getattr(self.bonuses, kind).strip():
+            raise ValueError("Name the item before sacrificing it.")
+        if kind == BonusKind.CRAFTED_ITEM:
+            self.lose_crafted_item()
+        else:
+            self.bonuses = self.bonuses.model_copy(update={kind.value: ""})
+        return self.gain_resources(SACRIFICE_RESOURCES)
+
+    def recover_strain(self, points: int) -> int:
+        """Clear up to ``points`` of the newest strain; returns how many boxes were cleared."""
+        recovered = self.strain.recover(points)
+        cleared = sum(self.strain.boxes) - sum(recovered.boxes)
+        self.strain = recovered
+        return cleared
+
+    def second_wind(self) -> int:
+        """Heckboy's one Second Wind: clear up to ``SECOND_WIND_STRAIN`` of the newest strain."""
+        if not PROFILES[self.profile_id].has_second_wind:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Second Wind.")
+        if self.second_wind_used:
+            raise ValueError("The Second Wind is already used.")
+        # Refused rather than spent on nothing, so it is not lost by mistake.
+        if not (cleared := self.recover_strain(SECOND_WIND_STRAIN)):
+            raise ValueError("No strain to clear: wounds and the strain before them stay marked.")
+        self.second_wind_used = True
+        return cleared
+
     def adjust_resources(self, amount: int) -> int:
         """Add to or take from the pool, for taxes, Danger abilities and hits spent on it."""
         pool = self._pool() + amount
@@ -577,9 +685,7 @@ class RollSession(BaseModel):
 
     def _recover_strain(self, rng: Random) -> ResourceSpend:
         die = roll_d6(rng)
-        recovered = self.strain.recover(die)
-        cleared = sum(self.strain.boxes) - sum(recovered.boxes)
-        self.strain = recovered
+        cleared = self.recover_strain(die)
         return ResourceSpend(effect=ResourceEffect.RECOVER_STRAIN, die=die, recovered=cleared)
 
     def _check_corruption_kit(self) -> None:

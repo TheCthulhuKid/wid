@@ -176,9 +176,16 @@ class GmGame(BaseGame):
             self.scene = self.scene.commit(die)
         return self.notice(f"Dangers clash: rolled {die}. {self.summary()}")
 
-    def task_strain(self, complexity: Complexity) -> str:
-        """Log the strain a task taxes the PCs; it changes nothing in the scene."""
-        return self.notice(task_strain_line(complexity, self.scene.pc_count))
+    def task_strain(self, complexity: Complexity, mismatched: int = 0) -> str:
+        """Log the strain a task taxes the PCs; it changes nothing in the scene.
+
+        In Ball Season, ``mismatched`` PCs of another standing than the task's add 1 each.
+        """
+        if mismatched and not self.profile.has_standing:
+            raise ValueError(f"{self.profile.name} has no Standing.")
+        if not 0 <= mismatched <= self.scene.pc_count:
+            raise ValueError("No more PCs can be of another standing than there are PCs.")
+        return self.notice(task_strain_line(complexity, self.scene.pc_count, mismatched))
 
     def move_barricade(self, step: int) -> str:
         with self.undoable("barricade change"):

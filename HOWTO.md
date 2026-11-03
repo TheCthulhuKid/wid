@@ -80,7 +80,11 @@ Every kit has the same screen. Each adds at most one thing:
 **Powers (Heckboy).** Every Heckboy has a **Reliable power** (+1 die, +1 strain) and an
 **Erratic power** (+2 dice, +2 strain). Type each power's name in its box. Tick **Use** beside one
 before rolling to use it: the pool grows and the strain is added to the tracker for you. Only one
-power can be used per roll, and **Use** unticks itself after the roll.
+power can be used per roll, and **Use** unticks itself after the roll. After a Danger is
+overcome, choose its difficulty in **Danger** and press **Recover**: the strain Heckboy gives
+back for that difficulty is cleared from the tracker, and the history notes it. **Second Wind**
+beside **Take 1 wound** clears 2 of your newest strain, once per character; wounds, and strain
+before a marked wound, stay marked.
 
 **Tech (Second Contact).** You get one Tech slot for each rank of Muscle as soon as the game starts.
 A slot stays empty until you use it, and each one starts at Science + Culture. Tech is used after
@@ -97,12 +101,16 @@ scenario, press **New scenario** to empty every slot again. **Undo** takes eithe
 
 **Standing (Ball Season).** A five-dot track: **Esteemed** on the left, **Scandalous** on the
 right, and **Reputable** for the three dots in between. You start on the centre dot. Click a dot,
-or click the track and press ← and →, to move. Standing never changes your dice; the GM uses it
-to set how many hits a test needs.
+or click the track and press ← and →, to move. Standing never changes your dice, but it can
+change how many hits a test needs: when a test involves standing, choose the other side's tier
+in **Target standing** before rolling, and the pool line and the result say how many more hits
+the test needs to pass, one for each tier between you. Like **Assisted**, it applies to one
+roll and clears itself afterwards.
 
 **Corruption (Oldheart).** Tick dice in the result, then press **Reroll selected**: each rerolled
-die costs 1 Corruption. For Corruption from anything else, such as a Danger or strain you chose
-to avoid, choose how much in the box beside **Gain Corruption** and press it. Corruption never
+die costs 1 Corruption. For Corruption from anything else, such as a Danger, choose how much in
+the box beside **Gain Corruption** and press it; for strain you chose to avoid on a task, choose
+the strain avoided and press **Avoid strain** instead, and the history says so. Corruption never
 goes down during a scenario. Every gain makes a manifestation check for you: one die per point
 just gained, and a total at or under your new Corruption means a manifestation. The dice and the
 outcome go to the history. Name each manifestation in its box. Use **Add manifestation** for one
@@ -123,6 +131,16 @@ press **Spend 6 Resources** and choose one effect; the pool then resets to your 
   and use it like the others. Press **Lose** if it is lost; that frees the slot to craft again.
 - **Recover 1d6 strain**: rolls the die and unmarks that much of your newest strain. Wounds,
   and strain before a marked wound, stay marked.
+
+After a Danger is overcome, choose its difficulty in **Danger** and press **Recover** to take
+the Resources the kit gives for it instead of healing; a full pool keeps what does not fit.
+
+During a confrontation, choose **Resources to spend**, then press **Build barricade** (it
+costs your Endurance rank for strength 1, and each Resource beyond that adds 1) or press
+**Strengthen barricade** (each Resource adds 1). The history notes the strength; the GM keeps
+the barricade itself. The pool never drops below 1, so a build it cannot pay is refused.
+**Sacrifice** beside a named item gives it up for 3 Resources; a crafted item frees its slot,
+as **Lose** does.
 
 **Changing kit.** A kit lasts the whole game, so picking another kit in **Genre kit** starts a
 new game: the character, names, strain, history, notes, session name and file path are all
@@ -200,7 +218,9 @@ them. Opening a GM save (`wid scene.json`) starts this mode by itself.
 - Tick **Dangers fight each other** when the Dangers are hostile to one another; at the end
   of a round, **Dangers clash** rolls 1d6 and commits it.
 - For a task the PCs undertake, choose its complexity in **Task** and press **Task strain**:
-  the strain total for the PCs to share, worked out from **PCs**, goes to the history.
+  the strain total for the PCs to share, worked out from **PCs**, goes to the history. In Ball
+  Season, **PCs of another standing** adds 1 strain for each PC whose standing differs from the
+  task's.
 
 Three kits add a tracker to the scene, shown in that kit only, saved with the scene and taken
 back by **Undo**:
@@ -272,6 +292,7 @@ The browser sheet has the same game controls as the terminal, with these differe
   Closing or reloading the page with unsaved changes asks too.
 - The colours follow your browser's light or dark setting. **Colours** in the title band switches
   between Auto (your browser's setting), Light and Dark, and the browser remembers your choice.
+  The highlights take the genre kit's colour, as in the terminal's "danger" theme.
 
 Games saved in the browser open in the terminal, and the other way round. If the page says to
 open wid from the address it printed, use the address shown in the window: it carries a key that
@@ -284,7 +305,7 @@ changes every time wid starts.
 | **Ctrl+R** | Roll again with the last attribute |
 | **C** / **S** | Open the Character / Session tab, then Tab or the arrow keys to move in |
 | **T** / **I** | Fold or unfold the strain tracker / the items (Tech in Second Contact) |
-| **D** | Pick a colour theme, which is remembered (the default, "danger", is cream and red) |
+| **D** | Pick a colour theme, which is remembered (the default, "danger", takes the kit's colour) |
 | **Ctrl+L** | Show or hide the history log |
 | **Ctrl+P** | Search the commands: Save session, Load session, Undo and more (not over a dialog) |
 | **Tab** / **Shift+Tab** | Move between controls |

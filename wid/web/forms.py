@@ -157,7 +157,17 @@ def collect(game: Game, form: SheetForm) -> None:
         power=PowerMode(form.get("power") or game.power),
         reroll=form.numbers("reroll"),
         item_target=form.number("die") if form.get("die") is not None else game.item_target,
+        target_standing=target_standing(form, game),
     )
+
+
+def target_standing(form: SheetForm, game: Game) -> Standing | None:
+    """The tier chosen in Target standing: kept when the page has no such box, none when the
+    box says No standing."""
+    chosen = form.get("target-standing")
+    if chosen is None:
+        return game.target_standing
+    return Standing(chosen) if chosen else None
 
 
 SAVE_FIRST = "save-first"
@@ -297,12 +307,20 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     ),
     "take-strain": lambda game, form: game.take_strain(),
     "take-wound": lambda game, form: game.take_wound(),
+    "second-wind": lambda game, form: game.second_wind(),
     "new-scenario": lambda game, form: game.start_scenario(),
     "sacrifice-tech": lambda game, form: game.sacrifice_tech(form.number("index")),
     "resources": lambda game, form: game.adjust_resources(form.number("amount")),
     "spend-resources": lambda game, form: game.spend_resources(ResourceEffect(form.text("effect"))),
     "lose-crafted-item": lambda game, form: game.lose_crafted_item(),
+    "sacrifice-item": lambda game, form: game.sacrifice_item(BonusKind(form.text("kind"))),
+    "build-barricade": lambda game, form: game.build_barricade(form.number("barricade-spend")),
+    "strengthen-barricade": lambda game, form: game.strengthen_barricade(
+        form.number("barricade-spend")
+    ),
     "gain-corruption": lambda game, form: game.gain_corruption(form.number("corruption-amount")),
+    "avoid-strain": lambda game, form: game.avoid_strain(form.number("corruption-amount")),
+    "recover": lambda game, form: game.recover_after(Difficulty(form.text("recovery-difficulty"))),
     "add-manifestation": lambda game, form: game.add_manifestation(),
     "remove-manifestation": lambda game, form: game.remove_manifestation(),
     "standing": lambda game, form: game.set_standing(form.number("standing")),
@@ -341,7 +359,9 @@ GM_ACTIONS: dict[str, Callable[[GmGame, SheetForm], str]] = {
     "hostile": lambda game, form: game.set_hostile(form.ticked("hostile")),
     "activate": lambda game, form: game.activate(),
     "clash": lambda game, form: game.clash(),
-    "task-strain": lambda game, form: game.task_strain(Complexity(form.text("task"))),
+    "task-strain": lambda game, form: game.task_strain(
+        Complexity(form.text("task")), form.number("mismatched") if form.get("mismatched") else 0
+    ),
     "barricade": lambda game, form: game.move_barricade(form.number("step")),
     "hits-spent": lambda game, form: game.spend_hits(form.number("amount")),
     "task-done": lambda game, form: game.task_done(Complexity(form.text("task"))),

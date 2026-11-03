@@ -50,6 +50,7 @@ from wid.rolls import (
     RANKS,
     RESOURCES_MAX,
     SCARED_MAX,
+    SECOND_WIND_STRAIN,
     STANDING_LABELS,
     STANDING_START,
     STRAIN_ENDINGS,
@@ -136,6 +137,16 @@ class ManifestationName(Input):
         self.index = index
 
 
+class SacrificeItemButton(Button):
+    """Gives up the item ``kind`` for Resources, in This Isn't Happening."""
+
+    def __init__(self, kind: BonusKind, **kwargs):
+        super().__init__(
+            "Sacrifice", id=f"sacrifice-{kind}", tooltip="Give the item up for Resources", **kwargs
+        )
+        self.kind = kind
+
+
 class SacrificeButton(Button):
     """Drops the Tech piece at ``index`` to 0 strength."""
 
@@ -151,6 +162,8 @@ class SacrificeButton(Button):
 
 # Muscle, which sets the number of Tech slots, is ranked 1 to 3.
 TECH_SLOTS = 3
+# What a turn can spend on a barricade: the pool less the 1 it keeps.
+BARRICADE_SPENDS = range(1, RESOURCES_MAX)
 
 
 class StrainBox(Checkbox):
@@ -377,6 +390,15 @@ class KitControls(Vertical):
     """Kit-specific controls, and the resulting pool size."""
 
     def compose(self) -> ComposeResult:
+        # Ball Season: a one-test option, on its own row so the options row keeps its width.
+        with Horizontal(id="target-standing-row"):
+            yield Label("Target standing")
+            yield Select(
+                [(standing.label, standing) for standing in Standing],
+                prompt="No standing",
+                id="target-standing",
+                tooltip="The tier the test is made against: each tier apart is 1 more hit to pass",
+            )
         with Vertical(id="resource-field", classes="field"):
             yield Label("Resources")
             with Horizontal(id="resource-row"):
@@ -386,6 +408,16 @@ class KitControls(Vertical):
                 yield Button(
                     f"Spend {RESOURCES_MAX} Resources", id="spend-resources", variant="primary"
                 )
+            yield Label("Resources to spend")
+            with Horizontal(id="barricade-spend-row"):
+                yield Select(
+                    [(str(spent), spent) for spent in BARRICADE_SPENDS],
+                    value=1,
+                    allow_blank=False,
+                    id="barricade-spend",
+                )
+                yield Button("Build barricade", id="build-barricade")
+                yield Button("Strengthen barricade", id="strengthen-barricade")
         with Vertical(id="corruption-field", classes="field"):
             yield Label(id="corruption-status")
             with Horizontal(id="corruption-row"):
@@ -397,6 +429,11 @@ class KitControls(Vertical):
                     tooltip="Corruption gained at once, such as from a Danger or avoided strain",
                 )
                 yield Button("Gain Corruption", id="gain-corruption", variant="primary")
+                yield Button(
+                    "Avoid strain",
+                    id="avoid-strain",
+                    tooltip="Strain avoided on a task costs as much Corruption",
+                )
             for index in range(MANIFESTATION_LIMIT):
                 yield ManifestationName(index)
             with Horizontal(classes="button-row"):
@@ -412,6 +449,17 @@ class KitControls(Vertical):
                         yield Label(POWER_LABELS[mode])
                         yield PowerName(index)
                     yield PowerToggle(mode)
+        with Horizontal(id="recovery-row"):
+            with Vertical(classes="field", id="recovery-field"):
+                yield Label("Danger")
+                yield Select(
+                    [(difficulty.label, difficulty) for difficulty in Difficulty],
+                    value=Difficulty.COMPETENT,
+                    allow_blank=False,
+                    id="recovery-difficulty",
+                    tooltip="The difficulty of the Danger just overcome",
+                )
+            yield Button("Recover", id="recover", tooltip="Recovery after a Danger, by the kit")
         yield Static(id="pool")
 
 
@@ -430,6 +478,7 @@ class ItemsGroup(Vertical):
                         yield Label(label)
                         yield BonusName(kind, placeholder=f"{label} name")
                     yield BonusButton("+1 value", kind, variant="primary", disabled=True)
+                    yield SacrificeItemButton(kind)
             with Horizontal(classes="named-bonus", id="crafted-row"):
                 with Vertical(classes="field"):
                     yield Label(BONUS_LABELS[BonusKind.CRAFTED_ITEM])
@@ -441,6 +490,7 @@ class ItemsGroup(Vertical):
                 yield BonusButton(
                     "+1 value", BonusKind.CRAFTED_ITEM, variant="primary", disabled=True
                 )
+                yield SacrificeItemButton(BonusKind.CRAFTED_ITEM)
                 yield Button("Lose", id="lose-crafted-item", disabled=True)
         with Vertical(id="tech-controls"):
             for index in range(TECH_SLOTS):
@@ -460,6 +510,11 @@ class StrainGroup(Vertical):
         with Horizontal(classes="button-row"):
             yield Button("Take 1 strain", id="take-strain", variant="primary")
             yield Button("Take 1 wound", id="take-wound", variant="primary")
+            yield Button(
+                "Second Wind",
+                id="second-wind",
+                tooltip=f"Clear {SECOND_WIND_STRAIN} strain, once",
+            )
         for row, ending in enumerate(STRAIN_ENDINGS):
             name = strain_box_name(ending)
             with Horizontal(classes="strain-row"):
@@ -590,6 +645,15 @@ class SceneGroup(Vertical):
                     id="task",
                 )
             yield Button("Task strain", id="task-strain", tooltip="Log the strain a task taxes")
+        # Ball Season: the PCs whose standing differs from the task's, 1 strain each.
+        with Horizontal(id="mismatched-row"):
+            yield Label("PCs of another standing")
+            yield Select(
+                [(str(count), count) for count in range(PC_MAX + 1)],
+                value=0,
+                allow_blank=False,
+                id="mismatched",
+            )
         with Horizontal(id="barricade-row"):
             yield Static(id="barricade", markup=False)
             yield Button("Barricade +1", id="barricade-up")

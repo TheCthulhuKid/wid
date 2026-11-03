@@ -1,6 +1,7 @@
 {#- The whole sheet is one form: every button posts it to its own action (formaction), the
     server copies the fields into the game, runs the action and sends this form back. -#}
 <form id="sheet" class="sheet" method="post" action="/actions/update" autocomplete="off"
+      data-kit="{{ game.profile.genre }}"
       {%- if game.has_unsaved_state() %} data-unsaved{% endif %}>
   <input type="hidden" name="sheet" value="1">
 
@@ -57,6 +58,14 @@
         </label>
         <label class="tick"><input type="checkbox" name="assisted" data-action="update" {% if game.assisted %}checked{% endif %}> Assisted</label>
         <label class="tick"><input type="checkbox" name="expertise" data-action="update" {% if game.expertise %}checked{% endif %}> Expertise</label>
+        {% if kit.has_standing %}
+        <label class="field narrow">Target standing
+          <select name="target-standing" data-action="update" title="The tier the test is made against: each tier apart is 1 more hit to pass">
+            <option value="">No standing</option>
+            {% for standing in standings %}<option value="{{ standing }}" {% if standing == game.target_standing %}selected{% endif %}>{{ standing.label }}</option>{% endfor %}
+          </select>
+        </label>
+        {% endif %}
       </div>
       <div class="row named">
         <label class="field grow">Expertise
@@ -88,6 +97,7 @@
             <select name="corruption-amount">{% for amount in corruption_amounts %}<option>{{ amount }}</option>{% endfor %}</select>
           </label>
           <button formaction="/actions/gain-corruption">Gain Corruption</button>
+          <button formaction="/actions/avoid-strain" title="Strain avoided on a task costs as much Corruption">Avoid strain</button>
         </div>
         {% for name in session.manifestations %}
         <label class="field">Manifestation {{ loop.index }}
@@ -134,6 +144,24 @@
           </label>
           <button formaction="/actions/spend-resources" {% if session.resources != resources_max %}disabled{% endif %}>Spend</button>
         </div>
+        <div class="row">
+          <label class="field narrow">Resources to spend
+            <select name="barricade-spend">{% for spent in barricade_spends %}<option>{{ spent }}</option>{% endfor %}</select>
+          </label>
+          <button formaction="/actions/build-barricade">Build barricade</button>
+          <button formaction="/actions/strengthen-barricade">Strengthen barricade</button>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if kit.recovers %}
+      <div class="kit-controls row">
+        <label class="field narrow">Danger
+          <select name="recovery-difficulty" title="The difficulty of the Danger just overcome">
+            {% for difficulty in difficulties %}<option value="{{ difficulty }}" {% if difficulty == default_difficulty %}selected{% endif %}>{{ difficulty.label }}</option>{% endfor %}
+          </select>
+        </label>
+        <button formaction="/actions/recover" title="Recovery after a Danger, by the kit">Recover</button>
       </div>
       {% endif %}
 
@@ -160,6 +188,10 @@
         </label>
         <button formaction="/actions/apply-bonus" name="kind" value="{{ kind }}"
                 {% if not game.bonus_available(kind) %}disabled{% endif %}>+1 value</button>
+        {% if kit.has_resources %}
+        <button formaction="/actions/sacrifice-item" name="kind" value="{{ kind }}"
+                {% if not session.bonuses[kind.value].strip() %}disabled{% endif %}>Sacrifice</button>
+        {% endif %}
       </div>
       {% endfor %}
       {% if kit.has_resources %}
@@ -170,6 +202,8 @@
         </label>
         <button formaction="/actions/apply-bonus" name="kind" value="crafted_item"
                 {% if not game.bonus_available(BonusKind.CRAFTED_ITEM) %}disabled{% endif %}>+1 value</button>
+        <button formaction="/actions/sacrifice-item" name="kind" value="crafted_item"
+                {% if not session.bonuses.crafted_item.strip() %}disabled{% endif %}>Sacrifice</button>
         <button formaction="/actions/lose-crafted-item" {% if not session.item_crafted %}disabled{% endif %}>Lose</button>
       </div>
       {% endif %}
@@ -197,6 +231,10 @@
       <div class="row">
         <button class="primary" formaction="/actions/take-strain">Take 1 strain</button>
         <button class="primary" formaction="/actions/take-wound">Take 1 wound</button>
+        {% if kit.has_second_wind %}
+        <button formaction="/actions/second-wind" title="Clear {{ second_wind_strain }} strain, once"
+                {% if session.second_wind_used %}disabled{% endif %}>Second Wind</button>
+        {% endif %}
       </div>
       {% for ending in strain_endings %}
       {% set row = loop.index0 %}
@@ -240,6 +278,7 @@
       {% endfor %}
     </ol>
     <p class="totals">{% for text, outcome in totals %}<span class="{{ outcome }}">{{ text }}</span>{% endfor %}</p>
+    {% if extra_hits %}<p class="hint">{{ extra_hits }}</p>{% endif %}
     <p class="resources">{{ resources }}</p>
     {% if reminder %}<p class="hint">{{ reminder }}</p>{% endif %}
     {% if kit.has_rerolls %}<button formaction="/actions/reroll">Reroll selected</button>{% endif %}

@@ -119,13 +119,13 @@ wid/
 │   ├── widgets.py      # Character, options, session, result and scene widgets
 │   ├── dialogs.py      # Questions with any number of answers, and the path prompts
 │   ├── outcomes.py     # Hit, miss, and fumble colours that stay readable in any theme
-│   ├── themes.py       # The default danger theme: cream paper, lavender fields, red highlights
+│   ├── themes.py       # The default danger theme: cream paper, lavender fields, kit highlights
 │   └── roller.tcss     # Bundled interface styles
 └── web/
     ├── server.py       # `wid --web`: listens on 127.0.0.1 only, opens the browser with a token
     ├── app.py          # FastAPI app: the page, POST /actions/<name>, downloads, safety checks
     ├── forms.py        # The posted fields copied into the game, and each page's action table
-    ├── view.py         # Colours (light and dark), the notes preview, each page's template context
+    ├── view.py         # Colours (light, dark, per kit), notes preview, each page's template context
     ├── templates/      # Jinja2 page, sheet and GM page: one form, each button posts to its action
     └── static/         # sheet.css, and sheet.js: posts the form and swaps the reply in
 .github/workflows/      # ci.yml: tests, ruff; release.yml: builds for each system, draft release

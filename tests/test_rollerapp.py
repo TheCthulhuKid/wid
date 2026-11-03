@@ -5,7 +5,7 @@ from helpers import ScriptedRandom, change_genre, click, start_game, text
 from textual.command import CommandPalette
 from textual.widgets import Checkbox, Collapsible, Input, Select
 
-from wid.profiles import Genre
+from wid.profiles import PROFILES, Genre
 from wid.ui.app import RollerApp
 
 pytestmark = pytest.mark.ui
@@ -51,6 +51,8 @@ def test_tech_is_named_when_used_after_a_roll():
         app = RollerApp(rng=ScriptedRandom([1] * 12))
         async with app.run_test(size=(120, 60)) as pilot:
             await change_genre(app, pilot, Genre.SECOND_CONTACT)
+            # The danger theme takes the kit's highlight.
+            assert app.theme_variables["primary"] == PROFILES[Genre.SECOND_CONTACT].highlight
             await start_game(app, pilot, (1, 3, 2))
             assert app.query_one("#items-section", Collapsible).title == "Tech"
             assert not app.query_one("#item-rows").display

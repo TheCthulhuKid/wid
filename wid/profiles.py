@@ -12,6 +12,13 @@ class Genre(StrEnum):
     THIS_ISNT_HAPPENING = "this_isnt_happening"
 
 
+class Recovers(StrEnum):
+    """What a kit's recovery after a Danger gives back, where the kit states an amount."""
+
+    STRAIN = "strain"
+    RESOURCES = "resources"
+
+
 class WiDProfile(BaseModel):
     """Display metadata and explicit kit capabilities."""
 
@@ -22,6 +29,8 @@ class WiDProfile(BaseModel):
     attributes: tuple[str, ...] = ("Athleticism", "Composure", "Reasoning")
     uses_items: bool = True
     has_powers: bool = False
+    # Heckboy's one Second Wind, which clears strain once.
+    has_second_wind: bool = False
     has_tech: bool = False
     has_rerolls: bool = False
     has_standing: bool = False
@@ -29,6 +38,11 @@ class WiDProfile(BaseModel):
     # The scene trackers a kit gives the GM.
     has_barricade: bool = False
     has_revelations: bool = False
+    # Recovery after a Danger, where the kit's text gives the amount (the base game's is unknown).
+    recovers: Recovers | None = None
+    # The kit's highlight on light paper and on dark paper (the browser's dark colours).
+    highlight: str = "#B22222"
+    dark_highlight: str = "#EF6A63"
 
 
 PROFILES = {
@@ -38,6 +52,10 @@ PROFILES = {
         name="Heckboy",
         attributes=("Aberrance", "Ferocity", "Savvy"),
         has_powers=True,
+        has_second_wind=True,
+        recovers=Recovers.STRAIN,
+        highlight="#D94F00",
+        dark_highlight="#FF8A4C",
     ),
     Genre.SECOND_CONTACT: WiDProfile(
         genre=Genre.SECOND_CONTACT,
@@ -46,6 +64,8 @@ PROFILES = {
         # Tech replaces items in this kit.
         uses_items=False,
         has_tech=True,
+        highlight="#0072B2",
+        dark_highlight="#5AB4F0",
     ),
     Genre.OLDHEART: WiDProfile(
         genre=Genre.OLDHEART,
@@ -53,12 +73,16 @@ PROFILES = {
         attributes=("Depravity", "Hospitality", "Fitness"),
         has_rerolls=True,
         has_revelations=True,
+        highlight="#3B2230",
+        dark_highlight="#C99AB5",
     ),
     Genre.BALL_SEASON: WiDProfile(
         genre=Genre.BALL_SEASON,
         name="Ball Season",
         attributes=("Propriety", "Stoutness", "Yearning"),
         has_standing=True,
+        highlight="#246F3C",
+        dark_highlight="#5CBF7A",
     ),
     Genre.THIS_ISNT_HAPPENING: WiDProfile(
         genre=Genre.THIS_ISNT_HAPPENING,
@@ -66,5 +90,8 @@ PROFILES = {
         attributes=("Instincts", "Endurance", "Charity"),
         has_resources=True,
         has_barricade=True,
+        recovers=Recovers.RESOURCES,
+        highlight="#6E5015",
+        dark_highlight="#D2A85A",
     ),
 }

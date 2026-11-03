@@ -4,7 +4,9 @@ import pytest
 from helpers import click, start_game, text
 from textual.widgets import Collapsible
 
+from wid.dangers import Difficulty
 from wid.game import Game
+from wid.profiles import Genre
 from wid.rolls import LOCKED_NOTE, NOT_READY_NOTE, StrainTracker
 from wid.ui.app import RollerApp
 from wid.ui.widgets import StrainBox
@@ -34,6 +36,34 @@ def test_take_wound_fills_the_row():
     game.session.strain = StrainTracker().take(12)
     with pytest.raises(ValueError, match="Defeat is already marked"):
         game.take_strain()
+
+
+def test_recovery_after_a_danger_gives_back_what_the_kit_says():
+    heckboy = Game()
+    heckboy.change_kit(Genre.HECKBOY)
+    heckboy.start_game((1, 2, 3))
+    heckboy.session.strain = heckboy.session.strain.take(6)
+    assert heckboy.recover_after(Difficulty.BOSS) == (
+        "Recovery after a Boss Danger — cleared 2 strain: 3 strain, 1 wound."
+    )
+    assert heckboy.undo() == "Undid the last recovery."
+    # The Second Wind clears strain once, and never the wound or the strain before it.
+    assert heckboy.second_wind() == "Second Wind: cleared 2 strain: 3 strain, 1 wound."
+    heckboy.take_strain()
+    with pytest.raises(ValueError, match="already used"):
+        heckboy.second_wind()
+
+    survivor = Game()
+    survivor.change_kit(Genre.THIS_ISNT_HAPPENING)
+    survivor.start_game((1, 2, 3))
+    assert survivor.recover_after(Difficulty.MEGA) == (
+        "Recovery after a Mega Danger — Resources +3: 6 in the pool."
+    )
+    assert survivor.recover_after(Difficulty.COMPETENT).endswith(
+        "Resources +0: 6 in the pool. The pool holds at most 6."
+    )
+    with pytest.raises(ValueError, match="does not say how much"):
+        Game().recover_after(Difficulty.BOSS)
 
 
 @pytest.mark.ui

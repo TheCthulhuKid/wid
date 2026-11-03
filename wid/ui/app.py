@@ -47,6 +47,7 @@ from wid.rolls import (
     ResourceEffect,
     RollResult,
     RollSession,
+    Standing,
     StrainTracker,
 )
 from wid.sessions import CharacterDetails
@@ -72,6 +73,7 @@ from wid.ui.widgets import (
     RollerGroup,
     RollOptions,
     SacrificeButton,
+    SacrificeItemButton,
     SessionFile,
     SessionName,
     StandingTrack,
@@ -89,6 +91,7 @@ SECTION_NAMES = ("strain", "items")
 GAME_BUTTONS: dict[str, Callable[[Game], str]] = {
     "take-strain": Game.take_strain,
     "take-wound": Game.take_wound,
+    "second-wind": Game.second_wind,
     "undo": Game.undo,
     "new-scenario": Game.start_scenario,
     "resources-down": lambda game: game.adjust_resources(-1),
@@ -231,7 +234,12 @@ class RollerApp(SessionActions, BaseApp):
             power=self.chosen_power(),
             reroll=self.selected_dice(),
             item_target=self.query_one("#item-target", Select).value,
+            target_standing=self.chosen_target_standing(),
         )
+
+    def chosen_target_standing(self) -> Standing | None:
+        value = self.query_one("#target-standing", Select).value
+        return None if value is Select.NULL else value
 
     def refresh_sheet(self) -> None:
         self.show_draft()
@@ -279,9 +287,16 @@ class RollerApp(SessionActions, BaseApp):
             self.query_one("#assisted", Checkbox).value = game.assisted
             self.query_one("#expertise", Checkbox).value = game.expertise
             self.set_power(game.power)
+            target = game.target_standing
+            self.query_one("#target-standing", Select).value = (
+                Select.NULL if target is None else target
+            )
 
     def update_strain_controls(self) -> None:
         tracker = self.session.strain
+        second_wind = self.query_one("#second-wind", Button)
+        second_wind.display = PROFILES[self.session.profile_id].has_second_wind
+        second_wind.disabled = self.session.second_wind_used
         with self.prevent(Checkbox.Changed, Input.Changed):
             for box in self.query(StrainBox):
                 box.sync(tracker)
@@ -323,6 +338,8 @@ class RollerApp(SessionActions, BaseApp):
     def update_kit_controls(self) -> None:
         profile = PROFILES[self.session.profile_id]
         self.query_one("#powers").display = profile.has_powers
+        self.query_one("#recovery-row").display = profile.recovers is not None
+        self.query_one("#target-standing-row").display = profile.has_standing
         # Tech replaces items, so a kit with Tech shows its slots in the same section.
         self.section("items").title = "Tech" if profile.has_tech else "Items"
         self.query_one("#item-rows").display = profile.uses_items
@@ -352,6 +369,7 @@ class RollerApp(SessionActions, BaseApp):
         for kind in BonusKind:
             self.query_one(f"#apply-{kind}", Button).disabled = not self.game.bonus_available(kind)
         self.update_tech_controls()
+        self.update_resource_controls()
 
     def selected_dice(self) -> set[int]:
         return {box.index for box in self.query(RerollDie) if box.value}
@@ -394,6 +412,9 @@ class RollerApp(SessionActions, BaseApp):
         with self.prevent(Input.Changed):
             crafted.value = self.session.bonuses.crafted_item
         self.query_one("#lose-crafted-item", Button).disabled = not self.session.item_crafted
+        for button in self.query(SacrificeItemButton):
+            button.display = pool is not None
+            button.disabled = not getattr(self.session.bonuses, button.kind).strip()
 
     def update_tech_controls(self) -> None:
         """Show one row per Tech slot; Use needs a roll, and both buttons a named, working piece."""
@@ -459,7 +480,7 @@ class RollerApp(SessionActions, BaseApp):
         self.update_preview()
 
     def select_changed(self, event: Select.Changed) -> None:
-        if event.select.id == "fear":
+        if event.select.id in ("fear", "target-standing"):
             self.options_changed()
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
@@ -518,9 +539,19 @@ class RollerApp(SessionActions, BaseApp):
         if effect is not None:
             self.act(lambda: self.game.spend_resources(effect))
 
-    def gain_corruption(self) -> None:
+    def spend_on_barricade(self, build: bool) -> None:
+        spent = self.query_one("#barricade-spend", Select).value
+        action = self.game.build_barricade if build else self.game.strengthen_barricade
+        self.act(lambda: action(spent))
+
+    def recover_after(self) -> None:
+        difficulty = self.query_one("#recovery-difficulty", Select).value
+        self.act(lambda: self.game.recover_after(difficulty))
+
+    def take_corruption(self, action: Callable[[Game, int], str]) -> None:
+        """Run a Corruption action with the amount chosen beside Gain Corruption."""
         amount = self.query_one("#corruption-amount", Select).value
-        self.act(lambda: self.game.gain_corruption(amount))
+        self.act(lambda: action(self.game, amount))
 
     def apply_bonus(self, kind: BonusKind) -> None:
         die = self.query_one("#item-target", Select).value
@@ -586,6 +617,7 @@ TYPED_BUTTONS: dict[type[Button], Callable[[RollerApp, Button], None]] = {
     BonusButton: lambda app, button: app.apply_bonus(button.kind),
     TechUseButton: lambda app, button: app.apply_tech(button.index),
     SacrificeButton: lambda app, button: app.act(lambda: app.game.sacrifice_tech(button.index)),
+    SacrificeItemButton: lambda app, button: app.act(lambda: app.game.sacrifice_item(button.kind)),
 }
 
 # The game's actions in the command palette, beside the buttons that run the same handlers.
@@ -613,5 +645,9 @@ APP_BUTTONS: dict[str, Callable[[RollerApp], None]] = {
     "start-game": RollerApp.start_game,
     "reroll_button": RollerApp.action_reroll,
     "spend-resources": RollerApp.ask_spend_resources,
-    "gain-corruption": RollerApp.gain_corruption,
+    "gain-corruption": lambda app: app.take_corruption(Game.gain_corruption),
+    "avoid-strain": lambda app: app.take_corruption(Game.avoid_strain),
+    "recover": RollerApp.recover_after,
+    "build-barricade": lambda app: app.spend_on_barricade(build=True),
+    "strengthen-barricade": lambda app: app.spend_on_barricade(build=False),
 }

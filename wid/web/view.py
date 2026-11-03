@@ -27,6 +27,7 @@ from wid.formatting import (
     activation_line,
     corruption_status,
     danger_summary,
+    extra_hits_text,
     loadout_rows,
     pool_line,
     resources_line,
@@ -44,12 +45,13 @@ from wid.formatting import (
 from wid.game import BaseGame, Game
 from wid.gm import GmGame
 from wid.history import history_statistics
-from wid.profiles import PROFILES
+from wid.profiles import PROFILES, Genre
 from wid.rolls import (
     RANKS,
     RESOURCES_MAX,
     RESOURCES_MIN,
     SCARED_MAX,
+    SECOND_WIND_STRAIN,
     STANDING_LABELS,
     STRAIN_ENDINGS,
     BonusKind,
@@ -57,8 +59,9 @@ from wid.rolls import (
 )
 from wid.web.forms import NeedsConfirmation
 
-# The terminal's Danger theme on paper, and a dark variant for dark mode or the page's switch. The
-# outcome colours are checked against the paper the dice sit on (tests/test_web_sheet.py).
+# The terminal's Danger theme on paper, and a dark variant for dark mode or the page's switch;
+# the highlight is the kit's (below). The outcome colours are checked against the paper the dice
+# sit on (tests/test_web_sheet.py).
 COLOURS = {
     "light": {
         "paper": "#FBF8F1",
@@ -67,7 +70,6 @@ COLOURS = {
         "band-ink": "#FBF8F1",
         "field": "#E6E3EC",
         "rule": "#CFCADB",
-        "danger": "#B22222",
         "on-danger": "#FFFFFF",
         "hit": "#2E7D4F",
         "miss": "#8A5A00",
@@ -80,7 +82,6 @@ COLOURS = {
         "band-ink": "#EEE9E0",
         "field": "#2F2B36",
         "rule": "#4A4555",
-        "danger": "#EF6A63",
         "on-danger": "#211E26",
         "hit": "#63C38D",
         "miss": "#E2AA55",
@@ -89,8 +90,39 @@ COLOURS = {
 }
 
 
-def css_variables(colours: dict[str, str]) -> str:
-    return " ".join(f"--{name}: {value};" for name, value in colours.items())
+# Each kit's highlight per scheme. Text on it is the scheme's own, except where that is too faint
+# for a button: Heckboy's orange takes black in light.
+HIGHLIGHTS = {
+    "light": {genre: profile.highlight for genre, profile in PROFILES.items()},
+    "dark": {genre: profile.dark_highlight for genre, profile in PROFILES.items()},
+}
+ON_HIGHLIGHT = {("light", Genre.HECKBOY): "#000000"}
+
+
+def kit_highlight(scheme: str, genre: Genre) -> tuple[str, str]:
+    """``genre``'s highlight in the scheme and the text that reads on it."""
+    on_danger = ON_HIGHLIGHT.get((scheme, genre), COLOURS[scheme]["on-danger"])
+    return HIGHLIGHTS[scheme][genre], on_danger
+
+
+def css_variables(scheme: str) -> str:
+    """The scheme's colours, with every kit's highlight as ``--danger-<kit>`` beside them."""
+    variables = dict(COLOURS[scheme])
+    for genre in Genre:
+        danger, on_danger = kit_highlight(scheme, genre)
+        variables[f"danger-{genre}"] = danger
+        variables[f"on-danger-{genre}"] = on_danger
+    return " ".join(f"--{name}: {value};" for name, value in variables.items())
+
+
+# The sheet's data-kit picks its kit's highlight from the scheme in force, so a sheet swapped in
+# for another kit recolours without reloading the page. The selectors go unquoted: the page's
+# templates escape quotes, and a kit's id is a plain CSS name.
+KIT_RULES = " ".join(
+    f"#sheet[data-kit={genre}] {{ --danger: var(--danger-{genre}); "
+    f"--on-danger: var(--on-danger-{genre}); }}"
+    for genre in Genre
+)
 
 
 # The terminal renders notes with Textual's "gfm-like" Markdown; the same preset here, with raw
@@ -179,12 +211,18 @@ def sheet_context(
         "strain_endings": STRAIN_ENDINGS,
         "resources_min": RESOURCES_MIN,
         "resources_max": RESOURCES_MAX,
+        "barricade_spends": range(1, RESOURCES_MAX),
         "scared_max": SCARED_MAX,
+        "second_wind_strain": SECOND_WIND_STRAIN,
         "ranks": RANKS,
         "corruption_amounts": CORRUPTION_AMOUNTS,
         "power_labels": POWER_LABELS,
         "spend_labels": SPEND_LABELS,
         "character_labels": CHARACTER_LABELS,
+        "difficulties": tuple(Difficulty),
+        "default_difficulty": Difficulty.COMPETENT,
+        "standings": tuple(Standing),
+        "extra_hits": extra_hits_text(result.request.extra_hits) if result is not None else "",
         "ranks_hint": RANKS_HINT,
         "no_result_hint": NO_RESULT_HINT,
         "tech_slot_label": tech_slot_label,
@@ -220,6 +258,7 @@ def gm_context(
         "complexities": tuple(Complexity),
         "standings": tuple(Standing),
         "default_standing": Standing.REPUTABLE,
+        "mismatched_counts": range(scene.pc_count + 1),
         "barricade_max": BARRICADE_MAX,
         "revelations_line": revelations_line(scene),
         "revelation_counts": range(1, REVELATIONS_MAX + 1),

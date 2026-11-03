@@ -19,7 +19,7 @@ from wid.history import HistoryEntry, history_statistics
 from wid.profiles import Genre
 from wid.settings import load_settings, save_settings
 from wid.ui.dialogs import SAVE_FIRST, Answer, Question
-from wid.ui.themes import DANGER, DANGER_THEME
+from wid.ui.themes import DANGER_THEME, danger_theme
 from wid.ui.widgets import HistoryPanel
 
 # Below these sizes the panel switches to one-row controls and starts with sections collapsed.
@@ -61,7 +61,9 @@ class BaseApp(App):
         super().__init__()
         self.settings_path = settings_path
         self.settings = load_settings(settings_path)
-        self.register_theme(DANGER)
+        # The kit whose highlight the danger theme shows; ``show_kit_colours`` follows the game.
+        self.coloured_genre = Genre.CORE
+        self.register_theme(danger_theme(self.coloured_genre))
         # Layout choices the user made, for a mode that remembers any.
         self.layout: dict[str, object] = {}
         self.game = self.make_game(rng, recovery_path)
@@ -191,12 +193,23 @@ class BaseApp(App):
         return True
 
     def finish_refresh(self) -> None:
-        """The end of every ``refresh_sheet``: the log, Undo and the recovery copy."""
+        """The end of every ``refresh_sheet``: the kit's colours, the log, Undo and the recovery
+        copy."""
+        self.show_kit_colours()
         self.write_new_history()
         self.query_one("#undo", Button).disabled = not self.game.can_undo
         # Every change ends here, so this is where the recovery copy follows the game.
         if warning := self.game.keep_recovery():
             self.feedback(warning)
+
+    def show_kit_colours(self) -> None:
+        """Give the danger theme the kit's highlight once the kit changed (new, loaded, undone)."""
+        if self.genre == self.coloured_genre:
+            return
+        self.coloured_genre = self.genre
+        self.register_theme(danger_theme(self.genre))
+        if self.theme == DANGER_THEME:
+            self.refresh_css(animate=False)
 
     def write_new_history(self) -> None:
         """Add the entries the log does not show yet; ``show_game`` clears it for a new game."""
@@ -261,7 +274,7 @@ class BaseApp(App):
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.value != event.select.value:
             return
-        if event.select.id == "genre" and event.value != Select.BLANK:
+        if event.select.id == "genre" and event.value != Select.NULL:
             self.request_genre(Genre(event.value))
         else:
             self.select_changed(event)

@@ -38,12 +38,12 @@ from wid.web.forms import (
     collect_gm,
     recovery_question,
 )
-from wid.web.view import COLOURS, css_variables, gm_context, sheet_context
+from wid.web.view import COLOURS, KIT_RULES, css_variables, gm_context, sheet_context
 
 HOSTS = ["127.0.0.1", "localhost"]
 HERE = Path(__file__).parent
 # The page's colours as CSS variables, worked out once (only page.html uses them).
-COLOUR_VARIABLES = {scheme: css_variables(colours) for scheme, colours in COLOURS.items()}
+COLOUR_VARIABLES = {scheme: css_variables(scheme) for scheme in COLOURS} | {"kit_rules": KIT_RULES}
 TEMPLATES = Jinja2Templates(directory=HERE / "templates")
 
 

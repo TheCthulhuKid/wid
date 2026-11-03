@@ -77,6 +77,14 @@ SCREEN_LABELS = [
     "Revelations",
     "Hits spent",
     "Task done",
+    "Recover",
+    "Second Wind",
+    "Resources to spend",
+    "Build barricade",
+    "Strengthen barricade",
+    "Target standing",
+    "PCs of another standing",
+    "Avoid strain",
 ]
 
 KIT_NAMES = [

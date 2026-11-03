@@ -9,6 +9,7 @@ from wid.dangers import (
     Activation,
     Complexity,
     Danger,
+    Difficulty,
     Scene,
     defending_attribute,
 )
@@ -73,7 +74,7 @@ def dice_parts(result: RollResult) -> list[list[Part]]:
 
 def summary_parts(result: RollResult) -> list[Part]:
     totals = result.totals()
-    return [
+    parts: list[Part] = [
         (
             f"Hits: {totals.hits} (dice {totals.dice_hits}, expertise {totals.expertise_hits})",
             Outcome.HIT,
@@ -83,6 +84,14 @@ def summary_parts(result: RollResult) -> list[Part]:
         (" | ", None),
         (f"Fumbles: {totals.fumbles}", Outcome.FUMBLE),
     ]
+    if extra := extra_hits_text(result.request.extra_hits):
+        parts += [(" | ", None), (extra, None)]
+    return parts
+
+
+def extra_hits_text(extra: int) -> str:
+    """Ball Season's cost of a test against another tier, or "" when there is none."""
+    return f"+{extra} {'hit' if extra == 1 else 'hits'} to pass for the standing" if extra else ""
 
 
 def result_text(result: RollResult) -> str:
@@ -269,6 +278,18 @@ def resources_notice(amount: int, pool: int) -> str:
     return f"Resources {amount:+d}: {pool} in the pool."
 
 
+def resources_gained(gained: int, wanted: int, pool: int) -> str:
+    """A gain the pool may have cut short, such as ``Resources +1: 6 in the pool. The pool
+    holds at most 6.``"""
+    text = resources_notice(gained, pool)
+    return f"{text} The pool holds at most {RESOURCES_MAX}." if gained < wanted else text
+
+
+def recovery_notice(difficulty: Difficulty, change: str) -> str:
+    """History line for recovery after a Danger, ``change`` being what the kit gave back."""
+    return f"Recovery after a {difficulty.label} Danger — {change}"
+
+
 def corruption_status(session: RollSession, names: str = "") -> str:
     """Oldheart's Corruption and manifestation count, with ``names`` after the count when given,
     and whether the character succumbed."""
@@ -291,6 +312,8 @@ def pool_line(request: RollRequest) -> str:
     attributes = PROFILES[request.profile_id].attributes
     if note := manifestation_note(attributes, request.manifestations):
         text += f" ({note}; never below 1d6)"
+    if extra := extra_hits_text(request.extra_hits):
+        text += f" ({extra})"
     return text
 
 
@@ -431,10 +454,14 @@ def revelations_line(scene: Scene) -> str:
     )
 
 
-def task_strain_line(complexity: Complexity, pc_count: int) -> str:
-    """History line for a task, such as ``Medium task: 8 strain for 4 PCs to share.``"""
-    total = complexity.strain_total(pc_count)
-    return f"{complexity.label} task: {total} strain for {pc_count} PCs to share."
+def task_strain_line(complexity: Complexity, pc_count: int, mismatched: int = 0) -> str:
+    """History line for a task, such as ``Medium task: 8 strain for 4 PCs to share.``; in Ball
+    Season, ``mismatched`` PCs of another standing than the task's add 1 each."""
+    base = complexity.strain_total(pc_count)
+    text = f"{complexity.label} task: {base + mismatched} strain for {pc_count} PCs to share"
+    if mismatched:
+        text += f" ({base}, +{mismatched} for the PCs of another standing)"
+    return f"{text}."
 
 
 def activation_line(activation: Activation) -> str:
