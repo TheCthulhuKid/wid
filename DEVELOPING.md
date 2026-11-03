@@ -171,14 +171,12 @@ resources or refills Tech. Window layout, the Edit/Preview choice, the undo hist
 random generator's state are not saved, and the theme lives in the settings file instead. So
 **Undo** has nothing to take back right after a load, until the next change.
 
-- The format is versioned (`version: 3`); files from an unknown version, a marked wound with an
+- The format is versioned (`version: 2`); files from an unknown version, a marked wound with an
   unmarked box before it, or invalid values are rejected without replacing the current game. A
   file from a newer wid says so and asks the player to update.
 - A change to the save format bumps `version` on `SavedSession` and adds one function to
   `UPGRADES` in `wid/sessions.py`, keyed by the old version, that turns an old file's data into
   the new version's. Loading runs the steps in turn, so files of every earlier version still load.
-  Version 3 widened Heckboy's strain rows to four boxes; its upgrade keeps a file's wounds and
-  the strain since the last one.
 - A save goes to a temporary file that is renamed into place, so a failed write never leaves a
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.

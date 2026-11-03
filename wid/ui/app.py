@@ -91,6 +91,7 @@ SECTION_NAMES = ("strain", "items")
 GAME_BUTTONS: dict[str, Callable[[Game], str]] = {
     "take-strain": Game.take_strain,
     "take-wound": Game.take_wound,
+    "second-wind": Game.second_wind,
     "undo": Game.undo,
     "new-scenario": Game.start_scenario,
     "resources-down": lambda game: game.adjust_resources(-1),
@@ -293,6 +294,9 @@ class RollerApp(SessionActions, BaseApp):
 
     def update_strain_controls(self) -> None:
         tracker = self.session.strain
+        second_wind = self.query_one("#second-wind", Button)
+        second_wind.display = PROFILES[self.session.profile_id].has_second_wind
+        second_wind.disabled = self.session.second_wind_used
         with self.prevent(Checkbox.Changed, Input.Changed):
             for box in self.query(StrainBox):
                 box.sync(tracker)
@@ -488,7 +492,7 @@ class RollerApp(SessionActions, BaseApp):
             handler(self, checkbox)
 
     def mark_strain_box(self, box: StrainBox) -> None:
-        index, marked = box.index_in(self.session.strain), box.value
+        index, marked = box.index, box.value
         self.act(lambda: self.game.set_strain_box(index, marked))
 
     def use_power(self, toggle: PowerToggle) -> None:

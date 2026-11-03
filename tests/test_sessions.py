@@ -33,7 +33,7 @@ def test_invalid_or_corrupt_files_are_rejected(tmp_path, saved_session_factory):
     with pytest.raises(ValueError):
         read_saved(path)
     data = saved_session_factory().model_dump(mode="json")
-    data["version"] = 4
+    data["version"] = 3
     with pytest.raises(ValueError, match="saved by a newer wid"):
         SavedSession.model_validate(data)
     with pytest.raises(ValueError, match="unknown save kind"):
@@ -47,15 +47,4 @@ def test_an_older_save_loads_without_notes(tmp_path, saved_session_factory):
     data["version"] = 1
     path.write_text(json.dumps(data), encoding="utf-8")
     older = read_saved(path)
-    assert (older.notes, older.version) == ("", 3)
-
-
-def test_a_version_2_heckboy_save_keeps_its_wounds_on_the_wider_rows(saved_session_factory):
-    data = saved_session_factory(Genre.HECKBOY).model_dump(mode="json")
-    data["version"] = 2
-    # One wound and one strain after it, on the old rows of three.
-    data["session"]["strain"] = {"boxes": [True] * 5 + [False] * 7, "names": ["Cut", "", ""]}
-    upgraded = SavedSession.model_validate(data).session.strain
-    assert upgraded.per_wound == 4
-    assert upgraded.boxes == (True,) * 6 + (False,) * 9
-    assert upgraded.names == ("Cut", "", "")
+    assert (older.notes, older.version) == ("", 2)

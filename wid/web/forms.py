@@ -307,6 +307,7 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     ),
     "take-strain": lambda game, form: game.take_strain(),
     "take-wound": lambda game, form: game.take_wound(),
+    "second-wind": lambda game, form: game.second_wind(),
     "new-scenario": lambda game, form: game.start_scenario(),
     "sacrifice-tech": lambda game, form: game.sacrifice_tech(form.number("index")),
     "resources": lambda game, form: game.adjust_resources(form.number("amount")),

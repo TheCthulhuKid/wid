@@ -27,10 +27,10 @@ class WiDProfile(BaseModel):
     genre: Genre
     name: str
     attributes: tuple[str, ...] = ("Athleticism", "Composure", "Reasoning")
-    # Strain boxes before each wound on the tracker; Heckboy wounds on the fifth strain.
-    strain_per_wound: int = 3
     uses_items: bool = True
     has_powers: bool = False
+    # Heckboy's one Second Wind, which clears strain once.
+    has_second_wind: bool = False
     has_tech: bool = False
     has_rerolls: bool = False
     has_standing: bool = False
@@ -51,8 +51,8 @@ PROFILES = {
         genre=Genre.HECKBOY,
         name="Heckboy",
         attributes=("Aberrance", "Ferocity", "Savvy"),
-        strain_per_wound=4,
         has_powers=True,
+        has_second_wind=True,
         recovers=Recovers.STRAIN,
         highlight="#D94F00",
         dark_highlight="#FF8A4C",

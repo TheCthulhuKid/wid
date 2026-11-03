@@ -601,6 +601,13 @@ class Game(BaseGame):
             self.session.strain = self.session.strain.take_wound()
         return self.notice(strain_notice("Took a wound", self.session.strain))
 
+    def second_wind(self) -> str:
+        with self.undoable("Second Wind"):
+            cleared = self.session.second_wind()
+        return self.notice(
+            strain_notice(f"Second Wind: cleared {cleared} strain", self.session.strain)
+        )
+
     def start_scenario(self) -> str:
         with self.undoable("new scenario"):
             tech = self.session.start_scenario()

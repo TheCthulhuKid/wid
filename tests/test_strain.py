@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from helpers import change_genre, click, start_game, text
+from helpers import click, start_game, text
 from textual.widgets import Collapsible
 
 from wid.dangers import Difficulty
@@ -44,9 +44,14 @@ def test_recovery_after_a_danger_gives_back_what_the_kit_says():
     heckboy.start_game((1, 2, 3))
     heckboy.session.strain = heckboy.session.strain.take(6)
     assert heckboy.recover_after(Difficulty.BOSS) == (
-        "Recovery after a Boss Danger — cleared 1 strain: 4 strain, 1 wound."
+        "Recovery after a Boss Danger — cleared 2 strain: 3 strain, 1 wound."
     )
     assert heckboy.undo() == "Undid the last recovery."
+    # The Second Wind clears strain once, and never the wound or the strain before it.
+    assert heckboy.second_wind() == "Second Wind: cleared 2 strain: 3 strain, 1 wound."
+    heckboy.take_strain()
+    with pytest.raises(ValueError, match="already used"):
+        heckboy.second_wind()
 
     survivor = Game()
     survivor.change_kit(Genre.THIS_ISNT_HAPPENING)
@@ -67,21 +72,18 @@ def test_strain_buttons_and_locked_boxes():
         app = RollerApp()
         async with app.run_test(size=(100, 45)) as pilot:
             await start_game(app, pilot)
-            wound = app.query_one("#strain-wound-0", StrainBox)
+            wound = app.query_one("#strain-box-3", StrainBox)
             assert wound.disabled
-            assert not app.query_one("#strain-box-0-3", StrainBox).display
             await click(app, pilot, "#take-strain")
             assert app.session.strain.boxes[0]
             await click(app, pilot, "#take-wound")
             assert app.session.strain.boxes == (True,) * 4 + (False,) * 8
             title = app.query_one("#strain-section", Collapsible).title
             assert title == "Strain tracker: 3 strain, 1 wound"
-            assert app.query_one("#strain-box-0-1", StrainBox).disabled
-            app.query_one("#strain-wound-1", StrainBox).value = True
+            assert app.query_one("#strain-box-1", StrainBox).disabled
+            app.query_one("#strain-box-7", StrainBox).value = True
             await pilot.pause()
             assert not app.session.strain.boxes[7]
             assert text(app, "#feedback") == NOT_READY_NOTE
-            await change_genre(app, pilot, Genre.HECKBOY)
-            assert app.query_one("#strain-box-0-3", StrainBox).display
 
     asyncio.run(scenario())

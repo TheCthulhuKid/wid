@@ -5,6 +5,20 @@ What changed in each release of wid, newest first. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Heckboy: **Second Wind** beside **Take 1 wound** clears 2 strain once per character. Wounds,
+  and strain before a marked wound, stay marked.
+- **Recover** after a Danger: choose its difficulty and Heckboy clears the strain its kit gives
+  back, or This Isn't Happening gains the Resources.
+- This Isn't Happening: **Build barricade** and **Strengthen barricade** spend Resources and note
+  the strength, and **Sacrifice** beside an item gives it up for 3 Resources.
+- Ball Season: **Target standing** before a roll says how many more hits the test needs to pass,
+  one per tier of standing between you and the target; in the GM mode, **PCs of another
+  standing** adds their strain to a task.
+- Oldheart: **Avoid strain** beside **Gain Corruption** takes the Corruption for strain avoided
+  on a task and says so in the history.
+
 ### Changed
 
 - Each genre kit has its own highlight colour in the default "danger" theme and in the browser:
@@ -28,21 +42,9 @@ What changed in each release of wid, newest first. The format follows
 - The kits' scene trackers in the GM mode: a Danger's **Standing** in Ball Season, the
   **Barricade** in This Isn't Happening, and the **Revelations** track in Oldheart, each saved
   with the scene and undoable.
-- **Recover** after a Danger: choose its difficulty and Heckboy clears the strain its kit gives
-  back, or This Isn't Happening gains the Resources.
-- This Isn't Happening: **Build barricade** and **Strengthen barricade** spend Resources and note
-  the strength, and **Sacrifice** beside an item gives it up for 3 Resources.
-- Ball Season: **Target standing** before a roll says how many more hits the test needs to pass,
-  one per tier of standing between you and the target; in the GM mode, **PCs of another
-  standing** adds their strain to a task.
-- Oldheart: **Avoid strain** beside **Gain Corruption** takes the Corruption for strain avoided
-  on a task and says so in the history.
 
 ### Changed
 
-- **Heckboy** characters wound on the fifth strain, as the kit says: the strain tracker has four
-  strain boxes per row there. Older Heckboy saves keep their wounds and the strain since the
-  last one.
 - `wid --self-test` also starts the GM screen, activates a Danger and serves the GM page.
 - **Load game** is now **Load session**, the Session tab's path box is **Session file (JSON)**,
   and the name box says "Name this session": a session is what you save and load.
@@ -170,7 +172,8 @@ What changed in each release of wid, newest first. The format follows
 - Themes, remembered with your settings.
 - A Windows program that needs no Python, and installing with uv.
 
-[Unreleased]: https://github.com/TheCthulhuKid/wid/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/TheCthulhuKid/wid/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/TheCthulhuKid/wid/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/TheCthulhuKid/wid/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/TheCthulhuKid/wid/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/TheCthulhuKid/wid/compare/v0.3.0...v0.4.0

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 from wid.dangers import Scene
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
-from wid.rolls import STANDING_START, FrozenModel, Index, RollRequest, RollSession, StrainTracker
+from wid.rolls import STANDING_START, FrozenModel, Index, RollRequest, RollSession
 from wid.storage import write_text
 
 
@@ -42,31 +42,9 @@ def note_succumbed_checks(data: SaveData) -> SaveData:
     return data
 
 
-def fit_heckboy_rows(data: SaveData) -> SaveData:
-    """Version 3 gives a Heckboy tracker four strain boxes per wound instead of three.
-
-    A version-2 Heckboy file keeps its wounds and the strain taken since the last one, marked
-    on the wider rows; every other kit's tracker is as it was.
-    """
-    session = data.get("session", {})
-    if session.get("profile_id") != Genre.HECKBOY:
-        return data
-    old = StrainTracker.model_validate(session["strain"])
-    wounds = sum(old.boxes[ending] for ending in old.endings)
-    after_last_wound = max((ending + 1 for ending in old.endings if old.boxes[ending]), default=0)
-    new = StrainTracker(per_wound=PROFILES[Genre.HECKBOY].strain_per_wound, names=old.names)
-    for _ in range(wounds):
-        new = new.take_wound()
-    new = new.take(sum(old.boxes[after_last_wound:]))
-    return {**data, "session": {**session, "strain": new.model_dump()}}
-
-
 # Each function turns a save file of the version it is keyed by into the next version's data.
 # A change to the save format bumps ``SavedSession.version`` and adds one function here.
-UPGRADES: dict[int, Callable[[SaveData], SaveData]] = {
-    1: note_succumbed_checks,
-    2: fit_heckboy_rows,
-}
+UPGRADES: dict[int, Callable[[SaveData], SaveData]] = {1: note_succumbed_checks}
 
 
 def upgrade_step(step: Callable[[SaveData], SaveData], data: SaveData, version: int) -> SaveData:
@@ -90,7 +68,7 @@ class SaveFile(FrozenModel):
 
 
 class SavedSession(SaveFile):
-    version: Literal[3] = 3
+    version: Literal[2] = 2
     name: SessionName
     session: RollSession
     draft: RollRequest
@@ -106,7 +84,7 @@ class SavedSession(SaveFile):
         """Bring an older save file up to the current version, one step at a time.
 
         A file from a newer wid, or with a version no wid wrote, is refused with a message that
-        says so, instead of pydantic's "Input should be 3".
+        says so, instead of pydantic's "Input should be 2".
         """
         if not isinstance(data, dict):
             return data
@@ -161,6 +139,8 @@ class SavedSession(SaveFile):
         session = self.session
         if session.total_strain and session.profile_id != Genre.HECKBOY:
             raise ValueError("Only Heckboy can have strain.")
+        if session.second_wind_used and not PROFILES[session.profile_id].has_second_wind:
+            raise ValueError("Only Heckboy can have a Second Wind.")
         if session.total_corruption and session.profile_id != Genre.OLDHEART:
             raise ValueError("Only Oldheart can have Corruption.")
         if session.manifestations and session.profile_id != Genre.OLDHEART:

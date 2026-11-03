@@ -1,6 +1,6 @@
 from enum import StrEnum
 from random import Random
-from typing import Annotated, Any, Self
+from typing import Annotated, Self
 
 from pydantic import (
     BaseModel,
@@ -329,50 +329,33 @@ class AttributeSetup(FrozenModel):
         return self.ranks[attributes.index(attribute)]
 
 
-# The tracker: three rows of strain boxes, each ending in a wound (the last in Defeat). A row
-# holds three strain boxes, or four in Heckboy, where a wound comes on the fifth strain.
-STRAIN_ROWS = 3
-STRAIN_PER_WOUND = 3
+# The last box of each row: two wounds, then Defeat. Each is preceded by three strain boxes.
+STRAIN_ENDINGS = (3, 7, 11)
 LOCKED_NOTE = "Locked: boxes before a marked wound stay marked until that wound is cleared."
 NOT_READY_NOTE = "Mark all the strain before this wound first."
+# The strain Heckboy's Second Wind clears; wounds stay marked.
+SECOND_WIND_STRAIN = 2
 
 
 class StrainTracker(FrozenModel):
-    per_wound: Annotated[int, Field(strict=True, ge=1)] = STRAIN_PER_WOUND
-    boxes: tuple[StrictBool, ...] = ()
+    boxes: tuple[StrictBool, ...] = Field(default=(False,) * 12, min_length=12, max_length=12)
     names: tuple[str, str, str] = ("", "", "")
-
-    @model_validator(mode="before")
-    @classmethod
-    def empty_boxes(cls, data: Any) -> Any:
-        """A tracker made without boxes starts empty, with the rows its ``per_wound`` gives."""
-        if isinstance(data, dict) and not data.get("boxes"):
-            per_wound = data.get("per_wound", STRAIN_PER_WOUND)
-            data = {**data, "boxes": (False,) * (STRAIN_ROWS * (per_wound + 1))}
-        return data
 
     @model_validator(mode="after")
     def validate_endings(self) -> Self:
-        if len(self.boxes) != STRAIN_ROWS * (self.per_wound + 1):
-            raise ValueError("The strain boxes do not fit the tracker's rows.")
-        for ending in self.endings:
+        for ending in STRAIN_ENDINGS:
             if self.boxes[ending] and not all(self.boxes[:ending]):
                 raise ValueError("A marked wound needs every earlier box marked.")
         return self
 
     @property
-    def endings(self) -> tuple[int, ...]:
-        """The last box of each row: two wounds, then Defeat."""
-        return tuple(self.per_wound * (row + 1) + row for row in range(STRAIN_ROWS))
-
-    @property
     def defeated(self) -> bool:
-        return self.boxes[self.endings[-1]]
+        return self.boxes[STRAIN_ENDINGS[-1]]
 
     @property
     def locked_boxes(self) -> frozenset[int]:
         """Boxes that must stay marked: everything before the last marked wound."""
-        marked = [ending for ending in self.endings if self.boxes[ending]]
+        marked = [ending for ending in STRAIN_ENDINGS if self.boxes[ending]]
         return frozenset(range(max(marked))) if marked else frozenset()
 
     def lock_reason(self, index: int) -> str | None:
@@ -380,7 +363,7 @@ class StrainTracker(FrozenModel):
         if index in self.locked_boxes:
             return LOCKED_NOTE
         # A wound can be marked once every box before it is marked; other boxes always.
-        if not self.boxes[index] and index in self.endings and not all(self.boxes[:index]):
+        if not self.boxes[index] and index in STRAIN_ENDINGS and not all(self.boxes[:index]):
             return NOT_READY_NOTE
         return None
 
@@ -392,7 +375,7 @@ class StrainTracker(FrozenModel):
             raise ValueError(reason)
         boxes = list(self.boxes)
         boxes[index] = checked
-        return self._with(boxes=boxes)
+        return type(self)(boxes=boxes, names=self.names)
 
     def set_name(self, row: int, name: str) -> Self:
         row = TypeAdapter(Index).validate_python(row)
@@ -400,19 +383,19 @@ class StrainTracker(FrozenModel):
             raise ValueError("Wound row is outside the tracker.")
         names = list(self.names)
         names[row] = name
-        return self._with(names=names)
+        return type(self)(boxes=self.boxes, names=names)
 
     def take(self, points: int) -> Self:
         points = TypeAdapter(Index).validate_python(points)
         boxes = list(self.boxes)
-        start = max((index + 1 for index in self.endings if boxes[index]), default=0)
+        start = max((index + 1 for index in STRAIN_ENDINGS if boxes[index]), default=0)
         for index in range(start, len(boxes)):
             if points == 0:
                 break
             if not boxes[index]:
                 boxes[index] = True
                 points -= 1
-        return self._with(boxes=boxes)
+        return type(self)(boxes=boxes, names=self.names)
 
     def take_by_hand(self) -> Self:
         """Take 1 strain from the strain button; a strain-costing roll calls ``take`` instead."""
@@ -428,22 +411,18 @@ class StrainTracker(FrozenModel):
         for index in reversed(range(len(boxes))):
             if points == 0:
                 break
-            if boxes[index] and index not in self.endings and index not in self.locked_boxes:
+            if boxes[index] and index not in STRAIN_ENDINGS and index not in self.locked_boxes:
                 boxes[index] = False
                 points -= 1
-        return self._with(boxes=boxes)
+        return type(self)(boxes=boxes, names=self.names)
 
     def take_wound(self) -> Self:
         """Mark everything up to and including the next unmarked wound (or Defeat)."""
-        ending = next((index for index in self.endings if not self.boxes[index]), None)
+        ending = next((index for index in STRAIN_ENDINGS if not self.boxes[index]), None)
         if ending is None:
             raise ValueError("Defeat is already marked.")
         boxes = [index <= ending or marked for index, marked in enumerate(self.boxes)]
-        return self._with(boxes=boxes)
-
-    def _with(self, **changes: object) -> Self:
-        # Built anew rather than copied, so the changed tracker is validated.
-        return type(self)(**{**dict(self), **changes})
+        return type(self)(boxes=boxes, names=self.names)
 
 
 def raised_die(result: RollResult, index: int, amount: int) -> tuple[DieResult, ...]:
@@ -478,6 +457,8 @@ class RollSession(BaseModel):
     bonuses: NamedBonuses = Field(default_factory=NamedBonuses)
     # Heckboy power names, for the player's reference; they do not change rolls.
     power_names: tuple[str, str] = ("", "")
+    # Heckboy only: the Second Wind can be used once.
+    second_wind_used: bool = False
     # Ball Season only; it sets the GM's target numbers, so it never changes a roll here.
     standing: StandingDot = STANDING_START
     # This Isn't Happening only: the pool starts at the Charity rank when the game starts.
@@ -490,16 +471,9 @@ class RollSession(BaseModel):
     manifestations: tuple[str, ...] = Field(default=(), max_length=MANIFESTATION_LIMIT)
 
     @model_validator(mode="after")
-    def validate_kit_fit(self) -> Self:
-        """The ranks must be the kit's, and the strain tracker takes the kit's rows."""
+    def validate_attributes(self) -> Self:
         if self.attributes is not None and self.attributes.profile_id != self.profile_id:
             raise ValueError("Attributes must match the session profile.")
-        per_wound = PROFILES[self.profile_id].strain_per_wound
-        if self.strain.per_wound != per_wound:
-            # A new session takes the kit's rows; a marked tracker of another shape is refused.
-            if any(self.strain.boxes):
-                raise ValueError("The strain tracker does not fit the kit's rows.")
-            self.strain = StrainTracker(per_wound=per_wound, names=self.strain.names)
         return self
 
     def set_bonus_name(self, kind: BonusKind, name: str) -> NamedBonuses:
@@ -658,6 +632,18 @@ class RollSession(BaseModel):
         recovered = self.strain.recover(points)
         cleared = sum(self.strain.boxes) - sum(recovered.boxes)
         self.strain = recovered
+        return cleared
+
+    def second_wind(self) -> int:
+        """Heckboy's one Second Wind: clear up to ``SECOND_WIND_STRAIN`` of the newest strain."""
+        if not PROFILES[self.profile_id].has_second_wind:
+            raise ValueError(f"{PROFILES[self.profile_id].name} has no Second Wind.")
+        if self.second_wind_used:
+            raise ValueError("The Second Wind is already used.")
+        # Refused rather than spent on nothing, so it is not lost by mistake.
+        if not (cleared := self.recover_strain(SECOND_WIND_STRAIN)):
+            raise ValueError("No strain to clear: wounds and the strain before them stay marked.")
+        self.second_wind_used = True
         return cleared
 
     def adjust_resources(self, amount: int) -> int:

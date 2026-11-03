@@ -231,22 +231,26 @@
       <div class="row">
         <button class="primary" formaction="/actions/take-strain">Take 1 strain</button>
         <button class="primary" formaction="/actions/take-wound">Take 1 wound</button>
+        {% if kit.has_second_wind %}
+        <button formaction="/actions/second-wind" title="Clear {{ second_wind_strain }} strain, once"
+                {% if session.second_wind_used %}disabled{% endif %}>Second Wind</button>
+        {% endif %}
       </div>
-      {% for ending in session.strain.endings %}
+      {% for ending in strain_endings %}
       {% set row = loop.index0 %}
       <div class="strain-row">
         <span class="boxes">
-          {% for index in range(ending - session.strain.per_wound, ending + 1) %}
+          {% for index in range(ending - 3, ending + 1) %}
           <label class="box {% if index == ending %}ending{% endif %}">
-            <span class="visually-hidden">{{ strain_box_name(session.strain, index) }} box {{ index + 1 }}</span>
+            <span class="visually-hidden">{{ strain_box_name(index) }} box {{ index + 1 }}</span>
             <input type="checkbox" data-action="strain-box" data-index="{{ index }}"
                    {% if session.strain.boxes[index] %}checked{% endif %}
                    {% if session.strain.lock_reason(index) %}disabled{% endif %}>
           </label>
           {% endfor %}
         </span>
-        <label class="field grow"><span class="visually-hidden">Name of the {{ strain_box_name(session.strain, ending) }}</span>
-          <input name="strain-name-{{ row }}" value="{{ session.strain.names[row] }}" placeholder="{{ strain_box_name(session.strain, ending) }} name">
+        <label class="field grow"><span class="visually-hidden">Name of the {{ strain_box_name(ending) }}</span>
+          <input name="strain-name-{{ row }}" value="{{ session.strain.names[row] }}" placeholder="{{ strain_box_name(ending) }} name">
         </label>
       </div>
       {% endfor %}

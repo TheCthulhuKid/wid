@@ -82,7 +82,9 @@ Every kit has the same screen. Each adds at most one thing:
 before rolling to use it: the pool grows and the strain is added to the tracker for you. Only one
 power can be used per roll, and **Use** unticks itself after the roll. After a Danger is
 overcome, choose its difficulty in **Danger** and press **Recover**: the strain Heckboy gives
-back for that difficulty is cleared from the tracker, and the history notes it.
+back for that difficulty is cleared from the tracker, and the history notes it. **Second Wind**
+beside **Take 1 wound** clears 2 of your newest strain, once per character; wounds, and strain
+before a marked wound, stay marked.
 
 **Tech (Second Contact).** You get one Tech slot for each rank of Muscle as soon as the game starts.
 A slot stays empty until you use it, and each one starts at Science + Culture. Tech is used after
@@ -147,8 +149,7 @@ cleared. You are asked first if there is anything unsaved. Set the ranks and pre
 
 ## Strain tracker
 
-Three rows of boxes: strain, strain, strain, then a wound (the last row ends in Defeat). In
-**Heckboy** a row holds four strain before its wound.
+Three rows of boxes: strain, strain, strain, then a wound (the last row ends in Defeat).
 
 - **Take 1 strain** fills the next box. **Take 1 wound** fills every box up to and including
   the next wound (Defeat after the second). You can also click boxes yourself.

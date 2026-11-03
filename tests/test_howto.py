@@ -78,6 +78,7 @@ SCREEN_LABELS = [
     "Hits spent",
     "Task done",
     "Recover",
+    "Second Wind",
     "Resources to spend",
     "Build barricade",
     "Strengthen barricade",
