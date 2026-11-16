@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 from helpers import ScriptedRandom, click, text
-from textual.widgets import DataTable, Input, Select
+from textual.widgets import Button, DataTable, Input, Select
 
 from wid.dangers import Complexity, DangerClass, Difficulty
 from wid.formatting import NO_DANGER_HINT
@@ -24,6 +24,7 @@ def test_a_danger_is_added_activated_removed_and_kept_across_a_kit_change():
             assert [kind for _, kind in app.query_one("#danger-class", Select)._options][-1] == (
                 DangerClass.TITAN
             )
+            assert app.query_one("#raise-threshold", Button).disabled
             app.query_one("#new-danger-name", Input).value = "Zeus"
             app.query_one("#danger-class", Select).value = DangerClass.TITAN
             app.query_one("#difficulty", Select).value = Difficulty.MEGA
@@ -32,11 +33,23 @@ def test_a_danger_is_added_activated_removed_and_kept_across_a_kit_change():
             assert text(app, "#danger-summary-0") == summary
             assert app.query_one("#new-danger-name", Input).value == ""
             assert app.query_one("#loadout", DataTable).row_count == 6
+            assert text(app, "#loadout-heading") == "Loadout: Zeus (Mega Titan)"
+            assert not app.query_one("#acting-row").display
 
             await pilot.press("ctrl+r")
             assert text(app, "#activation").startswith("Zeus (Mega Titan) activates (4, 2, 5)")
             await click(app, pilot, "#commit-hits")
             assert "progress 1" in text(app, "#scene-summary")
+            # A second Danger offers the choice of whose loadout to roll on.
+            app.query_one("#danger-class", Select).value = DangerClass.BRUTE
+            app.query_one("#difficulty", Select).value = Difficulty.COMPETENT
+            await click(app, pilot, "#add-danger")
+            assert app.query_one("#acting-row").display
+            app.query_one("#acting", Select).value = 1
+            await pilot.pause()
+            assert text(app, "#loadout-heading") == "Loadout: Danger 2 (Competent Brute)"
+            await click(app, pilot, "#remove-danger-1")
+            assert text(app, "#loadout-heading") == "Loadout: Zeus (Mega Titan)"
             app.query_one("#task", Select).value = Complexity.HIGH
             await click(app, pilot, "#task-strain")
             assert text(app, "#feedback") == "High task: 12 strain for 4 PCs to share."

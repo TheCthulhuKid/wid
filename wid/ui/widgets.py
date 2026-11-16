@@ -570,6 +570,10 @@ class RemoveDangerButton(Button):
 AMOUNTS = range(1, 7)
 
 
+# The Acting Danger choice for the strongest; the others are the Dangers' indices.
+STRONGEST = -1
+
+
 class SceneGroup(Vertical):
     """The GM's scene: the PCs, the Dangers, the threshold and whether the Dangers clash."""
 
@@ -620,6 +624,11 @@ class SceneGroup(Vertical):
                     with Horizontal(classes="danger-controls"):
                         yield DangerName(index)
                         yield RemoveDangerButton(index)
+        with Horizontal(id="acting-row"):
+            yield Label("Acting Danger")
+            yield Select(
+                [("Strongest", STRONGEST)], value=STRONGEST, allow_blank=False, id="acting"
+            )
         yield Static(NO_DANGER_HINT, id="scene-summary", markup=False)
         with Horizontal(id="threshold-row"):
             with Vertical(classes="field", id="amount-field"):
@@ -676,10 +685,11 @@ class SceneGroup(Vertical):
 
 
 class ActivationGroup(VerticalScroll):
-    """The last activation and the loadout table of the scene's strongest Danger."""
+    """The last activation and the loadout table of the Danger that acts."""
 
     def compose(self) -> ComposeResult:
         yield Static(NO_ACTIVATION_HINT, id="activation", markup=False)
+        yield Static(id="loadout-heading", markup=False)
         yield DataTable(id="loadout", cursor_type="none", zebra_stripes=True)
 
     def on_mount(self) -> None:

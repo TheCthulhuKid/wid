@@ -54,6 +54,16 @@
         </div>
       </div>
       {% endfor %}
+      {% if scene.dangers | length > 1 %}
+      <div class="row">
+        <label class="field grow">Acting Danger
+          <select name="acting" data-action="acting">
+            <option value="" {% if scene.acting is none %}selected{% endif %}>Strongest</option>
+            {% for title in danger_titles %}<option value="{{ loop.index0 }}" {% if scene.acting is not none and loop.index0 == scene.acting_index %}selected{% endif %}>{{ title }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      {% endif %}
       <p class="pool">{{ scene_summary }}</p>
 
       <div class="row named">
@@ -114,6 +124,7 @@
     <h2>Activation</h2>
     <p class="{{ 'status' if game.last_activation else 'empty' }}">{{ activation }}</p>
     {% if loadout_rows %}
+    <h3>{{ loadout_heading }}</h3>
     <table class="loadout">
       <thead><tr>{% for column in loadout_columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>
       <tbody>

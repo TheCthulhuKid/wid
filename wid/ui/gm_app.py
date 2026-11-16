@@ -27,6 +27,8 @@ from wid.formatting import (
     activation_line,
     barricade_text,
     danger_summary,
+    danger_title,
+    loadout_heading,
     loadout_rows,
     revelations_line,
     scene_summary,
@@ -37,6 +39,7 @@ from wid.ui.base import BaseApp, ButtonTables, PaletteCommand
 from wid.ui.dialogs import CANCEL, Answer
 from wid.ui.sessions import SessionActions
 from wid.ui.widgets import (
+    STRONGEST,
     ActivationGroup,
     DangerName,
     GameRow,
@@ -136,6 +139,7 @@ class GmApp(SessionActions, BaseApp):
                     summary = danger_summary(danger, index, scene.pc_count)
                     self.query_one(f"#danger-summary-{index}", Static).update(summary)
                     self.query_one(f"#danger-name-{index}", Input).value = danger.name
+            self.show_acting()
         self.query_one("#scene-summary", Static).update(scene_summary(scene))
         self.query_one("#add-danger", Button).disabled = len(scene.dangers) >= DANGERS_MAX
         for button_id in ("commit-hits", "raise-threshold", "activate"):
@@ -146,10 +150,22 @@ class GmApp(SessionActions, BaseApp):
         self.query_one("#activation", Static).update(
             activation_line(activation) if activation else NO_ACTIVATION_HINT
         )
+        self.query_one("#loadout-heading", Static).update(loadout_heading(scene))
         table = self.query_one("#loadout", DataTable)
         table.clear()
         table.add_rows(loadout_rows(scene.loadout, self.genre))
         self.finish_refresh()
+
+    def show_acting(self) -> None:
+        """Offer the strongest or one of the Dangers, once there is more than one to choose."""
+        scene = self.game.scene
+        self.query_one("#acting-row").display = len(scene.dangers) > 1
+        selector = self.query_one("#acting", Select)
+        titles = [
+            (danger_title(danger, index), index) for index, danger in enumerate(scene.dangers)
+        ]
+        selector.set_options([("Strongest", STRONGEST), *titles])
+        selector.value = STRONGEST if scene.acting is None else scene.acting_index
 
     def update_trackers(self) -> None:
         """Show the kit's trackers only: a Danger's standing, the barricade, the revelations."""
@@ -239,6 +255,8 @@ class GmApp(SessionActions, BaseApp):
             self.act(lambda: self.game.set_pc_count(value))
         elif event.select.id == "revelation-count":
             self.act(lambda: self.game.set_revelations(value))
+        elif event.select.id == "acting":
+            self.act(lambda: self.game.choose_acting(None if value == STRONGEST else value))
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         if event.checkbox.id == "hostile" and event.value == event.checkbox.value:

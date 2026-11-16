@@ -64,6 +64,8 @@ SCREEN_LABELS = [
     "Amount",
     "Commit hits",
     "Raise threshold",
+    "Acting Danger",
+    "Strongest",
     "Dangers fight each other",
     "Dangers clash",
     "Activate Danger",

@@ -210,6 +210,8 @@ them. Opening a GM save (`wid scene.json`) starts this mode by itself.
   **Add Danger**. The four base classes are always offered; each kit adds its own class.
   Each Danger is listed with its threshold and the hits a PC needs to pass; type its name in
   the box beneath, or press **Remove** to take it out of the scene. A scene holds up to four.
+- With two or more Dangers, **Acting Danger** chooses whose loadout the activations roll on:
+  **Strongest**, or any one of them. Hits to pass stay the strongest's.
 - The line under the Dangers is the scene: the combined threshold, what has been committed
   and the hits to pass of the strongest Danger.
 - Choose an **Amount**, then press **Commit hits** to progress the threshold, or press
@@ -237,8 +239,9 @@ Changing kit with **Keep scene** drops the trackers the new kit lacks along with
 
 On the right, **Activate Danger** (or **Ctrl+R**) rolls 3d6 and shows which ability the Danger
 uses, who it targets and the attribute the targets defend with, in the words of the current
-kit. The table below it is the loadout of the strongest Danger, one row per die. **Roll 1d6**
-rolls a single die, and **Undo** takes back the last change to the scene (not an activation).
+kit. The table below it is the acting Danger's loadout, one row per die, with its name above.
+**Roll 1d6** rolls a single die, and **Undo** takes back the last change to the scene (not an
+activation).
 
 The **Session** tab, **Save session**, **Load session**, **Export history**, the history log,
 the theme and the command palette work as in the player's mode. A GM save is its own kind of

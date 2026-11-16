@@ -28,7 +28,9 @@ from wid.formatting import (
     activation_line,
     corruption_status,
     danger_summary,
+    danger_title,
     extra_hits_text,
+    loadout_heading,
     loadout_rows,
     pool_line,
     resources_line,
@@ -253,7 +255,11 @@ def gm_context(
         "scene_summary": scene_summary(scene),
         "activation": activation_line(activation) if activation else NO_ACTIVATION_HINT,
         "loadout_columns": LOADOUT_COLUMNS,
+        "loadout_heading": loadout_heading(scene),
         "loadout_rows": loadout_rows(scene.loadout, game.genre),
+        "danger_titles": [
+            danger_title(danger, index) for index, danger in enumerate(scene.dangers)
+        ],
         "classes": classes_for(game.genre),
         "difficulties": tuple(Difficulty),
         "complexities": tuple(Complexity),

@@ -82,6 +82,12 @@ h2 {
   font-weight: 700;
 }
 
+h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;

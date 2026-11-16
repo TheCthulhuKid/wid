@@ -360,6 +360,9 @@ GM_ACTIONS: dict[str, Callable[[GmGame, SheetForm], str]] = {
     "remove-danger": lambda game, form: game.remove_danger(form.number("index")),
     "commit-hits": lambda game, form: game.commit_hits(form.number("amount")),
     "raise-threshold": lambda game, form: game.raise_threshold(form.number("amount")),
+    "acting": lambda game, form: game.choose_acting(
+        form.number("acting") if form.get("acting") else None
+    ),
     "hostile": lambda game, form: game.set_hostile(form.ticked("hostile")),
     "activate": lambda game, form: game.activate(),
     "clash": lambda game, form: game.clash(),
