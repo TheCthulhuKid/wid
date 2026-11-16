@@ -103,7 +103,8 @@ wid/
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── dangers.py          # The GM's Dangers: loadouts, a scene's threshold and activation
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
-├── game.py             # One sitting: BaseGame (history, save, undo, recovery) and the player's Game
+├── base_game.py        # What every mode shares: history, save, load, export, undo, recovery
+├── game.py             # The player's game: the character sheet and its actions
 ├── gm.py               # The GM's game: the kit, the scene and an action for each control
 ├── export.py           # Markdown export: the sheet, the notes and the action history
 ├── history.py          # Structured action history entries, their text, and dice statistics
@@ -140,7 +141,7 @@ Front ends call `Game` (`wid/game.py`), which owns the session, history, roll op
 character, notes and file path, records history and words the feedback; game rules stay in
 the domain models, independent of Textual. What is not the character sheet (the history, the
 session name, notes and file path, Undo, saving, loading, exporting and the recovery copy) is
-`BaseGame`, so another mode of play only supplies its own state and save model. The terminal
+`BaseGame` (`wid/base_game.py`), so another mode of play only supplies its own state and save model. The terminal
 screens split the same way: `BaseApp` (`wid/ui/base.py`) holds the theme and settings, the
 feedback line, `act`, the history log, the kit question and the command palette, and
 `RollerApp` and `GmApp` (`wid/ui/gm_app.py`) compose their panels and name their buttons. The terminal app copies what the player typed into

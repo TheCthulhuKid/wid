@@ -14,7 +14,7 @@ from textual.events import Resize
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, RichLog, Select, Static
 
-from wid.game import BaseGame, player_message
+from wid.base_game import BaseGame, player_message
 from wid.history import HistoryEntry, history_statistics
 from wid.profiles import Genre
 from wid.settings import load_settings, save_settings

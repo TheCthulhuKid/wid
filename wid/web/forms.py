@@ -9,6 +9,7 @@ from collections.abc import Callable, Sequence
 from typing import NamedTuple
 from urllib.parse import parse_qs
 
+from wid.base_game import BaseGame
 from wid.dangers import Complexity, DangerClass, Difficulty, Standing
 from wid.formatting import (
     GM_KIT_QUESTION,
@@ -19,7 +20,7 @@ from wid.formatting import (
     recovery_decline,
     replace_question,
 )
-from wid.game import BaseGame, Game, NameField
+from wid.game import Game, NameField
 from wid.gm import GmGame
 from wid.profiles import Genre
 from wid.rolls import BonusKind, PowerMode, ResourceEffect

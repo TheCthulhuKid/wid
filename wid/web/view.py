@@ -2,6 +2,7 @@
 
 from markdown_it import MarkdownIt
 
+from wid.base_game import BaseGame
 from wid.dangers import (
     BARRICADE_MAX,
     DANGERS_MAX,
@@ -42,7 +43,7 @@ from wid.formatting import (
     tech_slot_label,
     tech_starting_line,
 )
-from wid.game import BaseGame, Game
+from wid.game import Game
 from wid.gm import GmGame
 from wid.history import history_statistics
 from wid.profiles import PROFILES, Genre

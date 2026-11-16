@@ -9,6 +9,7 @@ from pathlib import Path
 from random import Random
 from typing import Any
 
+from wid.base_game import BaseGame
 from wid.dangers import (
     Activation,
     Complexity,
@@ -27,7 +28,6 @@ from wid.formatting import (
     scene_summary,
     task_strain_line,
 )
-from wid.game import BaseGame
 from wid.profiles import PROFILES, Genre, WiDProfile
 from wid.rolls import roll_d6
 from wid.sessions import GmSave, parse_save

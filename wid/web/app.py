@@ -27,7 +27,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.templating import Jinja2Templates
 
-from wid.game import BaseGame, Game, player_message
+from wid.base_game import BaseGame, player_message
+from wid.game import Game
 from wid.gm import GmGame
 from wid.web.forms import (
     ACTIONS,

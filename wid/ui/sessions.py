@@ -3,6 +3,7 @@ from pathlib import Path
 
 from textual.widgets import Input
 
+from wid.base_game import BaseGame, player_message
 from wid.formatting import (
     QUIT_QUESTION,
     RECOVERY_QUESTION,
@@ -10,7 +11,6 @@ from wid.formatting import (
     recovery_decline,
     replace_question,
 )
-from wid.game import BaseGame, player_message
 from wid.profiles import Genre
 from wid.sessions import SaveFile
 from wid.ui.dialogs import ConfirmSessionAction, ExportHistory, LoadGame
