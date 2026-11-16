@@ -54,12 +54,13 @@ class GmGame(BaseGame):
         return PROFILES[self.genre]
 
     def typed_names(self, state: Scene) -> dict[int, str]:
-        return {index: danger.name for index, danger in enumerate(state.dangers)}
+        return {danger.id: danger.name for danger in state.dangers}
 
     def restore(self, state: Scene, names: dict[int, str], action: str) -> None:
-        for index, name in names.items():
-            state = state.rename(index, name)
-        self.scene = state
+        dangers = tuple(
+            danger.replace(name=names.get(danger.id, danger.name)) for danger in state.dangers
+        )
+        self.scene = state.replace(dangers=dangers)
         self.notice(f"{action}.")
 
     def options(self) -> tuple[Any, ...]:

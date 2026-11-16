@@ -24,11 +24,16 @@ What changed in each release of wid, newest first. The format follows
 - Each genre kit has its own highlight colour in the default "danger" theme and in the browser:
   green for Ball Season, orange for Heckboy, plum for Oldheart, brown for This Isn't Happening
   and blue for Second Contact. Core WiD stays red, and fumbles stay red in every kit.
+- GM saves have a new format. Older GM saves still open, but a GM save from this version needs
+  this version of wid or later.
 
 ### Fixed
 
 - In the browser, wid now asks whether to **Restore** a game it closed without saving, as the
   terminal does. Before, the question never showed, and the next change replaced the kept copy.
+- In the GM mode, Undo after removing a Danger no longer moves a name you typed since onto
+  another Danger.
+- A GM save from a newer wid now says to update wid, instead of "Input should be 1".
 
 ## [0.5.0] - 2026-10-28
 

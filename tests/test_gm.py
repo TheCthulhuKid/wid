@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import pytest
 from helpers import ScriptedRandom
 
@@ -33,6 +36,11 @@ def test_a_scene_is_built_committed_undone_and_saved(tmp_path):
     assert game.undo() == "Undid the last clash."
     scene = game.scene
     assert (scene.hostile, scene.progress, scene.dangers[0].name) == (True, 5, "Bear")
+    # A name typed after a removal stays on its own Danger when the removal is undone.
+    game.remove_danger(0)
+    game.rename_danger(0, "Jove")
+    game.undo()
+    assert [danger.name for danger in game.scene.dangers] == ["Bear", "Jove"]
 
     game.recovery_path = tmp_path / "gm-recovery.json"
     assert game.keep_recovery() == ""
@@ -49,6 +57,15 @@ def test_a_scene_is_built_committed_undone_and_saved(tmp_path):
     assert (loaded.genre, loaded.scene, loaded.history) == (game.genre, game.scene, game.history)
     assert "- Bear: Competent Brute — threshold 6, 1 hit to pass" in loaded.history_text()
     assert loaded.history_text().count("Character:") == 0
+
+    data = json.loads(Path(game.path).read_text(encoding="utf-8"))
+    for danger in data["scene"]["dangers"]:
+        del danger["id"]
+    del data["scene"]["next_id"]
+    older = loaded.parse_save(json.dumps({**data, "version": 1}))
+    assert older.scene == game.scene
+    with pytest.raises(ValueError, match="saved by a newer wid"):
+        loaded.parse_save(json.dumps({**data, "version": 3}))
 
 
 def test_keep_scene_drops_what_the_kit_lacks_then_start_new():

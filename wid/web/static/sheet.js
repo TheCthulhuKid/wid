@@ -1,17 +1,13 @@
-// Sends the sheet to the game and shows the sheet it sends back. Every button in the sheet is
-// a plain form button whose formaction names the game action, so this script only posts the
-// form and swaps the reply in. The HX-Request header is what the server's safety check expects
-// (see wid/web/app.py): pages from other sites cannot add it.
+// Posts the sheet to the action its button names and swaps the reply in. wid/web/app.py refuses
+// actions without the HX-Request header, which pages from other sites cannot add.
 
 const sheet = () => document.getElementById("sheet");
 
-// Whether the player typed since the last reply: the game has not seen that text yet.
+// Typed since the last reply, so the game has not seen it yet.
 let typed = false;
-// Whether a request is waiting for its reply. Anything sent meanwhile is dropped, so a double
-// click rolls once.
+// Anything sent while a request waits is dropped, so a double click rolls once.
 let pending = false;
-// Whether the player changed a box or typed while waiting. The reply redraws the sheet and undoes
-// that, so the player is told to make it again rather than left wondering where it went.
+// Changed while waiting: the reply draws over it, so the player is told to make it again.
 let missed = false;
 const MISSED = "A change made while wid was busy was not kept; make it again.";
 

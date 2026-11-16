@@ -181,15 +181,14 @@ random generator's state are not saved, and the theme lives in the settings file
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.
 
-**GM session files** are the same kind of file with `kind: "gm"` and their own `version: 1`
-(`GmSave` in `wid/sessions.py`). One holds the session name, the genre kit, the PC count, the
-Dangers with their names, classes, difficulties and (Ball Season) standing, the hits committed,
-the raised threshold, whether the Dangers fight each other, the barricade (This Isn't
-Happening), the revelations track and how many revelations there are (Oldheart), the notes and
-the history. A file whose scene holds something its kit lacks is refused. The last activation is not
-saved; the history has it. A player's file has no `kind`, and each mode refuses the other's
-file with a message naming the flag to start wid with. A change to the GM format bumps
-`GmSave.version` and gets its own upgrade table, separate from the player's.
+**GM session files** have `kind: "gm"` and their own `version: 2` (`GmSave` in
+`wid/sessions.py`). They hold the session name, the kit, the scene (`Scene` in
+`wid/dangers.py`), the notes and the history. A scene that holds something its kit lacks is refused. The last
+activation is only in the history. Each
+Danger has a number from the scene's counter that is never reused, so Undo can tell Dangers
+apart after one is removed. A player's file has no `kind`, and each mode refuses the other's
+file and names the flag to start wid with. A change to the GM format bumps `GmSave.version` and
+adds a step to `GM_UPGRADES`.
 
 **Recovery copy** (JSON): `recovery.json` beside the settings, and `gm-recovery.json` for the
 GM mode, so a GM and a player on one computer never overwrite each other's. While the game has

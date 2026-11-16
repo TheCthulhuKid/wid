@@ -24,7 +24,7 @@ from wid.formatting import (
 from wid.profiles import Genre
 
 BRUTE = Danger(danger_class=DangerClass.BRUTE, difficulty=Difficulty.COMPETENT)
-TITAN = Danger(name="Zeus", danger_class=DangerClass.TITAN, difficulty=Difficulty.MEGA)
+TITAN = Danger(id=1, name="Zeus", danger_class=DangerClass.TITAN, difficulty=Difficulty.MEGA)
 
 
 def test_danger_numbers_and_loadout():
@@ -65,7 +65,7 @@ def test_danger_numbers_and_loadout():
 
 def test_scene_combines_its_dangers():
     assert scene_summary(Scene()) == NO_DANGER_HINT
-    scene = Scene(pc_count=3, dangers=(BRUTE, TITAN), hostile=True).raise_threshold(2)
+    scene = Scene(pc_count=3, dangers=(BRUTE, TITAN), next_id=2, hostile=True).raise_threshold(2)
     assert scene.threshold == 6 + 12 + 2
     assert scene.strongest == TITAN
     assert scene.loadout == TITAN.loadout
@@ -87,8 +87,10 @@ def test_scene_combines_its_dangers():
     assert removed.progress == 8
     with pytest.raises(ValueError):
         committed.without(2)
-    with pytest.raises(ValueError):
-        Scene(dangers=(BRUTE,), progress=9)
+    with pytest.raises(ValueError, match="Progress cannot exceed"):
+        Scene(dangers=(BRUTE,), next_id=1, progress=9)
+    with pytest.raises(ValueError, match="its own id"):
+        Scene(dangers=(BRUTE, BRUTE), next_id=1)
 
     core, dropped = committed.in_kit(Genre.CORE)
     assert core.dangers == (BRUTE,)
@@ -132,7 +134,7 @@ def test_each_kits_scene_tracker_counts_and_is_refused_elsewhere():
         Scene().advance_revelations(1, Genre.CORE)
 
     # Another kit keeps none of them.
-    everything = Scene(dangers=(esteemed,), barricade=3, revelation_progress=5)
+    everything = Scene(dangers=(esteemed,), next_id=1, barricade=3, revelation_progress=5)
     core, dropped = everything.in_kit(Genre.CORE)
     assert (core.dangers, core.barricade, core.revelation_progress, dropped) == (
         (),
@@ -146,7 +148,7 @@ def test_each_kits_scene_tracker_counts_and_is_refused_elsewhere():
 
 
 def test_activation_uses_the_kits_attributes():
-    scene = Scene(dangers=(TITAN,))
+    scene = Scene(dangers=(TITAN,), next_id=2)
     activation = activate(scene, Genre.HECKBOY, ScriptedRandom([4, 2, 5]))
     assert activation.ability == Ability.DOMINATE
     assert activation.target == "PC who acted most recently"

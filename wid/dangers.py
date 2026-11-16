@@ -157,6 +157,7 @@ def recovery_amount(genre: Genre, difficulty: Difficulty) -> int:
 
 # Dice 1 to 3 of every loadout.
 DEFAULT_ABILITIES = (Ability.HARASS, Ability.SCARE, Ability.KILL)
+Count = Annotated[int, Field(strict=True, ge=0)]
 
 
 class Replaceable(FrozenModel):
@@ -166,6 +167,8 @@ class Replaceable(FrozenModel):
 
 
 class Danger(Replaceable):
+    # Set by the scene it joins, so Undo can tell Dangers apart after one is removed.
+    id: Count = 0
     name: str = ""
     danger_class: DangerClass
     difficulty: Difficulty
@@ -197,7 +200,6 @@ BARRICADE_MAX = 6
 REVELATION_STEP = 4
 REVELATIONS_DEFAULT = 3
 REVELATIONS_MAX = 6
-Count = Annotated[int, Field(strict=True, ge=0)]
 
 
 class Scene(Replaceable):
@@ -205,6 +207,8 @@ class Scene(Replaceable):
 
     pc_count: Annotated[int, Field(strict=True, ge=PC_MIN, le=PC_MAX)] = 4
     dangers: tuple[Danger, ...] = Field(default=(), max_length=DANGERS_MAX)
+    # Never reused, even after the Danger that had it is removed.
+    next_id: Count = 0
     progress: Count = 0
     # Added to the Dangers' thresholds, as Ball Season's manipulate does.
     raised: Count = 0
@@ -221,6 +225,9 @@ class Scene(Replaceable):
             raise ValueError("Progress cannot exceed the threshold.")
         if self.revelation_progress > self.revelation_total:
             raise ValueError("The revelations track cannot go past its last revelation.")
+        ids = [danger.id for danger in self.dangers]
+        if len(set(ids)) != len(ids) or any(number >= self.next_id for number in ids):
+            raise ValueError("Each Danger needs its own id, below the scene's next id.")
         return self
 
     @property
@@ -268,14 +275,16 @@ class Scene(Replaceable):
         return scene.replace(progress=min(self.progress, scene.threshold))
 
     def with_danger(self, danger: Danger, genre: Genre) -> Self:
-        """The scene with ``danger`` added, refused when ``genre`` lacks its class or standing."""
+        """The scene with ``danger`` added under the next id; refused when ``genre`` lacks its
+        class or standing."""
         if danger.danger_class not in classes_for(genre):
             raise ValueError(f"{PROFILES[genre].name} has no {danger.danger_class.label}s.")
         if danger.standing is not None:
             require_tracker(genre, "has_standing", "Standing")
         if len(self.dangers) >= DANGERS_MAX:
             raise ValueError(f"A scene holds up to {DANGERS_MAX} Dangers.")
-        return self.replace(dangers=(*self.dangers, danger))
+        added = danger.replace(id=self.next_id)
+        return self.replace(dangers=(*self.dangers, added), next_id=self.next_id + 1)
 
     def move_barricade(self, step: int, genre: Genre) -> Self:
         require_tracker(genre, "has_barricade", "barricade")
