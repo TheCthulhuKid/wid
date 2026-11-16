@@ -25,6 +25,11 @@ What changed in each release of wid, newest first. The format follows
   green for Ball Season, orange for Heckboy, plum for Oldheart, brown for This Isn't Happening
   and blue for Second Contact. Core WiD stays red, and fumbles stay red in every kit.
 
+### Fixed
+
+- In the browser, wid now asks whether to **Restore** a game it closed without saving, as the
+  terminal does. Before, the question never showed, and the next change replaced the kept copy.
+
 ## [0.5.0] - 2026-10-28
 
 ### Added

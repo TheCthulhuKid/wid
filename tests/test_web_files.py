@@ -71,6 +71,20 @@ def test_the_history_exports_to_a_file_and_downloads(tmp_path):
     assert download.text.startswith("# Friday")
 
 
+def test_the_first_page_offers_back_a_game_left_unsaved(tmp_path):
+    recovery = tmp_path / "recovery.json"
+    left = Game(rng=ScriptedRandom([4] * 8), recovery_path=recovery)
+    left.start_game((1, 2, 3))
+    left.roll()
+    left.keep_recovery()
+
+    game = Game(recovery_path=recovery)
+    client = browser(game)
+    assert "Restore that game?" in client.get("/").text
+    act(client, "restore", confirm="1")
+    assert game.session.model_dump() == left.session.model_dump()
+
+
 def test_a_save_downloads_and_uploads_into_another_game():
     game = started()
     game.name = "Friday"

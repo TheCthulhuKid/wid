@@ -44,33 +44,34 @@ async function send(url, data) {
   }
 }
 
-// Replace the sheet, then put the focus back on the same control so typing and keyboard play
-// carry on where they were.
+// Focus goes back to the same control, so typing and keyboard play carry on.
 function swap(html) {
   const active = document.activeElement;
   const name = active && active.getAttribute("name");
-  // Only buttons and boxes need their value to tell them apart. A text field's value attribute
-  // is the text the server last drew, so it no longer matches once the player has typed.
+  // A text field's value attribute is what the server last drew, not what was typed since.
   const keyed = active && ["button", "submit", "radio", "checkbox"].includes(active.type);
   const value = keyed ? active.getAttribute("value") : null;
   sheet().outerHTML = html;
   typed = false;
-  // A question from the game (replace a file, discard a game) opens as a modal dialog.
-  const ask = sheet().querySelector("dialog[data-ask]");
-  if (ask) {
-    // Cancel or Escape removes it, so its carried fields (such as an upload) are not sent along
-    // with every later action.
-    ask.addEventListener("close", () => ask.remove());
-    ask.showModal();
-    return;
-  }
+  if (openQuestion()) return;
   if (!name) return;
-  // A value can hold what the player typed, quotes included, so the selector is escaped.
   const field = `[name="${CSS.escape(name)}"]`;
   const selector = value === null ? field : `${field}[value="${CSS.escape(value)}"]`;
   const again = sheet().querySelector(selector);
   if (again) again.focus({ preventScroll: true });
 }
+
+function openQuestion() {
+  const ask = sheet().querySelector("dialog[data-ask]");
+  if (!ask) return false;
+  // Removed on close, or its carried fields (an upload) would go out with every later action.
+  ask.addEventListener("close", () => ask.remove());
+  ask.showModal();
+  return true;
+}
+
+// The first page can already ask something: whether to restore a game wid closed without saving.
+openQuestion();
 
 document.addEventListener("submit", (event) => {
   if (event.target !== sheet()) return;
