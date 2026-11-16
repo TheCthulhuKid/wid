@@ -368,9 +368,7 @@ class Game(BaseGame):
     def change_kit(self, genre: Genre) -> str:
         """A genre kit lasts a whole game, so changing it starts over: sheet, history and file."""
         self.reset_sheet(genre)
-        self.history.clear()
-        self.name = self.path = self.notes = ""
-        self.saved_snapshot = None
+        self.start_over()
         return f"New {PROFILES[genre].name} game started."
 
     def snapshot(self) -> dict[str, object]:

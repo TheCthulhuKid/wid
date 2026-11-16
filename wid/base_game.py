@@ -19,6 +19,7 @@ from pydantic import BaseModel, ValidationError
 
 from wid.export import history_markdown
 from wid.history import HistoryEntry, history_statistics
+from wid.profiles import WiDProfile
 from wid.rolls import roll_d6
 from wid.sessions import NAME_MAX, CharacterDetails, Recovery, session_file_path
 from wid.storage import write_text
@@ -88,6 +89,11 @@ class BaseGame(ABC):
     @abstractmethod
     def state(self) -> BaseModel:
         """The model Undo copies before a change and puts back after."""
+
+    @property
+    @abstractmethod
+    def profile(self) -> WiDProfile:
+        """The genre kit the game is played in."""
 
     @property
     @abstractmethod
@@ -210,6 +216,13 @@ class BaseGame(ABC):
         self.history = list(saved.history)
         self.name = saved.name
         self.notes = saved.notes
+        self.undo_stack = []
+
+    def start_over(self) -> None:
+        """Clear what a new game does not keep: the history, name, file path, notes and Undo."""
+        self.history.clear()
+        self.name = self.path = self.notes = ""
+        self.saved_snapshot = None
         self.undo_stack = []
 
     @contextmanager

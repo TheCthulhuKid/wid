@@ -236,10 +236,7 @@ class GmGame(BaseGame):
         self.genre = genre
         self.scene = Scene()
         self.last_activation = None
-        self.history.clear()
-        self.name = self.path = self.notes = ""
-        self.saved_snapshot = None
-        self.undo_stack = []
+        self.start_over()
         return f"New {self.profile.name} GM game started."
 
     def require_dangers(self) -> None:
