@@ -28,6 +28,8 @@ What changed in each release of wid, newest first. The format follows
   and blue for Second Contact. Core WiD stays red, and fumbles stay red in every kit.
 - In the GM mode, an activation names the Danger it rolled for, such as "Zeus (Mega Titan)
   activates (4, 2, 5): Kill — …".
+- **Undo** goes back up to 10 changes, not 50, in both modes.
+- The how-to's **Undo** paragraph is shorter.
 - GM saves have a new format. Older GM saves still open, but a GM save from this version needs
   this version of wid or later.
 

@@ -40,13 +40,10 @@ each pool size came up. Rerolls and bonuses are left out, so no die counts twice
 ready to paste into a chat. In the terminal it goes through the terminal's clipboard, which most
 terminals pass on (macOS Terminal does not).
 
-**Undo** (under the result) takes back the last change to the sheet: a roll, a reroll, an item,
-expertise or Tech bonus, New scenario, a sacrificed piece of Tech, strain, Standing, Resources,
-a lost crafted item, Corruption or a manifestation. Press it again for the one before, up to 50
-changes. The history keeps what happened and notes each undo.
-An undone roll is not rolled back into the dice: rolling again gives new numbers. Names typed
-since the change stay, and only undoing a roll brings back the attribute, Assisted, Expertise
-and power it cleared. Loading a game, starting a new character or changing the kit starts with
+**Undo** (under the result) takes back your last change to the sheet; press it again for the
+one before, up to 10. The history keeps what happened and notes each undo. Rolling again after
+undoing a roll gives new dice, not the same ones. Names you typed since stay, and undoing a roll
+brings back the options it cleared. Loading a game, a new character or a new kit starts with
 nothing to undo.
 
 ## Items and expertise

@@ -37,7 +37,7 @@ def player_message(error: Exception) -> str:
 
 # The name a game without one is kept under, in the recovery copy and a browser download.
 UNNAMED = "Unsaved game"
-UNDO_LIMIT = 50
+UNDO_LIMIT = 10
 
 
 @contextmanager

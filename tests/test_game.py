@@ -67,6 +67,13 @@ def test_undo_takes_back_the_last_changes_in_turn():
     assert str(game.history[-1]) == "Undid the last roll."
     with pytest.raises(ValueError, match="nothing to undo"):
         game.undo()
+    # Undo keeps the last 10 changes.
+    for _ in range(11):
+        game.roll()
+    for _ in range(10):
+        game.undo()
+    with pytest.raises(ValueError, match="nothing to undo"):
+        game.undo()
 
 
 def test_strain_and_standing_changes_are_logged():
