@@ -39,6 +39,20 @@ UNNAMED = "Unsaved game"
 UNDO_LIMIT = 50
 
 
+@contextmanager
+def reported(what: str) -> Iterator[None]:
+    """Turn a file or save error into "Could not {what}: ..." for the player.
+
+    ``FileExistsError`` goes through as it is, so the front end can ask before replacing.
+    """
+    try:
+        yield
+    except FileExistsError:
+        raise
+    except (OSError, ValueError) as error:
+        raise ValueError(f"Could not {what}: {player_message(error)}") from error
+
+
 class Before(NamedTuple):
     """The game just before a change, and the change's name for "Undid the last ..."."""
 
@@ -149,33 +163,25 @@ class BaseGame(ABC):
     def save(self, *, overwrite: bool = False) -> str:
         if not self.name.strip():
             raise ValueError("Name the session before saving.")
-        try:
+        with reported("save session"):
             path = session_file_path(self.path)
             saved = self.saved_session(self.name)
             saved.save(path, overwrite=overwrite)
-        except FileExistsError:
-            raise
-        except (OSError, ValueError) as error:
-            raise ValueError(f"Could not save session: {player_message(error)}") from error
         self.name = saved.name
         self.saved_snapshot = self.snapshot()
         return f"Saved {saved.name} to {path}."
 
     def read_save(self, text: str) -> tuple[BaseModel, Path]:
         """Read a session file without changing the game, so the player can confirm first."""
-        try:
+        with reported("load session"):
             path = session_file_path(text)
             contents = path.read_text(encoding="utf-8")
-        except (OSError, ValueError) as error:
-            raise ValueError(f"Could not load session: {player_message(error)}") from error
         return self.read_save_text(contents), path
 
     def read_save_text(self, text: str) -> BaseModel:
         """Read a save from its text, such as a file uploaded in the browser."""
-        try:
+        with reported("load session"):
             return self.parse_save(text)
-        except ValueError as error:
-            raise ValueError(f"Could not load session: {player_message(error)}") from error
 
     def load(self, saved: BaseModel, path: Path | None) -> str:
         """Take over ``saved``; ``path`` is the file it came from, None for an uploaded one."""
@@ -292,11 +298,9 @@ class BaseGame(ABC):
         """Take back the game an earlier run left unsaved; it stays unsaved until saved."""
         if self.recovery_path is None:
             raise ValueError("There is no recovery copy to restore.")
-        try:
+        with reported("restore the game"):
             text = self.recovery_path.read_text(encoding="utf-8")
             recovery = Recovery.model_validate_json(text)
-        except (OSError, ValueError) as error:
-            raise ValueError(f"Could not restore the game: {player_message(error)}") from error
         self.take_over(recovery.game)
         self.name, self.path = recovery.name, recovery.path
         self.saved_snapshot = None
@@ -336,11 +340,7 @@ class BaseGame(ABC):
 
     def export_history(self, text: str, *, overwrite: bool = False) -> str:
         markdown = self.history_text()
-        try:
+        with reported("export history"):
             path = session_file_path(text, label="history file")
             write_text(path, markdown, overwrite=overwrite)
-        except FileExistsError:
-            raise
-        except (OSError, ValueError) as error:
-            raise ValueError(f"Could not export history: {player_message(error)}") from error
         return f"Exported {len(self.history)} history entries to {path}."
