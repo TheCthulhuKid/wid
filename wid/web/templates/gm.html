@@ -61,7 +61,7 @@
           <select name="amount">{% for amount in amounts %}<option>{{ amount }}</option>{% endfor %}</select>
         </label>
         <button class="primary" formaction="/actions/commit-hits" {% if not scene.dangers %}disabled{% endif %}>Commit hits</button>
-        <button formaction="/actions/raise-threshold">Raise threshold</button>
+        <button formaction="/actions/raise-threshold" {% if not scene.dangers %}disabled{% endif %}>Raise threshold</button>
       </div>
       <div class="row">
         <label class="tick"><input type="checkbox" name="hostile" data-action="hostile" {% if scene.hostile %}checked{% endif %}> Dangers fight each other</label>

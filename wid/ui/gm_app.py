@@ -138,7 +138,7 @@ class GmApp(SessionActions, BaseApp):
                     self.query_one(f"#danger-name-{index}", Input).value = danger.name
         self.query_one("#scene-summary", Static).update(scene_summary(scene))
         self.query_one("#add-danger", Button).disabled = len(scene.dangers) >= DANGERS_MAX
-        for button_id in ("commit-hits", "activate"):
+        for button_id in ("commit-hits", "raise-threshold", "activate"):
             self.query_one(f"#{button_id}", Button).disabled = not scene.dangers
         self.query_one("#clash", Button).disabled = not (scene.dangers and scene.hostile)
         self.update_trackers()

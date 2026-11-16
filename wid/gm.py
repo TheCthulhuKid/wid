@@ -150,6 +150,7 @@ class GmGame(BaseGame):
         return self.notice(f"Committed {hits} {'hit' if hits == 1 else 'hits'}. {self.summary()}")
 
     def raise_threshold(self, amount: int) -> str:
+        self.require_dangers()
         if amount < 1:
             raise ValueError("Raise the threshold by at least 1.")
         with self.undoable("threshold raise"):

@@ -18,6 +18,8 @@ def heckboy_scene() -> GmGame:
 
 
 def test_a_scene_is_built_committed_undone_and_saved(tmp_path):
+    with pytest.raises(ValueError, match="Add a Danger first"):
+        GmGame().raise_threshold(1)
     game = heckboy_scene()
     assert game.history[-1].notice == "Added Zeus: Mega Titan — threshold 16, 2 hits to pass"
     assert game.set_pc_count(3) == "PCs: 3."
