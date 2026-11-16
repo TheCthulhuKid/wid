@@ -316,15 +316,17 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     "spend-resources": lambda game, form: game.spend_resources(ResourceEffect(form.text("effect"))),
     "lose-crafted-item": lambda game, form: game.lose_crafted_item(),
     "sacrifice-item": lambda game, form: game.sacrifice_item(BonusKind(form.text("kind"))),
-    "build-barricade": lambda game, form: game.build_barricade(form.number("barricade-spend")),
-    "strengthen-barricade": lambda game, form: game.strengthen_barricade(
-        form.number("barricade-spend")
+    "build-barricade": lambda game, form: game.spend_on_barricade(
+        form.number("barricade-spend"), build=True
+    ),
+    "strengthen-barricade": lambda game, form: game.spend_on_barricade(
+        form.number("barricade-spend"), build=False
     ),
     "gain-corruption": lambda game, form: game.gain_corruption(form.number("corruption-amount")),
     "avoid-strain": lambda game, form: game.avoid_strain(form.number("corruption-amount")),
     "recover": lambda game, form: game.recover_after(Difficulty(form.text("recovery-difficulty"))),
-    "add-manifestation": lambda game, form: game.add_manifestation(),
-    "remove-manifestation": lambda game, form: game.remove_manifestation(),
+    "add-manifestation": lambda game, form: game.change_manifestations(add=True),
+    "remove-manifestation": lambda game, form: game.change_manifestations(add=False),
     "standing": lambda game, form: game.set_standing(form.number("standing")),
     "new-character": new_character,
     "change-kit": change_kit,

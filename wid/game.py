@@ -30,6 +30,7 @@ from wid.rolls import (
     RollResult,
     RollSession,
     Standing,
+    StrainTracker,
 )
 from wid.sessions import CharacterDetails, SavedSession, parse_save
 
@@ -250,21 +251,22 @@ class Game(BaseGame):
             and index not in result.applied_tech
         )
 
-    def set_strain_box(self, index: int, marked: bool) -> str:
+    def change_strain(self, wording: str, update: Callable[[StrainTracker], StrainTracker]) -> str:
         with self.undoable("strain change"):
-            self.session.strain = self.session.strain.set_box(index, marked)
+            self.session.strain = update(self.session.strain)
+        return self.notice(strain_notice(wording, self.session.strain))
+
+    def set_strain_box(self, index: int, marked: bool) -> str:
         change = "Marked" if marked else "Cleared"
-        return self.notice(strain_notice(f"{change} strain box {index + 1}", self.session.strain))
+        return self.change_strain(
+            f"{change} strain box {index + 1}", lambda strain: strain.set_box(index, marked)
+        )
 
     def take_strain(self) -> str:
-        with self.undoable("strain change"):
-            self.session.strain = self.session.strain.take_by_hand()
-        return self.notice(strain_notice("Took 1 strain", self.session.strain))
+        return self.change_strain("Took 1 strain", StrainTracker.take_by_hand)
 
     def take_wound(self) -> str:
-        with self.undoable("strain change"):
-            self.session.strain = self.session.strain.take_wound()
-        return self.notice(strain_notice("Took a wound", self.session.strain))
+        return self.change_strain("Took a wound", StrainTracker.take_wound)
 
     def second_wind(self) -> str:
         with self.undoable("Second Wind"):
@@ -305,21 +307,16 @@ class Game(BaseGame):
                 change = strain_notice(f"cleared {cleared} strain", self.session.strain)
         return self.notice(recovery_notice(difficulty, change))
 
-    def build_barricade(self, spent: int) -> str:
+    def spend_on_barricade(self, spent: int, *, build: bool) -> str:
+        """Build a barricade, or strengthen the one there."""
         with self.undoable("barricade"):
-            strength = self.session.spend_on_barricade(spent, build=True)
-        return self.notice(
-            f"Built a barricade of strength {strength} for {spent} Resources: "
-            f"{self.session.resources} in the pool."
+            strength = self.session.spend_on_barricade(spent, build=build)
+        change = (
+            f"Built a barricade of strength {strength}"
+            if build
+            else f"Strengthened the barricade by {strength}"
         )
-
-    def strengthen_barricade(self, spent: int) -> str:
-        with self.undoable("barricade"):
-            strength = self.session.spend_on_barricade(spent, build=False)
-        return self.notice(
-            f"Strengthened the barricade by {strength} for {spent} Resources: "
-            f"{self.session.resources} in the pool."
-        )
+        return self.notice(f"{change} for {spent} Resources: {self.session.resources} in the pool.")
 
     def sacrifice_item(self, kind: BonusKind) -> str:
         name = getattr(self.session.bonuses, kind).strip()
@@ -346,15 +343,14 @@ class Game(BaseGame):
             check = self.session.add_corruption(amount, rng=self.rng)
         return self.notice(f"{change} {check_summary(check)}")
 
-    def add_manifestation(self) -> str:
+    def change_manifestations(self, *, add: bool) -> str:
+        """Add a manifestation by hand, or remove the newest."""
         with self.undoable("manifestation change"):
-            self.session.add_manifestation()
-        return self.notice("Manifestation added by hand.")
-
-    def remove_manifestation(self) -> str:
-        with self.undoable("manifestation change"):
-            self.session.remove_manifestation()
-        return self.notice("Manifestation removed by hand.")
+            if add:
+                self.session.add_manifestation()
+            else:
+                self.session.remove_manifestation()
+        return self.notice(f"Manifestation {'added' if add else 'removed'} by hand.")
 
     def set_standing(self, standing: int) -> str:
         # Clicking the dot already chosen moves nothing, so there is nothing to log or undo.

@@ -98,8 +98,8 @@ GAME_BUTTONS: dict[str, Callable[[Game], str]] = {
     "resources-up": lambda game: game.adjust_resources(1),
     "lose-crafted-item": Game.lose_crafted_item,
     "roll-d6": Game.roll_one_die,
-    "add-manifestation": Game.add_manifestation,
-    "remove-manifestation": Game.remove_manifestation,
+    "add-manifestation": lambda game: game.change_manifestations(add=True),
+    "remove-manifestation": lambda game: game.change_manifestations(add=False),
 }
 
 
@@ -541,8 +541,7 @@ class RollerApp(SessionActions, BaseApp):
 
     def spend_on_barricade(self, build: bool) -> None:
         spent = self.query_one("#barricade-spend", Select).value
-        action = self.game.build_barricade if build else self.game.strengthen_barricade
-        self.act(lambda: action(spent))
+        self.act(lambda: self.game.spend_on_barricade(spent, build=build))
 
     def recover_after(self) -> None:
         difficulty = self.query_one("#recovery-difficulty", Select).value
