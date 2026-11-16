@@ -34,6 +34,8 @@ What changed in each release of wid, newest first. The format follows
 - In the GM mode, Undo after removing a Danger no longer moves a name you typed since onto
   another Danger.
 - A GM save from a newer wid now says to update wid, instead of "Input should be 1".
+- In the terminal, settings that cannot be saved are reported as other file errors are, such as
+  "Could not save settings: Permission denied: …/settings.json", without Python's error number.
 
 ## [0.5.0] - 2026-10-28
 

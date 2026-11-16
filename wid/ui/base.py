@@ -169,7 +169,7 @@ class BaseApp(App):
         try:
             save_settings(self.settings, self.settings_path)
         except OSError as error:
-            self.feedback(f"Could not save settings: {error}")
+            self.feedback(f"Could not save settings: {player_message(error)}")
 
     def feedback(self, message: str) -> None:
         self.query_one("#feedback", Static).update(message)
