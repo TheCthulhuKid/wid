@@ -89,13 +89,13 @@ def test_bad_fields_are_refused_without_breaking_the_page_or_losing_typing():
     refused = act(client, "update", fear="7", notes="Keep this")
     assert refused.status_code == 200
     assert "Scared" in refused.text
-    assert game.fear_level == 0
+    assert game.next_test.fear_level == 0
     assert game.notes == "Keep this"
     assert client.get("/").status_code == 200
     game.start_game((1, 2, 3))
     game.roll()
     act(client, "update", die="9")
-    assert game.item_target is None
+    assert game.next_test.item_target is None
 
 
 def test_the_gm_page_runs_a_scene_and_refuses_a_player_save():

@@ -53,16 +53,16 @@
       <div class="row">
         <label class="field narrow">Scared
           <select name="fear" data-action="update">
-            {% for level in range(scared_max + 1) %}<option {% if level == game.fear_level %}selected{% endif %}>{{ level }}</option>{% endfor %}
+            {% for level in range(scared_max + 1) %}<option {% if level == game.next_test.fear_level %}selected{% endif %}>{{ level }}</option>{% endfor %}
           </select>
         </label>
-        <label class="tick"><input type="checkbox" name="assisted" data-action="update" {% if game.assisted %}checked{% endif %}> Assisted</label>
-        <label class="tick"><input type="checkbox" name="expertise" data-action="update" {% if game.expertise %}checked{% endif %}> Expertise</label>
+        <label class="tick"><input type="checkbox" name="assisted" data-action="update" {% if game.next_test.assisted %}checked{% endif %}> Assisted</label>
+        <label class="tick"><input type="checkbox" name="expertise" data-action="update" {% if game.next_test.expertise %}checked{% endif %}> Expertise</label>
         {% if kit.has_standing %}
         <label class="field narrow">Target standing
           <select name="target-standing" data-action="update" title="The tier the test is made against: each tier apart is 1 more hit to pass">
             <option value="">No standing</option>
-            {% for standing in standings %}<option value="{{ standing }}" {% if standing == game.target_standing %}selected{% endif %}>{{ standing.label }}</option>{% endfor %}
+            {% for standing in standings %}<option value="{{ standing }}" {% if standing == game.next_test.target_standing %}selected{% endif %}>{{ standing.label }}</option>{% endfor %}
           </select>
         </label>
         {% endif %}
@@ -77,13 +77,13 @@
 
       {% if kit.has_powers %}
       <div class="kit-controls powers">
-        <label class="tick"><input type="radio" name="power" value="none" data-action="update" {% if game.power == PowerMode.NONE %}checked{% endif %}> No power</label>
+        <label class="tick"><input type="radio" name="power" value="none" data-action="update" {% if game.next_test.power == PowerMode.NONE %}checked{% endif %}> No power</label>
         {% for mode, label in power_labels.items() %}
         <div class="row named">
           <label class="field grow">{{ label }}
             <input name="power-name-{{ loop.index0 }}" value="{{ session.power_names[loop.index0] }}">
           </label>
-          <label class="tick"><input type="radio" name="power" value="{{ mode }}" data-action="update" {% if game.power == mode %}checked{% endif %}> Use</label>
+          <label class="tick"><input type="radio" name="power" value="{{ mode }}" data-action="update" {% if game.next_test.power == mode %}checked{% endif %}> Use</label>
         </div>
         {% endfor %}
       </div>
@@ -174,7 +174,7 @@
         <label class="field narrow">Apply to die
           <select name="die" {% if not result %}disabled{% endif %}>
             {% if result %}
-            {% for die in result.dice %}<option value="{{ loop.index0 }}" {% if loop.index0 == game.item_target %}selected{% endif %}>Die {{ loop.index }}</option>{% endfor %}
+            {% for die in result.dice %}<option value="{{ loop.index0 }}" {% if loop.index0 == game.next_test.item_target %}selected{% endif %}>Die {{ loop.index }}</option>{% endfor %}
             {% else %}<option>Roll first</option>{% endif %}
           </select>
         </label>
@@ -272,7 +272,7 @@
         <span class="detail">{% if die.bonus %}{{ die.raw }}+{{ die.bonus }}{% else %}&nbsp;{% endif %}</span>
         <span class="outcome">{{ outcome }}</span>
         {% if kit.has_rerolls %}
-        <label class="reroll"><input type="checkbox" name="reroll" value="{{ loop.index0 }}" {% if loop.index0 in game.reroll_selection %}checked{% endif %}> Reroll</label>
+        <label class="reroll"><input type="checkbox" name="reroll" value="{{ loop.index0 }}" {% if loop.index0 in game.next_test.reroll_selection %}checked{% endif %}> Reroll</label>
         {% endif %}
       </li>
       {% endfor %}

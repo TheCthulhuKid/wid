@@ -3,10 +3,10 @@
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from random import Random
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from wid.base_game import BaseGame
-from wid.dangers import Difficulty, recovery_amount
+from wid.dangers import Difficulty, Replaceable, recovery_amount
 from wid.formatting import (
     BONUS_LABELS,
     check_summary,
@@ -48,6 +48,25 @@ RENAMERS: dict[NameField, Callable[[RollSession, Any, str], object]] = {
 type NameSlot = tuple[NameField, int | BonusKind]
 
 
+class NextTest(Replaceable):
+    """The options for the next test, and the dice picked from the current result."""
+
+    tested_attribute: str
+    fear_level: int = 0
+    assisted: bool = False
+    expertise: bool = False
+    power: PowerMode = PowerMode.NONE
+    target_standing: Standing | None = None
+    reroll_selection: tuple[int, ...] = ()
+    item_target: int | None = None
+
+    def after_roll(self) -> Self:
+        """Clear the options that last one test; Scared and the attribute stay."""
+        return self.replace(
+            assisted=False, expertise=False, power=PowerMode.NONE, target_standing=None
+        )
+
+
 class Game(BaseGame):
     """The player's game: the character sheet, the options for the next test and its actions."""
 
@@ -59,15 +78,7 @@ class Game(BaseGame):
         """A fresh character of ``genre``: session, details and the options for the next test."""
         self.session = RollSession(profile_id=genre)
         self.character = CharacterDetails()
-        self.tested_attribute = PROFILES[genre].attributes[0]
-        self.fear_level = 0
-        self.assisted = False
-        self.expertise = False
-        self.power = PowerMode.NONE
-        self.target_standing: Standing | None = None
-        # Choices about the current result, kept so a save can restore them.
-        self.reroll_selection: tuple[int, ...] = ()
-        self.item_target: int | None = None
+        self.next_test = NextTest(tested_attribute=PROFILES[genre].attributes[0])
         # A new sheet has nothing to take back.
         self.undo_stack = []
 
@@ -100,10 +111,11 @@ class Game(BaseGame):
                 expertise_name=session.bonuses.expertise,
             )
         )
-        self.reroll_selection = ()
         # A new roll can have fewer dice than the one the item was aimed at.
-        if self.item_target is not None and self.item_target >= self.dice_count:
-            self.item_target = None
+        target = self.next_test.item_target
+        if target is not None and target >= self.dice_count:
+            target = None
+        self.next_test = self.next_test.replace(reroll_selection=(), item_target=target)
 
     @property
     def dice_count(self) -> int:
@@ -130,15 +142,17 @@ class Game(BaseGame):
         if not 0 <= fear_level <= SCARED_MAX:
             raise ValueError(f"Scared runs from 0 to {SCARED_MAX}.")
         count = self.dice_count
-        self.fear_level = fear_level
-        self.assisted = assisted
-        self.expertise = expertise
-        self.power = power
-        self.target_standing = target_standing if self.profile.has_standing else None
         picked = {index for index in reroll if 0 <= index < count}
-        self.reroll_selection = tuple(sorted(picked)) if self.profile.has_rerolls else ()
         on_a_die = item_target is not None and 0 <= item_target < count
-        self.item_target = item_target if on_a_die else None
+        self.next_test = self.next_test.replace(
+            fear_level=fear_level,
+            assisted=assisted,
+            expertise=expertise,
+            power=power,
+            target_standing=target_standing if self.profile.has_standing else None,
+            reroll_selection=tuple(sorted(picked)) if self.profile.has_rerolls else (),
+            item_target=item_target if on_a_die else None,
+        )
 
     def rename(self, field: NameField, slot: int | BonusKind, name: str) -> None:
         """Name a bonus, power, manifestation, Tech piece or strain row; nothing is logged."""
@@ -157,19 +171,19 @@ class Game(BaseGame):
 
     def draft_request(self, *, preview: bool = False) -> RollRequest:
         """The next test as the options stand; ``preview`` skips the rank, which needs setup."""
-        session = self.session
+        session, options = self.session, self.next_test
         return RollRequest(
             profile_id=session.profile_id,
-            attribute=self.tested_attribute,
-            attribute_rank=1 if preview else session.attribute_rank(self.tested_attribute),
-            assisted=self.assisted,
-            fear_level=self.fear_level,
-            expertise=self.expertise,
-            power=self.power if self.profile.has_powers else PowerMode.NONE,
+            attribute=options.tested_attribute,
+            attribute_rank=1 if preview else session.attribute_rank(options.tested_attribute),
+            assisted=options.assisted,
+            fear_level=options.fear_level,
+            expertise=options.expertise,
+            power=options.power if self.profile.has_powers else PowerMode.NONE,
             resource_die=session.resource_die,
             manifestations=len(session.manifestations),
             standing=session.standing,
-            target_standing=self.target_standing,
+            target_standing=options.target_standing,
         )
 
     def start_game(self, ranks: tuple[int, ...]) -> str:
@@ -181,12 +195,10 @@ class Game(BaseGame):
         with self.undoable("roll", options=True):
             if attribute is not None:
                 self.session.attribute_rank(attribute)
-                self.tested_attribute = attribute
+                self.next_test = self.next_test.replace(tested_attribute=attribute)
             result = self.session.roll(self.draft_request(), rng=self.rng)
             self.log_result(result, ROLL_ACTION)
-            self.assisted = self.expertise = False
-            self.power = PowerMode.NONE
-            self.target_standing = None
+            self.next_test = self.next_test.after_roll()
         return ""
 
     def reroll(self, indices: set[int]) -> str:
@@ -372,14 +384,7 @@ class Game(BaseGame):
             **super().snapshot(),
             "session": self.session.model_dump(),
             "character": self.character,
-            "draft": (
-                self.tested_attribute,
-                self.fear_level,
-                self.assisted,
-                self.expertise,
-                self.power,
-                self.target_standing,
-            ),
+            "draft": self.next_test.model_dump(exclude={"reroll_selection", "item_target"}),
         }
 
     def wrote_anything(self) -> bool:
@@ -401,8 +406,8 @@ class Game(BaseGame):
             notes=self.notes,
             character=self.character,
             history=tuple(self.history),
-            reroll_indices=self.reroll_selection,
-            item_target=self.item_target,
+            reroll_indices=self.next_test.reroll_selection,
+            item_target=self.next_test.item_target,
         )
 
     def parse_save(self, text: str) -> SavedSession:
@@ -414,36 +419,23 @@ class Game(BaseGame):
         self.session = saved.session.model_copy(deep=True)
         self.character = saved.character
         draft = saved.draft
-        self.tested_attribute = draft.attribute
-        self.fear_level = draft.fear_level
-        self.assisted = draft.assisted
-        self.expertise = draft.expertise
-        self.power = draft.power
-        self.target_standing = draft.target_standing
-        self.reroll_selection = saved.reroll_indices
-        self.item_target = saved.item_target
-
-    def options(self) -> tuple[Any, ...]:
-        return (
-            self.tested_attribute,
-            self.assisted,
-            self.expertise,
-            self.power,
-            self.target_standing,
-            self.reroll_selection,
-            self.item_target,
+        self.next_test = NextTest(
+            tested_attribute=draft.attribute,
+            fear_level=draft.fear_level,
+            assisted=draft.assisted,
+            expertise=draft.expertise,
+            power=draft.power,
+            target_standing=draft.target_standing,
+            reroll_selection=saved.reroll_indices,
+            item_target=saved.item_target,
         )
 
-    def restore_options(self, options: tuple[Any, ...]) -> None:
-        (
-            self.tested_attribute,
-            self.assisted,
-            self.expertise,
-            self.power,
-            self.target_standing,
-            self.reroll_selection,
-            self.item_target,
-        ) = options
+    def options(self) -> NextTest:
+        return self.next_test
+
+    def restore_options(self, options: NextTest) -> None:
+        # A roll leaves Scared as it is, so undoing one keeps the Scared set since.
+        self.next_test = options.replace(fear_level=self.next_test.fear_level)
 
     def restore(self, state: RollSession, names: dict[NameSlot, str], action: str) -> None:
         shown = self.session.current_result

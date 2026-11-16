@@ -18,14 +18,13 @@ def started(genre=Genre.CORE, faces=(4,) * 40):
 
 def test_a_roll_is_logged_and_clears_the_one_test_options():
     game = started(Genre.HECKBOY)
-    game.assisted = True
-    game.power = PowerMode.RELIABLE
-    game.fear_level = 1
+    game.next_test = game.next_test.replace(assisted=True, power=PowerMode.RELIABLE, fear_level=1)
     assert game.roll("Ferocity") == ""
     request = game.session.current_result.request
     assert (request.attribute, request.assisted, request.power) == ("Ferocity", True, "reliable")
     assert str(game.history[-1]).startswith("Roll: heckboy, Ferocity rank 2")
-    assert (game.assisted, game.power, game.fear_level) == (False, PowerMode.NONE, 1)
+    options = game.next_test
+    assert (options.assisted, options.power, options.fear_level) == (False, PowerMode.NONE, 1)
 
 
 def test_bonuses_are_offered_once_named_and_logged_without_a_cost():
@@ -42,26 +41,29 @@ def test_bonuses_are_offered_once_named_and_logged_without_a_cost():
 def test_undo_takes_back_the_last_changes_in_turn():
     game = started()
     game.rename("bonus", BonusKind.APPROPRIATE_ITEM, "Sword")
-    game.assisted = True
+    game.next_test = game.next_test.replace(assisted=True)
     game.roll()
     rolled = game.session.current_result
     game.apply_bonus(BonusKind.APPROPRIATE_ITEM, 0)
     game.take_strain()
     game.rename("bonus", BonusKind.EXPERTISE, "Lockpicking")
     game.rename("strain", 0, "Broken arm")
-    game.assisted = True
+    game.next_test = game.next_test.replace(assisted=True)
     assert game.undo() == "Undid the last strain change."
     assert not any(game.session.strain.boxes)
     assert (game.session.bonuses.expertise, game.session.strain.names[0]) == (
         "Lockpicking",
         "Broken arm",
     )
-    assert game.assisted
+    assert game.next_test.assisted
     game.undo()
     assert game.session.current_result == rolled
     assert str(game.history[-1]).startswith("Undid the last bonus:")
+    game.next_test = game.next_test.replace(fear_level=2)
     assert game.undo() == "Undid the last roll."
-    assert (game.session.current_result, game.assisted) == (None, True)
+    # The roll did not change Scared, so its undo keeps the Scared set since.
+    options = game.next_test
+    assert (game.session.current_result, options.assisted, options.fear_level) == (None, True, 2)
     assert str(game.history[-1]) == "Undid the last roll."
     with pytest.raises(ValueError, match="nothing to undo"):
         game.undo()
@@ -98,8 +100,7 @@ def test_new_character_keeps_history_and_file_but_a_new_kit_starts_over():
 def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     game = started(Genre.OLDHEART)
     game.roll("Depravity")
-    game.fear_level = 2
-    game.reroll_selection = (1,)
+    game.next_test = game.next_test.replace(fear_level=2, reroll_selection=(1,))
     game.path = str(tmp_path / "game.json")
     with pytest.raises(ValueError, match="Name the session before saving."):
         game.save()
@@ -115,7 +116,7 @@ def test_save_asks_before_replacing_and_load_restores_the_game(tmp_path):
     saved, path = loaded.read_save(game.path)
     assert loaded.load(saved, path) == f"Loaded Friday from {game.path}."
     assert loaded.session.model_dump() == game.session.model_dump()
-    assert (loaded.fear_level, loaded.reroll_selection) == (2, (1,))
+    assert (loaded.next_test.fear_level, loaded.next_test.reroll_selection) == (2, (1,))
     assert loaded.history == game.history
     assert not loaded.has_unsaved_state()
     loaded.roll()

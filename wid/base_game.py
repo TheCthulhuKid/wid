@@ -46,8 +46,8 @@ class Before(NamedTuple):
     state: BaseModel
     # The names just after the change, to tell which the player typed since.
     names: dict[Any, str]
-    # Only a roll resets the tested attribute, the one-test options and the picks; None otherwise.
-    options: tuple[Any, ...] | None
+    # What ``options()`` held, for a change that resets them; None otherwise.
+    options: Any
 
 
 class BaseGame(ABC):
@@ -93,11 +93,11 @@ class BaseGame(ABC):
     def restore(self, state: BaseModel, names: dict[Any, str], action: str) -> None:
         """Put ``state`` back with ``names`` typed into it, and log ``action``."""
 
-    def options(self) -> tuple[Any, ...]:
+    def options(self) -> Any:
         """What an undoable change made with ``options=True`` also puts back."""
         return ()
 
-    def restore_options(self, options: tuple[Any, ...]) -> None:
+    def restore_options(self, options: Any) -> None:
         """Put back what ``options`` kept; nothing, unless the mode has options."""
 
     @abstractmethod

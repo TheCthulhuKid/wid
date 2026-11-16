@@ -151,13 +151,14 @@ def collect(game: Game, form: SheetForm) -> None:
             lambda index, value, field=field: game.rename(field, index, value),
         )
 
+    options = game.next_test
     game.set_test_options(
-        fear_level=form.number("fear") if form.get("fear") else game.fear_level,
+        fear_level=form.number("fear") if form.get("fear") else options.fear_level,
         assisted=form.ticked("assisted"),
         expertise=form.ticked("expertise"),
-        power=PowerMode(form.get("power") or game.power),
+        power=PowerMode(form.get("power") or options.power),
         reroll=form.numbers("reroll"),
-        item_target=form.number("die") if form.get("die") is not None else game.item_target,
+        item_target=form.number("die") if form.get("die") is not None else options.item_target,
         target_standing=target_standing(form, game),
     )
 
@@ -167,7 +168,7 @@ def target_standing(form: SheetForm, game: Game) -> Standing | None:
     box says No standing."""
     chosen = form.get("target-standing")
     if chosen is None:
-        return game.target_standing
+        return game.next_test.target_standing
     return Standing(chosen) if chosen else None
 
 

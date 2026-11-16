@@ -24,8 +24,7 @@ def test_a_saved_game_loads_with_its_draft_and_history(tmp_path):
     game.roll()
     game.character = CharacterDetails(**details)
     game.notes = notes
-    game.fear_level = 3
-    game.reroll_selection = (1,)
+    game.next_test = game.next_test.replace(fear_level=3, reroll_selection=(1,))
     game.name = "A dangerous evening"
     game.path = str(path)
     game.save()
