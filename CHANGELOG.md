@@ -24,6 +24,8 @@ What changed in each release of wid, newest first. The format follows
 - Each genre kit has its own highlight colour in the default "danger" theme and in the browser:
   green for Ball Season, orange for Heckboy, plum for Oldheart, brown for This Isn't Happening
   and blue for Second Contact. Core WiD stays red, and fumbles stay red in every kit.
+- In the GM mode, an activation names the Danger it rolled for, such as "Zeus (Mega Titan)
+  activates (4, 2, 5): Kill — …".
 - GM saves have a new format. Older GM saves still open, but a GM save from this version needs
   this version of wid or later.
 

@@ -25,8 +25,13 @@ def test_a_scene_is_built_committed_undone_and_saved(tmp_path):
     assert game.set_pc_count(3) == "PCs: 3."
     assert game.commit_hits(5) == "Committed 5 hits. Threshold 18, progress 5 — 2 hits to pass"
     assert game.activate() == (
-        "Activation (4, 2, 5): Dominate — PC who acted most recently, defending with Savvy"
+        "Zeus (Mega Titan) activates (4, 2, 5): Dominate — PC who acted most recently, "
+        "defending with Savvy"
     )
+    assert game.choose_acting(0) == "Acting Danger: Danger 1 (Competent Brute)."
+    assert game.choose_acting(0) == ""
+    assert game.undo() == "Undid the last acting Danger choice."
+    assert game.scene.acting is None
     with pytest.raises(ValueError, match="not fighting each other"):
         game.clash()
     game.set_hostile(True)

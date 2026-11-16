@@ -209,6 +209,8 @@ class Scene(Replaceable):
     dangers: tuple[Danger, ...] = Field(default=(), max_length=DANGERS_MAX)
     # Never reused, even after the Danger that had it is removed.
     next_id: Count = 0
+    # The id of the Danger whose loadout the scene rolls on; None for the strongest.
+    acting: Count | None = None
     progress: Count = 0
     # Added to the Dangers' thresholds, as Ball Season's manipulate does.
     raised: Count = 0
@@ -228,6 +230,8 @@ class Scene(Replaceable):
         ids = [danger.id for danger in self.dangers]
         if len(set(ids)) != len(ids) or any(number >= self.next_id for number in ids):
             raise ValueError("Each Danger needs its own id, below the scene's next id.")
+        if self.acting is not None and self.acting not in ids:
+            raise ValueError("The acting Danger is not in the scene.")
         return self
 
     @property
@@ -245,14 +249,25 @@ class Scene(Replaceable):
 
     @property
     def strongest(self) -> Danger | None:
-        """The Danger whose loadout the scene rolls on; the first of equals."""
+        """The Danger with the highest difficulty; the first of equals."""
         if not self.dangers:
             return None
         return max(self.dangers, key=lambda danger: danger.difficulty.rank)
 
     @property
+    def acting_index(self) -> int | None:
+        """The index of the Danger whose loadout the scene rolls on: the chosen one, or the
+        strongest."""
+        if not self.dangers:
+            return None
+        if self.acting is None:
+            return self.dangers.index(self.strongest)
+        return next(index for index, danger in enumerate(self.dangers) if danger.id == self.acting)
+
+    @property
     def loadout(self) -> tuple[Ability, ...]:
-        return self.strongest.loadout if self.strongest else ()
+        index = self.acting_index
+        return () if index is None else self.dangers[index].loadout
 
     @property
     def hits_to_pass(self) -> int:
@@ -313,6 +328,12 @@ class Scene(Replaceable):
         dangers = (*self.dangers[:index], danger.replace(name=name), *self.dangers[index + 1 :])
         return self.replace(dangers=dangers)
 
+    def with_acting(self, index: int | None) -> Self:
+        """The scene rolling on the Danger at ``index``, or on the strongest for None."""
+        if index is None:
+            return self.replace(acting=None)
+        return self.replace(acting=self.danger_at(index).id)
+
     def without(self, index: int) -> Self:
         """The scene without the Danger at ``index``, the progress kept within the threshold."""
         self.danger_at(index)
@@ -350,7 +371,9 @@ class Scene(Replaceable):
         return self.in_kit(genre) == (self, [])
 
     def _with_dangers(self, dangers: tuple[Danger, ...]) -> Self:
-        scene = self.replace(dangers=dangers, progress=0)
+        # Once the acting Danger is gone, the scene rolls on the strongest again.
+        acting = self.acting if any(danger.id == self.acting for danger in dangers) else None
+        scene = self.replace(dangers=dangers, acting=acting, progress=0)
         return scene.replace(progress=min(self.progress, scene.threshold))
 
 
@@ -372,14 +395,15 @@ def defending_attribute(genre: Genre, die: int) -> str:
 
 
 class Activation(FrozenModel):
-    """One roll of 3d6: the ability, the target and the defending attribute each die picked,
-    and the standing of the Danger whose loadout was rolled on, where it has one."""
+    """One roll of 3d6 on a Danger's loadout: the ability, the target and the defending
+    attribute each die picked, and the Danger as it was, with its index in the scene."""
 
     dice: tuple[Die, Die, Die]
     ability: Ability
     target: str
     attribute: str
-    standing: Standing | None = None
+    danger: Danger
+    index: Count
 
 
 def activate(scene: Scene, genre: Genre, rng: Random) -> Activation:
@@ -392,5 +416,6 @@ def activate(scene: Scene, genre: Genre, rng: Random) -> Activation:
         ability=scene.loadout[dice[0] - 1],
         target=TARGETS[dice[1] - 1],
         attribute=defending_attribute(genre, dice[2]),
-        standing=scene.strongest.standing,
+        danger=scene.dangers[scene.acting_index],
+        index=scene.acting_index,
     )

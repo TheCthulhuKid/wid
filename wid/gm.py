@@ -21,6 +21,7 @@ from wid.dangers import (
     activate,
 )
 from wid.formatting import (
+    acting_notice,
     activation_line,
     barricade_text,
     danger_summary,
@@ -156,6 +157,15 @@ class GmGame(BaseGame):
         with self.undoable("threshold raise"):
             self.scene = self.scene.raise_threshold(amount)
         return self.notice(f"Threshold raised by {amount}. {self.summary()}")
+
+    def choose_acting(self, index: int | None) -> str:
+        """Roll on the Danger at ``index`` from now on, or on the strongest for None."""
+        chosen = self.scene.with_acting(index)
+        if chosen == self.scene:
+            return ""
+        with self.undoable("acting Danger choice"):
+            self.scene = chosen
+        return self.notice(acting_notice(self.scene))
 
     def set_hostile(self, hostile: bool) -> str:
         if hostile == self.scene.hostile:

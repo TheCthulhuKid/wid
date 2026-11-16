@@ -34,7 +34,7 @@ def test_a_danger_is_added_activated_removed_and_kept_across_a_kit_change():
             assert app.query_one("#loadout", DataTable).row_count == 6
 
             await pilot.press("ctrl+r")
-            assert text(app, "#activation").startswith("Activation (4, 2, 5): Dominate")
+            assert text(app, "#activation").startswith("Zeus (Mega Titan) activates (4, 2, 5)")
             await click(app, pilot, "#commit-hits")
             assert "progress 1" in text(app, "#scene-summary")
             app.query_one("#task", Select).value = Complexity.HIGH

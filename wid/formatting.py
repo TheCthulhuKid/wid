@@ -464,15 +464,34 @@ def task_strain_line(complexity: Complexity, pc_count: int, mismatched: int = 0)
     return f"{text}."
 
 
+def danger_title(danger: Danger, index: int) -> str:
+    """A Danger's name with its difficulty and class, such as ``Zeus (Mega Titan)``."""
+    kind = f"{danger.difficulty.label} {danger.danger_class.label}"
+    return f"{one_line(danger.label(index))} ({kind})"
+
+
+def loadout_heading(scene: Scene) -> str:
+    """Whose loadout the activation table shows, or nothing with no Danger."""
+    index = scene.acting_index
+    return "" if index is None else f"Loadout: {danger_title(scene.dangers[index], index)}"
+
+
+def acting_notice(scene: Scene) -> str:
+    if scene.acting is None:
+        return "Acting Danger: the strongest."
+    index = scene.acting_index
+    return f"Acting Danger: {danger_title(scene.dangers[index], index)}."
+
+
 def activation_line(activation: Activation) -> str:
     """History line for an activation, the three dice in the order they were rolled."""
     dice = ", ".join(str(die) for die in activation.dice)
     text = (
-        f"Activation ({dice}): {activation.ability.label} — {activation.target}, "
-        f"defending with {activation.attribute}"
+        f"{danger_title(activation.danger, activation.index)} activates ({dice}): "
+        f"{activation.ability.label} — {activation.target}, defending with {activation.attribute}"
     )
-    if activation.standing is not None:
-        text += f"; the Danger is {activation.standing.label}"
+    if activation.danger.standing is not None:
+        text += f"; the Danger is {activation.danger.standing.label}"
     return text
 
 

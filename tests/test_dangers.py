@@ -16,6 +16,7 @@ from wid.formatting import (
     NO_DANGER_HINT,
     activation_line,
     danger_summary,
+    loadout_heading,
     loadout_rows,
     revelations_line,
     scene_summary,
@@ -70,6 +71,15 @@ def test_scene_combines_its_dangers():
     assert scene.strongest == TITAN
     assert scene.loadout == TITAN.loadout
     assert scene.hits_to_pass == 2
+    assert loadout_heading(scene) == "Loadout: Zeus (Mega Titan)"
+    # The GM can roll on the weaker Danger; hits to pass stay the strongest's.
+    chosen = scene.with_acting(0)
+    assert (chosen.loadout, chosen.hits_to_pass) == (BRUTE.loadout, 2)
+    assert loadout_heading(chosen) == "Loadout: Danger 1 (Competent Brute)"
+    assert scene.with_acting(1).without(0).acting == TITAN.id
+    assert chosen.without(0).acting is None
+    with pytest.raises(ValueError, match="not in the scene"):
+        Scene(dangers=(BRUTE,), next_id=1, acting=1)
     assert scene_summary(scene) == (
         "Threshold 20 (raised 2), progress 0 — 2 hits to pass. Dangers fight each other"
     )
@@ -154,7 +164,8 @@ def test_activation_uses_the_kits_attributes():
     assert activation.target == "PC who acted most recently"
     assert activation.attribute == "Savvy"
     assert activation_line(activation) == (
-        "Activation (4, 2, 5): Dominate — PC who acted most recently, defending with Savvy"
+        "Zeus (Mega Titan) activates (4, 2, 5): Dominate — PC who acted most recently, "
+        "defending with Savvy"
     )
     with pytest.raises(ValueError):
         activate(Scene(), Genre.HECKBOY, ScriptedRandom([1, 1, 1]))
