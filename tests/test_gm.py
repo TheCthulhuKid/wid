@@ -12,7 +12,7 @@ from wid.profiles import Genre
 def heckboy_scene() -> GmGame:
     game = GmGame(rng=ScriptedRandom([4, 2, 5, 3]))
     game.start_new(Genre.HECKBOY)
-    game.add_danger("", DangerClass.BRUTE, Difficulty.COMPETENT)
+    game.add_danger("", DangerClass.BRUTE, Difficulty.HEAVY)
     game.add_danger("Zeus", DangerClass.TITAN, Difficulty.MEGA)
     return game
 
@@ -28,7 +28,7 @@ def test_a_scene_is_built_committed_undone_and_saved(tmp_path):
         "Zeus (Mega Titan) activates (4, 2, 5): Dominate — PC who acted most recently, "
         "defending with Savvy"
     )
-    assert game.choose_acting(0) == "Acting Danger: Danger 1 (Competent Brute)."
+    assert game.choose_acting(0) == "Acting Danger: Danger 1 (Heavy Brute)."
     assert game.choose_acting(0) == ""
     assert game.undo() == "Undid the last acting Danger choice."
     assert game.scene.acting is None
@@ -62,7 +62,7 @@ def test_a_scene_is_built_committed_undone_and_saved(tmp_path):
     saved, path = loaded.read_save(game.path)
     assert loaded.load(saved, path) == f"Loaded Friday from {game.path}."
     assert (loaded.genre, loaded.scene, loaded.history) == (game.genre, game.scene, game.history)
-    assert "- Bear: Competent Brute — threshold 6, 1 hit to pass" in loaded.history_text()
+    assert "- Bear: Heavy Brute — threshold 6, 1 hit to pass" in loaded.history_text()
     assert loaded.history_text().count("Character:") == 0
 
     data = json.loads(Path(game.path).read_text(encoding="utf-8"))

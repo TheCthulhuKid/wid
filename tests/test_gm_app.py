@@ -42,12 +42,12 @@ def test_a_danger_is_added_activated_removed_and_kept_across_a_kit_change():
             assert "progress 1" in text(app, "#scene-summary")
             # A second Danger offers the choice of whose loadout to roll on.
             app.query_one("#danger-class", Select).value = DangerClass.BRUTE
-            app.query_one("#difficulty", Select).value = Difficulty.COMPETENT
+            app.query_one("#difficulty", Select).value = Difficulty.HEAVY
             await click(app, pilot, "#add-danger")
             assert app.query_one("#acting-row").display
             app.query_one("#acting", Select).value = 1
             await pilot.pause()
-            assert text(app, "#loadout-heading") == "Loadout: Danger 2 (Competent Brute)"
+            assert text(app, "#loadout-heading") == "Loadout: Danger 2 (Heavy Brute)"
             await click(app, pilot, "#remove-danger-1")
             assert text(app, "#loadout-heading") == "Loadout: Zeus (Mega Titan)"
             app.query_one("#task", Select).value = Complexity.HIGH

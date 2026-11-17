@@ -24,7 +24,7 @@ from wid.formatting import (
 )
 from wid.profiles import Genre
 
-BRUTE = Danger(danger_class=DangerClass.BRUTE, difficulty=Difficulty.COMPETENT)
+BRUTE = Danger(danger_class=DangerClass.BRUTE, difficulty=Difficulty.HEAVY)
 TITAN = Danger(id=1, name="Zeus", danger_class=DangerClass.TITAN, difficulty=Difficulty.MEGA)
 
 
@@ -40,7 +40,7 @@ def test_danger_numbers_and_loadout():
         Ability.HARASS,
     )
     assert BRUTE.label(0) == "Danger 1"
-    assert danger_summary(BRUTE, 0, 4) == "Danger 1: Competent Brute — threshold 8, 1 hit to pass"
+    assert danger_summary(BRUTE, 0, 4) == "Danger 1: Heavy Brute — threshold 8, 1 hit to pass"
 
     assert TITAN.threshold(3) == 12
     assert TITAN.hits_to_pass == 2
@@ -75,7 +75,7 @@ def test_scene_combines_its_dangers():
     # The GM can roll on the weaker Danger; hits to pass stay the strongest's.
     chosen = scene.with_acting(0)
     assert (chosen.loadout, chosen.hits_to_pass) == (BRUTE.loadout, 2)
-    assert loadout_heading(chosen) == "Loadout: Danger 1 (Competent Brute)"
+    assert loadout_heading(chosen) == "Loadout: Danger 1 (Heavy Brute)"
     assert scene.with_acting(1).without(0).acting == TITAN.id
     assert chosen.without(0).acting is None
     with pytest.raises(ValueError, match="not in the scene"):

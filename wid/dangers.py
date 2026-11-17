@@ -81,7 +81,7 @@ class DifficultyRule(FrozenModel):
 
 class Difficulty(Word):
     PETTY = "petty"
-    COMPETENT = "competent"
+    HEAVY = "heavy"
     BOSS = "boss"
     MEGA = "mega"
 
@@ -99,7 +99,7 @@ DIFFICULTY_RULES = {
     Difficulty.PETTY: DifficultyRule(
         ability=Ability.HARASS, hits_to_pass=1, multiplier=1, addend=1
     ),
-    Difficulty.COMPETENT: DifficultyRule(ability=Ability.HARASS, hits_to_pass=1, multiplier=2),
+    Difficulty.HEAVY: DifficultyRule(ability=Ability.HARASS, hits_to_pass=1, multiplier=2),
     Difficulty.BOSS: DifficultyRule(ability=Ability.SCARE, hits_to_pass=2, multiplier=3),
     Difficulty.MEGA: DifficultyRule(ability=Ability.KILL, hits_to_pass=2, multiplier=4),
 }
@@ -136,13 +136,13 @@ def require_tracker(genre: Genre, flag: str, tracker: str) -> None:
 RECOVERY: dict[Genre, dict[Difficulty, int]] = {
     Genre.HECKBOY: {
         Difficulty.PETTY: 2,
-        Difficulty.COMPETENT: 2,
+        Difficulty.HEAVY: 2,
         Difficulty.BOSS: 3,
         Difficulty.MEGA: 3,
     },
     Genre.THIS_ISNT_HAPPENING: {
         Difficulty.PETTY: 0,
-        Difficulty.COMPETENT: 1,
+        Difficulty.HEAVY: 1,
         Difficulty.BOSS: 2,
         Difficulty.MEGA: 3,
     },

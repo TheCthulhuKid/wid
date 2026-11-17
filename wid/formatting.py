@@ -414,7 +414,7 @@ def hits_text(hits: int) -> str:
 
 
 def danger_summary(danger: Danger, index: int, pc_count: int) -> str:
-    """One Danger's line, such as ``Danger 1: Competent Brute — threshold 8, 1 hit to pass``,
+    """One Danger's line, such as ``Danger 1: Heavy Brute — threshold 8, 1 hit to pass``,
     with its standing after the class in Ball Season."""
     kind = f"{danger.difficulty.label} {danger.danger_class.label}"
     if danger.standing is not None:

@@ -454,7 +454,7 @@ class KitControls(Vertical):
                 yield Label("Danger")
                 yield Select(
                     [(difficulty.label, difficulty) for difficulty in Difficulty],
-                    value=Difficulty.COMPETENT,
+                    value=Difficulty.HEAVY,
                     allow_blank=False,
                     id="recovery-difficulty",
                     tooltip="The difficulty of the Danger just overcome",
@@ -602,7 +602,7 @@ class SceneGroup(Vertical):
                 yield Label("Difficulty")
                 yield Select(
                     [(difficulty.label, difficulty) for difficulty in Difficulty],
-                    value=Difficulty.COMPETENT,
+                    value=Difficulty.HEAVY,
                     allow_blank=False,
                     id="difficulty",
                 )
