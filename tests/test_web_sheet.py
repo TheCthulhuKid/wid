@@ -127,3 +127,17 @@ def test_the_gm_page_runs_a_scene_and_refuses_a_player_save():
     player_save.start_game((1, 2, 3))
     refused = act(client, "upload", **{"session-file": player_save.save_text()}).text
     assert "start wid without --gm" in refused
+
+
+def test_the_gm_page_edits_the_scenario():
+    game = GmGame()
+    client = browser(game)
+    new = {"new-scenario-danger-class": "brute", "new-scenario-danger-difficulty": "mega"}
+    fields = {"scenario-text-title": "Night Ferry", "new-scenario-danger-name": "Colossus", **new}
+    sheet = act(client, "add-scenario-danger", **fields).text
+    assert "Colossus: Mega Brute — threshold 16, 2 hits to pass" in sheet
+    assert 'value="Night Ferry"' in sheet
+    kind = {"scenario-kind-0-class": "swarm", "scenario-kind-0-difficulty": "boss"}
+    assert "Colossus: Boss Swarm" in act(client, "change-scenario-danger", index="0", **kind).text
+    act(client, "update", **{"scenario-danger-0-description": "Tall."})
+    assert game.scenario.dangers[0].description == "Tall."

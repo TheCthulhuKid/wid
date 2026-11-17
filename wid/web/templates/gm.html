@@ -129,6 +129,97 @@
       </details>
     </section>
 
+    <details class="block scenario" id="scenario-section">
+      <summary><h2>Scenario</h2></summary>
+      {% for name, label in (("title", "Title"), ("author", "Author"), ("themes", "Themes")) %}
+      <label class="field">{{ label }}<input name="{{ field(('text', name)) }}" value="{{ scenario[name] }}"></label>
+      {% endfor %}
+      {% for name, label in (("pitch", "Pitch"), ("cast", "Cast")) %}
+      <label class="field">{{ label }}<textarea name="{{ field(('text', name)) }}" rows="3">{{ scenario[name] }}</textarea></label>
+      {% endfor %}
+
+      {% for kind, label in scenario_lists.items() %}
+      <details class="reference" id="{{ kind.value }}-section">
+        <summary>{{ label }}</summary>
+        {% for entry in scenario[kind.value] %}
+        <label class="field"><span class="visually-hidden">{{ label }} {{ loop.index }}</span>
+          <input name="{{ field((kind.value, loop.index0)) }}" value="{{ entry }}" placeholder="{{ loop.index }}">
+        </label>
+        {% endfor %}
+      </details>
+      {% endfor %}
+      <details class="reference" id="incitement-section">
+        <summary>Incitement</summary>
+        {% for roll in incitement_rolls %}
+        <label class="field"><span class="visually-hidden">Incitement {{ roll }}</span>
+          <input name="{{ field(('incitement', loop.index0)) }}" value="{{ scenario.incitement[loop.index0] }}" placeholder="{{ roll }}">
+        </label>
+        {% endfor %}
+      </details>
+
+      {% for danger in scenario.dangers %}
+      {% set index = loop.index0 %}
+      <div class="danger">
+        <p class="status">{{ scenario_dangers[index] }}</p>
+        <div class="row named">
+          <label class="field grow"><span class="visually-hidden">Name of scenario Danger {{ loop.index }}</span>
+            <input name="{{ field(('danger', danger.id, 'name')) }}" value="{{ danger.name }}" placeholder="Danger {{ loop.index }}">
+          </label>
+          <button formaction="/actions/remove-scenario-danger" name="index" value="{{ index }}">Remove</button>
+        </div>
+        <div class="row">
+          <label class="field narrow">Class
+            <select name="scenario-kind-{{ index }}-class" data-action="change-scenario-danger" data-index="{{ index }}">
+              {% for kind in classes %}<option value="{{ kind }}" {% if kind == danger.danger_class %}selected{% endif %}>{{ kind.label }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="field narrow">Difficulty
+            <select name="scenario-kind-{{ index }}-difficulty" data-action="change-scenario-danger" data-index="{{ index }}">
+              {% for difficulty in difficulties %}<option value="{{ difficulty }}" {% if difficulty == danger.difficulty %}selected{% endif %}>{{ difficulty.label }}</option>{% endfor %}
+            </select>
+          </label>
+          {% if kit.has_standing %}
+          <label class="field narrow">Standing
+            <select name="scenario-kind-{{ index }}-standing" data-action="change-scenario-danger" data-index="{{ index }}">
+              {% for standing in standings %}<option value="{{ standing }}" {% if standing == danger.standing %}selected{% endif %}>{{ standing.label }}</option>{% endfor %}
+            </select>
+          </label>
+          {% endif %}
+        </div>
+        <label class="field">Description<textarea name="{{ field(('danger', danger.id, 'description')) }}" rows="2">{{ danger.description }}</textarea></label>
+        <label class="field">Notes<textarea name="{{ field(('danger', danger.id, 'notes')) }}" rows="2">{{ danger.notes }}</textarea></label>
+      </div>
+      {% endfor %}
+
+      <div class="row named">
+        <label class="field grow">Name
+          <input name="new-scenario-danger-name" placeholder="Optional">
+        </label>
+        <label class="field narrow">Class
+          <select name="new-scenario-danger-class">
+            {% for kind in classes %}<option value="{{ kind }}">{{ kind.label }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field narrow">Difficulty
+          <select name="new-scenario-danger-difficulty">
+            {% for difficulty in difficulties %}<option value="{{ difficulty }}" {% if difficulty == default_difficulty %}selected{% endif %}>{{ difficulty.label }}</option>{% endfor %}
+          </select>
+        </label>
+        {% if kit.has_standing %}
+        <label class="field narrow">Standing
+          <select name="new-scenario-danger-standing">
+            {% for standing in standings %}<option value="{{ standing }}" {% if standing == default_standing %}selected{% endif %}>{{ standing.label }}</option>{% endfor %}
+          </select>
+        </label>
+        {% endif %}
+      </div>
+      <div class="row">
+        <button class="primary" formaction="/actions/add-scenario-danger" {% if scenario_full %}disabled{% endif %}>Add scenario Danger</button>
+        <button formaction="/actions/clear-scenario" {% if scenario_empty %}disabled{% endif %}>Clear scenario</button>
+      </div>
+      <label class="field">Scenario notes<textarea name="{{ field(('text', 'notes')) }}" rows="3">{{ scenario.notes }}</textarea></label>
+    </details>
+
     {% include "session.html" %}
   </div>
 

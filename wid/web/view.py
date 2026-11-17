@@ -21,12 +21,14 @@ from wid.formatting import (
     CLASS_REFERENCE_COLUMNS,
     CORRUPTION_AMOUNTS,
     DIFFICULTY_REFERENCE_COLUMNS,
+    INCITEMENT_ROLLS,
     LOADOUT_COLUMNS,
     NO_ACTIVATION_HINT,
     NO_RESULT_HINT,
     POWER_LABELS,
     RANKS_HINT,
     REFERENCE_DICE,
+    SCENARIO_LIST_LABELS,
     SPEND_LABELS,
     activation_line,
     class_reference_rows,
@@ -65,7 +67,8 @@ from wid.rolls import (
     BonusKind,
     PowerMode,
 )
-from wid.web.forms import NeedsConfirmation
+from wid.scenario import SCENARIO_DANGERS_MAX, Scenario
+from wid.web.forms import NeedsConfirmation, slot_field
 
 # The terminal's Danger theme on paper, and a dark variant for dark mode or the page's switch;
 # the highlight is the kit's (below). The outcome colours are checked against the paper the dice
@@ -285,4 +288,14 @@ def gm_context(
         "pc_counts": range(PC_MIN, PC_MAX + 1),
         "amounts": range(1, 7),
         "scene_full": len(scene.dangers) >= DANGERS_MAX,
+        "scenario": game.scenario,
+        "scenario_dangers": [
+            danger_summary(danger, index, scene.pc_count)
+            for index, danger in enumerate(game.scenario.dangers)
+        ],
+        "scenario_lists": SCENARIO_LIST_LABELS,
+        "incitement_rolls": INCITEMENT_ROLLS,
+        "scenario_empty": game.scenario == Scenario(),
+        "scenario_full": len(game.scenario.dangers) >= SCENARIO_DANGERS_MAX,
+        "field": slot_field,
     }

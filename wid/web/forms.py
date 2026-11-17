@@ -24,6 +24,7 @@ from wid.game import Game, NameField
 from wid.gm import GmGame
 from wid.profiles import Genre
 from wid.rolls import BonusKind, PowerMode, ResourceEffect
+from wid.scenario import TypedSlot
 from wid.sessions import CharacterDetails
 
 
@@ -333,8 +334,31 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
 }
 
 
+def slot_field(slot: TypedSlot) -> str:
+    """The form field for a slot of ``Scenario.typed``, such as ``scenario-danger-0-name``."""
+    return "-".join(("scenario", *map(str, slot)))
+
+
+def scenario_danger_kind(
+    form: SheetForm, prefix: str
+) -> tuple[DangerClass, Difficulty, Standing | None]:
+    standing = form.get(f"{prefix}-standing")
+    return (
+        DangerClass(form.text(f"{prefix}-class")),
+        Difficulty(form.text(f"{prefix}-difficulty")),
+        Standing(standing) if standing else None,
+    )
+
+
+def change_scenario_danger(game: GmGame, form: SheetForm) -> str:
+    index = form.number("index")
+    kind = scenario_danger_kind(form, f"scenario-kind-{index}")
+    return game.change_scenario_danger(index, *kind)
+
+
 def collect_gm(game: GmGame, form: SheetForm) -> None:
-    """Copy the GM page's fields into the game: the session text and the Dangers' names."""
+    """Copy the GM page's fields into the game: the session text, the Dangers' names and the
+    scenario."""
     if not form.has_sheet:
         return
     for name, apply in (
@@ -345,6 +369,8 @@ def collect_gm(game: GmGame, form: SheetForm) -> None:
         if (value := form.get(name)) is not None:
             apply(value)
     take_numbered(form, "danger-name", len(game.scene.dangers), game.rename_danger)
+    typed = {slot: form.get(slot_field(slot)) for slot in game.scenario.typed()}
+    game.type_into_scenario({slot: text for slot, text in typed.items() if text is not None})
 
 
 # The GM's page.
@@ -358,6 +384,12 @@ GM_ACTIONS: dict[str, Callable[[GmGame, SheetForm], str]] = {
         Standing(form.text("standing")) if form.get("standing") else None,
     ),
     "remove-danger": lambda game, form: game.remove_danger(form.number("index")),
+    "add-scenario-danger": lambda game, form: game.add_scenario_danger(
+        form.text("new-scenario-danger-name"), *scenario_danger_kind(form, "new-scenario-danger")
+    ),
+    "change-scenario-danger": change_scenario_danger,
+    "remove-scenario-danger": lambda game, form: game.remove_scenario_danger(form.number("index")),
+    "clear-scenario": lambda game, form: game.clear_scenario(),
     "commit-hits": lambda game, form: game.commit_hits(form.number("amount")),
     "raise-threshold": lambda game, form: game.raise_threshold(form.number("amount")),
     "acting": lambda game, form: game.choose_acting(

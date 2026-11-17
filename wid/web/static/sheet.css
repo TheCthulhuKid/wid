@@ -367,6 +367,8 @@ button:disabled, input:disabled, select:disabled {
 
 .reference { margin-top: 1rem; }
 .reference summary { cursor: pointer; font-weight: 700; }
+.scenario > summary { cursor: pointer; }
+.scenario > summary h2 { display: inline; }
 .loadout td:first-child { font-weight: 800; font-variant-numeric: tabular-nums; }
 
 /* Narrow screens: one column, with the dice right after the next-test options so a roll's

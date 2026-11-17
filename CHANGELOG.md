@@ -20,7 +20,8 @@ What changed in each release of wid, newest first. The format follows
   has two or more Dangers, and the loadout table names its Danger.
 - In the GM mode, the **Scenario** tab holds the scenario sheet: its title, pitch and cast, the
   four lists and the incitement table, and up to six Dangers with descriptions and notes. It is
-  saved with the GM's game, and **A** opens it.
+  saved with the GM's game. **A** opens it in the terminal; in the browser it is a section below
+  the scene.
 - In the GM mode, **Danger reference** on the Scene tab shows what each class and difficulty
   gives a Danger, for the kit and the number of PCs.
 - Oldheart: **Avoid strain** beside **Gain Corruption** takes the Corruption for strain avoided
