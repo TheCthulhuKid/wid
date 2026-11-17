@@ -32,6 +32,8 @@ What changed in each release of wid, newest first. The format follows
   activates (4, 2, 5): Kill — …".
 - **Undo** goes back up to 10 changes, not 50, in both modes.
 - The how-to's **Undo** paragraph is shorter.
+- In the GM mode, the Competent difficulty is now **Heavy**, as the game's creator renamed it.
+  A GM save from 0.5.0 opens with its Competent Dangers as Heavy.
 - GM saves have a new format. Older GM saves still open, but a GM save from this version needs
   this version of wid or later.
 

@@ -68,6 +68,9 @@ def test_a_scene_is_built_committed_undone_and_saved(tmp_path):
     data = json.loads(Path(game.path).read_text(encoding="utf-8"))
     for danger in data["scene"]["dangers"]:
         del danger["id"]
+    # 0.5.0 called the heavy difficulty competent.
+    assert data["scene"]["dangers"][0]["difficulty"] == "heavy"
+    data["scene"]["dangers"][0]["difficulty"] = "competent"
     del data["scene"]["next_id"]
     older = loaded.parse_save(json.dumps({**data, "version": 1}))
     assert older.scene == game.scene

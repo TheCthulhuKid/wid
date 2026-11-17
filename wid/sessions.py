@@ -42,17 +42,25 @@ def note_succumbed_checks(data: SaveData) -> SaveData:
     return data
 
 
-def number_dangers(data: SaveData) -> SaveData:
-    """Version 2 gives each Danger an id, in the order the scene lists them."""
+def upgrade_dangers(data: SaveData) -> SaveData:
+    """Version 2 gives each Danger an id, in the order the scene lists them, and calls the
+    competent difficulty heavy, as the game's creator renamed it."""
     scene = data["scene"]
-    dangers = [{**danger, "id": index} for index, danger in enumerate(scene["dangers"])]
+    dangers = [
+        {**danger, "id": index, "difficulty": renamed(danger["difficulty"])}
+        for index, danger in enumerate(scene["dangers"])
+    ]
     return {**data, "scene": {**scene, "dangers": dangers, "next_id": len(dangers)}}
+
+
+def renamed(difficulty: str) -> str:
+    return "heavy" if difficulty == "competent" else difficulty
 
 
 type Upgrades = dict[int, Callable[[SaveData], SaveData]]
 # Each step turns a file of the version it is keyed by into the next version's data.
 UPGRADES: Upgrades = {1: note_succumbed_checks}
-GM_UPGRADES: Upgrades = {1: number_dangers}
+GM_UPGRADES: Upgrades = {1: upgrade_dangers}
 
 
 def upgrade_step(step: Callable[[SaveData], SaveData], data: SaveData, version: int) -> SaveData:
