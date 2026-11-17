@@ -74,6 +74,31 @@ def test_a_scene_saves_loads_and_recovers(tmp_path):
     assert loaded.history_text().count("Character:") == 0
 
 
+def test_the_scenario_saves_loads_and_undoes_with_the_scene(tmp_path):
+    game = heckboy_scene()
+    assert game.add_scenario_danger("Colossus", DangerClass.TITAN, Difficulty.MEGA) == (
+        "Added Colossus to the scenario."
+    )
+    game.add_scenario_danger("", DangerClass.BRUTE, Difficulty.HEAVY)
+    game.set_scenario_text("title", "Night Ferry")
+    # Typed text is the GM's: undoing the Danger added before it keeps it.
+    assert game.undo() == "Undid the last scenario Danger added."
+    assert (game.scenario.title, len(game.scenario.dangers)) == ("Night Ferry", 1)
+    assert game.change_scenario_danger(0, DangerClass.TITAN, Difficulty.BOSS) == (
+        "Changed Colossus to Boss Titan."
+    )
+
+    game.name, game.path = "Friday", str(tmp_path / "gm.json")
+    game.save()
+    loaded = GmGame()
+    loaded.load(*loaded.read_save(game.path))
+    assert loaded.scenario == game.scenario
+    assert "Scenario: Night Ferry — Colossus (Boss Titan)" in loaded.history_text()
+    assert loaded.keep_scene(Genre.CORE) == (
+        "Kit changed to Core WiD. Dropped Zeus. Dropped Colossus from the scenario."
+    )
+
+
 def test_an_older_gm_save_upgrades_and_a_newer_one_is_refused():
     game = heckboy_scene()
     data = json.loads(game.saved_session("Friday").model_dump_json())

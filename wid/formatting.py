@@ -35,6 +35,7 @@ from wid.rolls import (
     TechState,
     standing_label,
 )
+from wid.scenario import Scenario
 
 BONUS_LABELS = {
     BonusKind.EXPERTISE: "Expertise",
@@ -477,6 +478,16 @@ def danger_title(danger: Danger, index: int) -> str:
     """A Danger's name with its difficulty and class, such as ``Zeus (Mega Titan)``."""
     kind = f"{danger.difficulty.label} {danger.danger_class.label}"
     return f"{one_line(danger.label(index))} ({kind})"
+
+
+def scenario_line(scenario: Scenario) -> str:
+    """The scenario for an export's sheet, such as ``Scenario: Night Ferry — Colossus (Mega
+    Titan)``."""
+    text = f"Scenario: {one_line(scenario.title.strip()) or 'Untitled'}"
+    if scenario.dangers:
+        titles = (danger_title(danger, index) for index, danger in enumerate(scenario.dangers))
+        text += f" — {', '.join(titles)}"
+    return text
 
 
 def loadout_heading(scene: Scene) -> str:

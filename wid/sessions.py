@@ -15,6 +15,7 @@ from wid.dangers import Scene
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import STANDING_START, FrozenModel, Index, RollRequest, RollSession
+from wid.scenario import Scenario
 from wid.storage import write_text
 
 
@@ -227,8 +228,8 @@ class SavedSession(SaveFile):
 
 
 class GmSave(SaveFile):
-    """A GM's game: the kit and the scene. ``kind`` tells it from a player's save, which has
-    none, and its version counts on its own."""
+    """A GM's game: the kit, the scene and the scenario. ``kind`` tells it from a player's
+    save, which has none, and its version counts on its own."""
 
     upgrades = GM_UPGRADES
     kind: Literal["gm"] = "gm"
@@ -236,6 +237,7 @@ class GmSave(SaveFile):
     name: SessionName
     genre: Genre
     scene: Scene
+    scenario: Scenario = Scenario()
     notes: str = ""
     history: tuple[HistoryEntry, ...] = ()
 
@@ -243,6 +245,8 @@ class GmSave(SaveFile):
     def validate_kit(self) -> Self:
         if not self.scene.fits(self.genre):
             raise ValueError(f"The scene holds something {PROFILES[self.genre].name} lacks.")
+        if not self.scenario.fits(self.genre):
+            raise ValueError(f"The scenario holds something {PROFILES[self.genre].name} lacks.")
         return self
 
 

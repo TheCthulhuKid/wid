@@ -1,7 +1,7 @@
 """A scenario sheet: the GM's prep, from the pitch and the lists to the Dangers it brings."""
 
 from enum import StrEnum
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, get_args
 
 from pydantic import Field, model_validator
 
@@ -28,6 +28,11 @@ Incitement = Annotated[tuple[str, ...], Field(min_length=INCITEMENTS, max_length
 
 type ScenarioText = Literal["title", "author", "pitch", "cast", "themes", "notes"]
 type DangerText = Literal["name", "description", "notes"]
+SCENARIO_TEXTS: tuple[ScenarioText, ...] = get_args(ScenarioText.__value__)
+DANGER_TEXTS: tuple[DangerText, ...] = get_args(DangerText.__value__)
+# A slot the GM types into: ("text", field), (list, entry), ("incitement", row) or
+# ("danger", id, field).
+type TypedSlot = tuple[str | int, ...]
 
 
 class ScenarioList(StrEnum):
@@ -113,6 +118,49 @@ class Scenario(Replaceable):
     def without(self, index: int) -> Self:
         self.danger_at(index)
         return self.replace(dangers=self.dangers[:index] + self.dangers[index + 1 :])
+
+    def typed(self) -> dict[TypedSlot, str]:
+        """Everything the GM types into the sheet, by slot, so an undo can keep it."""
+        return {
+            **{("text", field): getattr(self, field) for field in SCENARIO_TEXTS},
+            **{
+                (kind.value, index): entry
+                for kind in ScenarioList
+                for index, entry in enumerate(getattr(self, kind))
+            },
+            **{("incitement", row): text for row, text in enumerate(self.incitement)},
+            **{
+                ("danger", danger.id, field): getattr(danger, field)
+                for danger in self.dangers
+                for field in DANGER_TEXTS
+            },
+        }
+
+    def with_typed(self, typed: dict[TypedSlot, str]) -> Self:
+        """The scenario with ``typed`` written into its slots; slots it lacks are ignored."""
+        texts = {
+            field: typed.get(("text", field), getattr(self, field)) for field in SCENARIO_TEXTS
+        }
+        lists = {
+            kind.value: tuple(
+                typed.get((kind.value, index), entry)
+                for index, entry in enumerate(getattr(self, kind))
+            )
+            for kind in ScenarioList
+        }
+        incitement = tuple(
+            typed.get(("incitement", row), text) for row, text in enumerate(self.incitement)
+        )
+        dangers = tuple(
+            danger.replace(
+                **{
+                    field: typed.get(("danger", danger.id, field), getattr(danger, field))
+                    for field in DANGER_TEXTS
+                }
+            )
+            for danger in self.dangers
+        )
+        return self.replace(**texts, **lists, incitement=incitement, dangers=dangers)
 
     def in_kit(self, genre: Genre) -> tuple[Self, list[str]]:
         """The scenario as ``genre`` can hold it, and the labels of the Dangers dropped."""

@@ -1,4 +1,5 @@
-"""The Game Master's sitting: the genre kit and the scene, with an action for each control.
+"""The Game Master's sitting: the genre kit, the scenario and the scene, with an action for
+each control.
 
 Like ``Game``, each action returns the feedback to show and refuses with ``ValueError``. An
 activation changes nothing, so like **Roll 1d6** it is logged and not undone; a clash moves the
@@ -26,12 +27,28 @@ from wid.formatting import (
     barricade_text,
     danger_summary,
     revelations_line,
+    scenario_line,
     scene_summary,
     task_strain_line,
 )
 from wid.profiles import PROFILES, Genre, WiDProfile
-from wid.rolls import roll_d6
+from wid.rolls import FrozenModel, roll_d6
+from wid.scenario import (
+    DangerText,
+    Scenario,
+    ScenarioDanger,
+    ScenarioList,
+    ScenarioText,
+    TypedSlot,
+)
 from wid.sessions import GmSave, parse_save
+
+
+class GmState(FrozenModel):
+    """What Undo copies and puts back: a change to either is taken back whole."""
+
+    scene: Scene
+    scenario: Scenario
 
 
 class GmGame(BaseGame):
@@ -39,29 +56,34 @@ class GmGame(BaseGame):
         super().__init__(rng=rng, recovery_path=recovery_path)
         self.genre = Genre.CORE
         self.scene = Scene()
+        self.scenario = Scenario()
         # Shown on screen until the next activation; the history keeps it, the save does not.
         self.last_activation: Activation | None = None
 
     @property
-    def state(self) -> Scene:
-        return self.scene
+    def state(self) -> GmState:
+        return GmState(scene=self.scene, scenario=self.scenario)
 
     @property
     def in_play(self) -> bool:
-        return bool(self.scene.dangers)
+        return bool(self.scene.dangers or self.scenario.dangers)
 
     @property
     def profile(self) -> WiDProfile:
         return PROFILES[self.genre]
 
-    def typed_names(self, state: Scene) -> dict[int, str]:
-        return {danger.id: danger.name for danger in state.dangers}
+    def typed_names(self, state: GmState) -> dict[TypedSlot, str]:
+        """The scene's Danger names by ("scene", id), and the scenario's typed text."""
+        names = {("scene", danger.id): danger.name for danger in state.scene.dangers}
+        return {**names, **state.scenario.typed()}
 
-    def restore(self, state: Scene, names: dict[int, str], action: str) -> None:
+    def restore(self, state: GmState, names: dict[TypedSlot, str], action: str) -> None:
         dangers = tuple(
-            danger.replace(name=names.get(danger.id, danger.name)) for danger in state.dangers
+            danger.replace(name=names.get(("scene", danger.id), danger.name))
+            for danger in state.scene.dangers
         )
-        self.scene = state.replace(dangers=dangers)
+        self.scene = state.scene.replace(dangers=dangers)
+        self.scenario = state.scenario.with_typed(names)
         self.notice(f"{action}.")
 
     def options(self) -> tuple[Any, ...]:
@@ -71,17 +93,25 @@ class GmGame(BaseGame):
         (self.genre,) = options
 
     def snapshot(self) -> dict[str, object]:
-        return {**super().snapshot(), "genre": self.genre, "scene": self.scene.model_dump()}
+        return {
+            **super().snapshot(),
+            "genre": self.genre,
+            "scene": self.scene.model_dump(),
+            "scenario": self.scenario.model_dump(),
+        }
 
     def wrote_anything(self) -> bool:
-        """Whether the GM typed anything: the session name, notes or a Danger's name."""
-        return super().wrote_anything() or any(danger.name for danger in self.scene.dangers)
+        """Whether the GM typed anything: the session name, notes, a Danger's name or the
+        scenario."""
+        scene_names = any(danger.name for danger in self.scene.dangers)
+        return super().wrote_anything() or scene_names or any(self.scenario.typed().values())
 
     def saved_session(self, name: str) -> GmSave:
         return GmSave(
             name=name,
             genre=self.genre,
             scene=self.scene,
+            scenario=self.scenario,
             notes=self.notes,
             history=tuple(self.history),
         )
@@ -93,12 +123,17 @@ class GmGame(BaseGame):
         super().take_over(saved)
         self.genre = saved.genre
         self.scene = saved.scene
+        self.scenario = saved.scenario
         self.last_activation = None
 
     def sheet_lines(self) -> list[str]:
-        """The kit, the PC count, each Danger and the scene; an empty scene has no scene line."""
+        """The kit, the scenario, the PC count, each Danger and the scene; an empty scenario or
+        scene has no line."""
         scene = self.scene
-        lines = [f"Kit: {self.profile.name}", f"PCs: {scene.pc_count}"]
+        lines = [f"Kit: {self.profile.name}"]
+        if self.scenario != Scenario():
+            lines.append(scenario_line(self.scenario))
+        lines.append(f"PCs: {scene.pc_count}")
         lines += [
             danger_summary(danger, index, scene.pc_count)
             for index, danger in enumerate(scene.dangers)
@@ -231,24 +266,87 @@ class GmGame(BaseGame):
         return self.notice(f"Revelations to find: {count}. {revelations_line(self.scene)}.")
 
     def keep_scene(self, genre: Genre) -> str:
-        """Change kit and keep the scene, less the Dangers of a class the new kit lacks."""
+        """Change kit and keep the scene and the scenario, less the Dangers of a class the new
+        kit lacks."""
         if genre == self.genre:
             return ""
         with self.undoable("kit change", options=True):
             self.scene, dropped = self.scene.in_kit(genre)
+            self.scenario, dropped_from_scenario = self.scenario.in_kit(genre)
             self.genre = genre
         text = f"Kit changed to {self.profile.name}."
         if dropped:
             text += f" Dropped {', '.join(dropped)}."
+        if dropped_from_scenario:
+            text += f" Dropped {', '.join(dropped_from_scenario)} from the scenario."
         return self.notice(text)
 
     def start_new(self, genre: Genre) -> str:
         """Start over in ``genre`` with an empty scene; history, notes and the file go too."""
         self.genre = genre
         self.scene = Scene()
+        self.scenario = Scenario()
         self.last_activation = None
         self.start_over()
         return f"New {self.profile.name} GM game started."
+
+    def set_scenario_text(self, field: ScenarioText, text: str) -> None:
+        """Typed text is the GM's: nothing is logged, and it stays across an undo."""
+        self.scenario = self.scenario.with_text(field, text)
+
+    def set_scenario_entry(self, kind: ScenarioList, index: int, text: str) -> None:
+        self.scenario = self.scenario.with_entry(kind, index, text)
+
+    def set_incitement(self, row: int, text: str) -> None:
+        self.scenario = self.scenario.with_incitement(row, text)
+
+    def set_scenario_danger_text(self, index: int, field: DangerText, text: str) -> None:
+        self.scenario = self.scenario.with_danger_text(index, field, text)
+
+    def add_scenario_danger(
+        self,
+        name: str,
+        danger_class: DangerClass,
+        difficulty: Difficulty,
+        standing: Standing | None = None,
+    ) -> str:
+        danger = ScenarioDanger(
+            name=name, danger_class=danger_class, difficulty=difficulty, standing=standing
+        )
+        with self.undoable("scenario Danger added"):
+            self.scenario = self.scenario.with_danger(danger, self.genre)
+        label = danger.label(len(self.scenario.dangers) - 1)
+        return self.notice(f"Added {label} to the scenario.")
+
+    def change_scenario_danger(
+        self,
+        index: int,
+        danger_class: DangerClass,
+        difficulty: Difficulty,
+        standing: Standing | None = None,
+    ) -> str:
+        changed = self.scenario.changed_danger(
+            index, danger_class, difficulty, standing, self.genre
+        )
+        if changed == self.scenario:
+            return ""
+        with self.undoable("scenario Danger change"):
+            self.scenario = changed
+        label = changed.dangers[index].label(index)
+        return self.notice(f"Changed {label} to {difficulty.label} {danger_class.label}.")
+
+    def remove_scenario_danger(self, index: int) -> str:
+        label = self.scenario.danger_at(index).label(index)
+        with self.undoable("scenario Danger removed"):
+            self.scenario = self.scenario.without(index)
+        return self.notice(f"Removed {label} from the scenario.")
+
+    def clear_scenario(self) -> str:
+        if self.scenario == Scenario():
+            return ""
+        with self.undoable("scenario cleared"):
+            self.scenario = Scenario()
+        return self.notice("Scenario cleared.")
 
     def require_dangers(self) -> None:
         if not self.scene.dangers:

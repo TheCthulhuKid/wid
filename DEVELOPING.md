@@ -161,17 +161,12 @@ Package initializers do not import the application.
 
 ## Files the program writes
 
-**Session files** (JSON, chosen by the player). **Save session** is explicit, never automatic.
-The terminal and the browser version read and write the same files.
-A file holds the session name, character details, notes, genre, attribute ranks, the roll
-options, item and expertise names, the Heckboy power names and the power chosen for the next
-roll, the Tech slots and their names, the Oldheart manifestations, the Ball Season Standing, the
-This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their
-names, cumulative power strain, Corruption, the current dice and result, the dice selected for a
-reroll and the die chosen for an item, and the full history. Loading never rolls dice, charges
-resources or refills Tech. Window layout, the Edit/Preview choice, the undo history and the
-random generator's state are not saved, and the theme lives in the settings file instead. So
-**Undo** has nothing to take back right after a load, until the next change.
+**Session files** (JSON, chosen by the player). **Save session** is explicit, never automatic,
+and the terminal and the browser read and write the same files. A file holds everything on the
+sheet, the options for the next roll, the current result with the dice picked from it, the notes
+and the history (`SavedSession` in `wid/sessions.py`). Loading never rolls dice, charges
+resources or refills Tech. The layout, the Edit/Preview choice, the undo history and the random
+generator are not saved, so **Undo** has nothing to take back right after a load.
 
 - The format is versioned (`version: 2`); files from an unknown version, a marked wound with an
   unmarked box before it, or invalid values are rejected without replacing the current game. A
@@ -185,10 +180,10 @@ random generator's state are not saved, and the theme lives in the settings file
 
 **GM session files** have `kind: "gm"` and their own `version: 2` (`GmSave` in
 `wid/sessions.py`). They hold the session name, the kit, the scene (`Scene` in
-`wid/dangers.py`), the notes and the history. A scene that holds something its kit lacks is refused. The last
-activation is only in the history. Each
-Danger has a number from the scene's counter that is never reused, so Undo can tell Dangers
-apart after one is removed. A player's file has no `kind`, and each mode refuses the other's
+`wid/dangers.py`), the scenario (`Scenario` in `wid/scenario.py`), the notes and the history. A
+scene or scenario that holds something its kit lacks is refused. The last activation is only in
+the history. The scene and the scenario each number their Dangers with a counter that is never
+reused, so Undo can tell Dangers apart after one is removed. A player's file has no `kind`, and each mode refuses the other's
 file and names the flag to start wid with. A change to the GM format bumps `GmSave.version` and
 adds a step to `GM_UPGRADES`.
 
