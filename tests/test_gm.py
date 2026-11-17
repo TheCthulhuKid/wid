@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import pytest
 from helpers import ScriptedRandom
@@ -7,6 +6,7 @@ from helpers import ScriptedRandom
 from wid.dangers import DangerClass, Difficulty
 from wid.gm import GmGame
 from wid.profiles import Genre
+from wid.sessions import GmSave
 
 
 def heckboy_scene() -> GmGame:
@@ -17,11 +17,13 @@ def heckboy_scene() -> GmGame:
     return game
 
 
-def test_a_scene_is_built_committed_undone_and_saved(tmp_path):
+def test_a_scene_commits_activates_and_clashes():
     with pytest.raises(ValueError, match="Add a Danger first"):
         GmGame().raise_threshold(1)
     game = heckboy_scene()
     assert game.history[-1].notice == "Added Zeus: Mega Titan — threshold 16, 2 hits to pass"
+    with pytest.raises(ValueError, match="has no Schemers"):
+        game.add_danger("", DangerClass.SCHEMER, Difficulty.PETTY)
     assert game.set_pc_count(3) == "PCs: 3."
     assert game.commit_hits(5) == "Committed 5 hits. Threshold 18, progress 5 — 2 hits to pass"
     assert game.activate() == (
@@ -36,19 +38,25 @@ def test_a_scene_is_built_committed_undone_and_saved(tmp_path):
         game.clash()
     game.set_hostile(True)
     assert game.clash().startswith("Dangers clash: rolled 3. Threshold 18, progress 8")
-    with pytest.raises(ValueError, match="has no Schemers"):
-        game.add_danger("", DangerClass.SCHEMER, Difficulty.PETTY)
 
+
+def test_undo_keeps_the_names_typed_since():
+    game = heckboy_scene()
+    game.commit_hits(5)
     game.rename_danger(0, "Bear")
-    assert game.undo() == "Undid the last clash."
-    scene = game.scene
-    assert (scene.hostile, scene.progress, scene.dangers[0].name) == (True, 5, "Bear")
+    assert game.undo() == "Undid the last hits committed."
+    assert (game.scene.progress, game.scene.dangers[0].name) == (0, "Bear")
     # A name typed after a removal stays on its own Danger when the removal is undone.
     game.remove_danger(0)
     game.rename_danger(0, "Jove")
     game.undo()
     assert [danger.name for danger in game.scene.dangers] == ["Bear", "Jove"]
 
+
+def test_a_scene_saves_loads_and_recovers(tmp_path):
+    game = heckboy_scene()
+    game.rename_danger(0, "Bear")
+    game.set_pc_count(3)
     game.recovery_path = tmp_path / "gm-recovery.json"
     assert game.keep_recovery() == ""
     recovered = GmGame(recovery_path=game.recovery_path)
@@ -65,17 +73,19 @@ def test_a_scene_is_built_committed_undone_and_saved(tmp_path):
     assert "- Bear: Heavy Brute — threshold 6, 1 hit to pass" in loaded.history_text()
     assert loaded.history_text().count("Character:") == 0
 
-    data = json.loads(Path(game.path).read_text(encoding="utf-8"))
+
+def test_an_older_gm_save_upgrades_and_a_newer_one_is_refused():
+    game = heckboy_scene()
+    data = json.loads(game.saved_session("Friday").model_dump_json())
+    # A 0.5.0 file (version 1): no ids, and the heavy difficulty called competent.
     for danger in data["scene"]["dangers"]:
         del danger["id"]
-    # 0.5.0 called the heavy difficulty competent.
-    assert data["scene"]["dangers"][0]["difficulty"] == "heavy"
-    data["scene"]["dangers"][0]["difficulty"] = "competent"
     del data["scene"]["next_id"]
-    older = loaded.parse_save(json.dumps({**data, "version": 1}))
-    assert older.scene == game.scene
+    data["scene"]["dangers"][0]["difficulty"] = "competent"
+    assert game.parse_save(json.dumps({**data, "version": 1})).scene == game.scene
+    newer = GmSave.model_fields["version"].default + 1
     with pytest.raises(ValueError, match="saved by a newer wid"):
-        loaded.parse_save(json.dumps({**data, "version": 3}))
+        game.parse_save(json.dumps({**data, "version": newer}))
 
 
 def test_keep_scene_drops_what_the_kit_lacks_then_start_new():
