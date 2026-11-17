@@ -35,7 +35,7 @@ from wid.rolls import (
     TechState,
     standing_label,
 )
-from wid.scenario import Scenario
+from wid.scenario import Scenario, ScenarioList
 
 BONUS_LABELS = {
     BonusKind.EXPERTISE: "Expertise",
@@ -409,6 +409,13 @@ def sheet_lines(session: RollSession) -> list[str]:
 # The GM's scene. The rules behind these numbers are the book's.
 NO_DANGER_HINT = "Add a Danger to start the scene."
 NO_ACTIVATION_HINT = "Activate the Danger to see its roll here."
+SCENARIO_LIST_LABELS = {
+    ScenarioList.SCENE_STARTERS: "Scene starters",
+    ScenarioList.NPCS: "NPCs",
+    ScenarioList.WAYPOINTS: "Waypoints",
+    ScenarioList.OBSTACLES: "Obstacles",
+}
+INCITEMENT_ROLLS = ("1–2", "3–4", "5–6")
 LOADOUT_COLUMNS = ("Die", "Ability", "Target", "Attribute")
 CLASS_REFERENCE_COLUMNS = ("Class", "Die 4", "Die 5")
 DIFFICULTY_REFERENCE_COLUMNS = ("Difficulty", "Hits", "Threshold", "Die 6")

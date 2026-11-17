@@ -38,6 +38,7 @@ from wid.formatting import (
     CLASS_REFERENCE_COLUMNS,
     CORRUPTION_AMOUNTS,
     DIFFICULTY_REFERENCE_COLUMNS,
+    INCITEMENT_ROLLS,
     LOADOUT_COLUMNS,
     NO_ACTIVATION_HINT,
     NO_DANGER_HINT,
@@ -45,6 +46,7 @@ from wid.formatting import (
     POWER_LABELS,
     RANKS_HINT,
     REFERENCE_DICE,
+    SCENARIO_LIST_LABELS,
     strain_box_name,
 )
 from wid.profiles import PROFILES, Genre
@@ -63,6 +65,7 @@ from wid.rolls import (
     StrainTracker,
     standing_label,
 )
+from wid.scenario import ENTRIES, SCENARIO_DANGERS_MAX
 
 
 class AttributeRollButton(Button):
@@ -696,6 +699,91 @@ class SceneGroup(Vertical):
         self.query_one("#difficulty-reference", DataTable).add_columns(
             *DIFFICULTY_REFERENCE_COLUMNS
         )
+
+
+class ScenarioDangerSelect(Select):
+    """The class, difficulty or standing of the scenario Danger at ``index``."""
+
+    def __init__(self, index: int, part: str, options: list, value: object, **kwargs) -> None:
+        super().__init__(
+            options, value=value, allow_blank=False, id=f"scenario-danger-{part}-{index}", **kwargs
+        )
+        self.index = index
+
+
+class RemoveScenarioDangerButton(Button):
+    def __init__(self, index: int, **kwargs):
+        super().__init__("Remove", id=f"remove-scenario-danger-{index}", **kwargs)
+        self.index = index
+
+
+def kind_selects(index: int | None = None) -> ComposeResult:
+    """Class, Difficulty and Standing for the scenario Danger at ``index``, or a new one."""
+    parts = (
+        ("Class", "class", [(kind.label, kind) for kind in DangerClass], DangerClass.BRUTE),
+        ("Difficulty", "difficulty", [(each.label, each) for each in Difficulty], Difficulty.HEAVY),
+        ("Standing", "standing", [(each.label, each) for each in Standing], Standing.REPUTABLE),
+    )
+    for label, part, options, value in parts:
+        with Vertical(classes=f"field {part}-field"):
+            yield Label(label)
+            if index is None:
+                yield Select(
+                    options, value=value, allow_blank=False, id=f"new-scenario-danger-{part}"
+                )
+            else:
+                yield ScenarioDangerSelect(index, part, options, value)
+
+
+class ScenarioGroup(Vertical):
+    """The GM's scenario sheet: its text, lists, incitement and Dangers, then its notes."""
+
+    def compose(self) -> ComposeResult:
+        for field, label in (("title", "Title"), ("author", "Author"), ("themes", "Themes")):
+            with Vertical(classes="field"):
+                yield Label(label)
+                yield Input(id=f"scenario-{field}")
+        for field, label in (("pitch", "Pitch"), ("cast", "Cast")):
+            yield Label(label)
+            yield TextArea(id=f"scenario-{field}", classes="short-text")
+        for kind, title in SCENARIO_LIST_LABELS.items():
+            with Collapsible(title=title, collapsed=True, id=f"{kind.value}-section"):
+                for index in range(ENTRIES):
+                    yield Input(placeholder=str(index + 1), id=f"{kind.value}-{index}")
+        with Collapsible(title="Incitement", collapsed=True, id="incitement-section"):
+            for row, roll in enumerate(INCITEMENT_ROLLS):
+                yield Input(placeholder=roll, id=f"incitement-{row}")
+        with Vertical(id="scenario-dangers"):
+            for index in range(SCENARIO_DANGERS_MAX):
+                with Vertical(classes="danger-row", id=f"scenario-danger-row-{index}"):
+                    yield Static(id=f"scenario-danger-summary-{index}", markup=False)
+                    with Horizontal(classes="danger-controls"):
+                        yield Input(
+                            placeholder=f"Danger {index + 1}", id=f"scenario-danger-name-{index}"
+                        )
+                        yield RemoveScenarioDangerButton(index)
+                    with Horizontal(classes="scenario-danger-kind"):
+                        yield from kind_selects(index)
+                    yield TextArea(
+                        placeholder="Description",
+                        id=f"scenario-danger-description-{index}",
+                        classes="short-text",
+                    )
+                    yield TextArea(
+                        placeholder="Notes",
+                        id=f"scenario-danger-notes-{index}",
+                        classes="short-text",
+                    )
+        with Horizontal(id="new-scenario-danger"):
+            with Vertical(classes="field"):
+                yield Label("Name")
+                yield Input(placeholder="Optional", id="new-scenario-danger-name")
+            yield from kind_selects()
+        with Horizontal(id="scenario-buttons"):
+            yield Button("Add scenario Danger", id="add-scenario-danger", variant="primary")
+            yield Button("Clear scenario", id="clear-scenario", variant="warning")
+        yield Label("Scenario notes")
+        yield TextArea(id="scenario-notes", classes="short-text")
 
 
 class ActivationGroup(VerticalScroll):

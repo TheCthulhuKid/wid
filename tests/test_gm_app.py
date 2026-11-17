@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 from helpers import ScriptedRandom, click, text
-from textual.widgets import Button, Collapsible, DataTable, Input, Select
+from textual.widgets import Button, Collapsible, DataTable, Input, Select, TabbedContent
 
 from wid.dangers import Complexity, DangerClass, Difficulty
 from wid.formatting import NO_DANGER_HINT
@@ -84,5 +84,29 @@ def test_a_danger_is_added_activated_removed_and_kept_across_a_kit_change():
             await pilot.pause()
             assert not app.query_one("#barricade-row").display
             assert app.game.scene.barricade == 0
+
+    asyncio.run(scenario())
+
+
+def test_the_scenario_tab_edits_the_sheet():
+    async def scenario():
+        app = GmApp()
+        async with app.run_test(size=(120, 50)) as pilot:
+            await pilot.pause()
+            app.query_one("#genre").focus()
+            await pilot.press("a")
+            assert app.query_one("#details", TabbedContent).active == "tab-scenario"
+            app.query_one("#waypoints-3", Input).value = "The old bus depot"
+            app.query_one("#new-scenario-danger-name", Input).value = "Colossus"
+            await click(app, pilot, "#add-scenario-danger")
+            assert app.game.scenario.waypoints[3] == "The old bus depot"
+            summary = "Colossus: Heavy Brute — threshold 8, 1 hit to pass"
+            assert text(app, "#scenario-danger-summary-0") == summary
+            app.query_one("#pc-count", Select).value = 3
+            await pilot.pause()
+            assert "threshold 6" in text(app, "#scenario-danger-summary-0")
+            app.query_one("#scenario-danger-difficulty-0", Select).value = Difficulty.MEGA
+            await pilot.pause()
+            assert app.game.scenario.dangers[0].difficulty == Difficulty.MEGA
 
     asyncio.run(scenario())

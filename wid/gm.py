@@ -34,11 +34,8 @@ from wid.formatting import (
 from wid.profiles import PROFILES, Genre, WiDProfile
 from wid.rolls import FrozenModel, roll_d6
 from wid.scenario import (
-    DangerText,
     Scenario,
     ScenarioDanger,
-    ScenarioList,
-    ScenarioText,
     TypedSlot,
 )
 from wid.sessions import GmSave, parse_save
@@ -290,18 +287,9 @@ class GmGame(BaseGame):
         self.start_over()
         return f"New {self.profile.name} GM game started."
 
-    def set_scenario_text(self, field: ScenarioText, text: str) -> None:
+    def type_into_scenario(self, typed: dict[TypedSlot, str]) -> None:
         """Typed text is the GM's: nothing is logged, and it stays across an undo."""
-        self.scenario = self.scenario.with_text(field, text)
-
-    def set_scenario_entry(self, kind: ScenarioList, index: int, text: str) -> None:
-        self.scenario = self.scenario.with_entry(kind, index, text)
-
-    def set_incitement(self, row: int, text: str) -> None:
-        self.scenario = self.scenario.with_incitement(row, text)
-
-    def set_scenario_danger_text(self, index: int, field: DangerText, text: str) -> None:
-        self.scenario = self.scenario.with_danger_text(index, field, text)
+        self.scenario = self.scenario.with_typed(typed)
 
     def add_scenario_danger(
         self,

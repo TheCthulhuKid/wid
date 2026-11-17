@@ -72,15 +72,6 @@ class Scenario(Replaceable):
         require_own_ids(self.dangers, self.next_id)
         return self
 
-    def with_text(self, field: ScenarioText, text: str) -> Self:
-        return self.replace(**{field: text})
-
-    def with_entry(self, kind: ScenarioList, index: int, text: str) -> Self:
-        return self.replace(**{kind: put(getattr(self, kind), index, text, "No such entry.")})
-
-    def with_incitement(self, row: int, text: str) -> Self:
-        return self.replace(incitement=put(self.incitement, row, text, "No such incitement."))
-
     def with_danger(self, danger: ScenarioDanger, genre: Genre) -> Self:
         """The scenario with ``danger`` added under the next id; refused when ``genre`` lacks
         its class or standing."""
@@ -94,10 +85,6 @@ class Scenario(Replaceable):
         if not 0 <= index < len(self.dangers):
             raise ValueError("No such Danger.")
         return self.dangers[index]
-
-    def with_danger_text(self, index: int, field: DangerText, text: str) -> Self:
-        danger = self.danger_at(index).replace(**{field: text})
-        return self.replace(dangers=put(self.dangers, index, danger, "No such Danger."))
 
     def changed_danger(
         self,
@@ -113,7 +100,7 @@ class Scenario(Replaceable):
             danger_class=danger_class, difficulty=difficulty, standing=standing
         )
         require_fits(danger, genre)
-        return self.replace(dangers=put(self.dangers, index, danger, "No such Danger."))
+        return self.replace(dangers=(*self.dangers[:index], danger, *self.dangers[index + 1 :]))
 
     def without(self, index: int) -> Self:
         self.danger_at(index)
@@ -169,10 +156,3 @@ class Scenario(Replaceable):
 
     def fits(self, genre: Genre) -> bool:
         return self.in_kit(genre) == (self, [])
-
-
-def put[T](items: tuple[T, ...], index: int, item: T, missing: str) -> tuple[T, ...]:
-    """``items`` with ``item`` at ``index``; an index outside them is refused with ``missing``."""
-    if not 0 <= index < len(items):
-        raise ValueError(missing)
-    return (*items[:index], item, *items[index + 1 :])

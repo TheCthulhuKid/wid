@@ -15,11 +15,16 @@ CHOIR = ScenarioDanger(
 def test_a_scenario_holds_the_sheet_and_numbers_its_dangers():
     scenario = (
         Scenario()
-        .with_text("title", "Night Ferry")
-        .with_entry(ScenarioList.WAYPOINTS, 3, "The old bus depot")
-        .with_incitement(2, "A new Danger arrives")
         .with_danger(LANTERN, Genre.CORE)
         .with_danger(CHOIR, Genre.CORE)
+        .with_typed(
+            {
+                ("text", "title"): "Night Ferry",
+                (ScenarioList.WAYPOINTS.value, 3): "The old bus depot",
+                ("incitement", 2): "A new Danger arrives",
+                ("danger", 1, "description"): "Wings",
+            }
+        )
     )
     assert (scenario.title, scenario.waypoints[3], scenario.incitement[2]) == (
         "Night Ferry",
@@ -27,14 +32,12 @@ def test_a_scenario_holds_the_sheet_and_numbers_its_dangers():
         "A new Danger arrives",
     )
     assert [danger.id for danger in scenario.dangers] == [0, 1]
+    assert scenario.dangers[1].description == "Wings"
 
     changed = scenario.changed_danger(1, DangerClass.NIGHTMARE, Difficulty.MEGA, None, Genre.CORE)
     choir = changed.dangers[1]
     assert (choir.id, choir.danger_class, choir.notes) == (1, DangerClass.NIGHTMARE, "Hums.")
-    assert changed.with_danger_text(1, "description", "Wings").dangers[1].description == "Wings"
     assert [danger.id for danger in changed.without(0).dangers] == [1]
-    with pytest.raises(ValueError, match="No such entry"):
-        scenario.with_entry(ScenarioList.NPCS, 6, "Nobody")
 
 
 def test_a_scenario_refuses_what_the_kit_lacks():

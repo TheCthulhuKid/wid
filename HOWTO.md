@@ -198,8 +198,20 @@ holds whichever changed last.
 
 Running the game rather than playing a character? Start wid with `wid --gm` (from a release
 download, `.\wid.exe --gm` on Windows or `./wid --gm` on Linux and macOS). The screen has no
-character sheet: the **Scene** tab on the left holds the Dangers, and the right side rolls for
-them. Opening a GM save (`wid scene.json`) starts this mode by itself.
+character sheet: the **Scenario** tab holds your prep, the **Scene** tab the Dangers you are
+running, and the right side rolls for them. Opening a GM save (`wid scene.json`) starts this
+mode by itself.
+
+**Scenario** tab, the scenario sheet:
+
+- **Title**, **Author**, **Themes**, **Pitch** and **Cast**.
+- **Scene starters**, **NPCs**, **Waypoints** and **Obstacles**, six entries each, and the
+  **Incitement** table, each folded until you open it.
+- The scenario's Dangers, up to six. Fill in the row at the bottom and press
+  **Add scenario Danger**; each one then has its summary, name, **Class**, **Difficulty**, a
+  description and notes, and **Remove**.
+- **Clear scenario** empties the sheet, and **Undo** brings it back. What you type is never
+  logged and stays when you undo.
 
 **Scene** tab:
 
@@ -256,7 +268,7 @@ class the new kit lacks is dropped and named; **Undo** brings it back), **Start 
 everything, and **Cancel** keeps the current kit. The player's mode offers **Save first** too,
 beside **Start new game** and **Keep current game**.
 
-Keys: **E** opens the Scene tab and **S** the Session tab; **Ctrl+R** activates the Danger. The
+Keys: **A** opens the Scenario tab, **E** the Scene tab and **S** the Session tab; **Ctrl+R** activates the Danger. The
 other keys are the ones below, except **C**, **T** and **I**, which belong to the character
 sheet.
 

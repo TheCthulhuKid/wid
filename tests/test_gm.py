@@ -80,7 +80,7 @@ def test_the_scenario_saves_loads_and_undoes_with_the_scene(tmp_path):
         "Added Colossus to the scenario."
     )
     game.add_scenario_danger("", DangerClass.BRUTE, Difficulty.HEAVY)
-    game.set_scenario_text("title", "Night Ferry")
+    game.type_into_scenario({("text", "title"): "Night Ferry"})
     # Typed text is the GM's: undoing the Danger added before it keeps it.
     assert game.undo() == "Undid the last scenario Danger added."
     assert (game.scenario.title, len(game.scenario.dangers)) == ("Night Ferry", 1)

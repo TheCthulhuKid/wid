@@ -1,6 +1,7 @@
-"""The GM's terminal screen: the scene on the left, the activations on the right."""
+"""The GM's terminal screen: the scenario and the scene on the left, the activations on the
+right."""
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
 from random import Random
 from typing import ClassVar
@@ -20,7 +21,7 @@ from textual.widgets import (
 )
 from textual.widgets.tabbed_content import ContentTabs
 
-from wid.dangers import BARRICADE_MAX, DANGERS_MAX, classes_for
+from wid.dangers import BARRICADE_MAX, DANGERS_MAX, DangerClass, Difficulty, Standing, classes_for
 from wid.formatting import (
     GM_KIT_QUESTION,
     NO_ACTIVATION_HINT,
@@ -37,6 +38,16 @@ from wid.formatting import (
 )
 from wid.gm import GmGame
 from wid.profiles import Genre, WiDProfile
+from wid.scenario import (
+    DANGER_TEXTS,
+    ENTRIES,
+    INCITEMENTS,
+    SCENARIO_DANGERS_MAX,
+    SCENARIO_TEXTS,
+    Scenario,
+    ScenarioList,
+    TypedSlot,
+)
 from wid.ui.base import BaseApp, ButtonTables, PaletteCommand
 from wid.ui.dialogs import CANCEL, Answer
 from wid.ui.sessions import SessionActions
@@ -47,6 +58,9 @@ from wid.ui.widgets import (
     GameRow,
     NotesGroup,
     RemoveDangerButton,
+    RemoveScenarioDangerButton,
+    ScenarioDangerSelect,
+    ScenarioGroup,
     SceneGroup,
     SessionFile,
     SessionName,
@@ -58,6 +72,7 @@ START_NEW = "start-new"
 # Buttons that run one game action and show what it says.
 GAME_BUTTONS: dict[str, Callable[[GmGame], str]] = {
     "undo": GmGame.undo,
+    "clear-scenario": GmGame.clear_scenario,
     "roll-d6": GmGame.roll_one_die,
     "activate": GmGame.activate,
     "clash": GmGame.clash,
@@ -78,6 +93,7 @@ class GmApp(SessionActions, BaseApp):
     )
     BINDINGS: ClassVar = [
         ("d", "change_theme", "Theme"),
+        ("a", "show_tab('scenario')", "Scenario"),
         ("e", "show_tab('scene')", "Scene"),
         ("s", "show_tab('session')", "Session"),
         ("ctrl+r", "activate", "Activate"),
@@ -93,7 +109,9 @@ class GmApp(SessionActions, BaseApp):
 
     def compose_configuration(self) -> ComposeResult:
         yield GameRow(start=False, id="profile-fields")
-        with TabbedContent(id="details"):
+        with TabbedContent(id="details", initial="tab-scene"):
+            with TabPane("Scenario", id="tab-scenario"):
+                yield ScenarioGroup(id="scenario")
             with TabPane("Scene", id="tab-scene"):
                 yield SceneGroup(id="scene")
             with TabPane("Session", id="tab-session"):
@@ -124,6 +142,23 @@ class GmApp(SessionActions, BaseApp):
         game.name = self.query_one("#session-name", Input).value
         game.path = self.query_one("#session-path", Input).value
         game.notes = self.query_one("#session-notes", TextArea).text
+        game.type_into_scenario({slot: text_of(field) for slot, field in self.scenario_fields()})
+
+    def scenario_fields(self) -> Iterator[tuple[TypedSlot, Input | TextArea]]:
+        """Each box the GM types the scenario into, with its slot in ``Scenario.typed``."""
+        for field in SCENARIO_TEXTS:
+            yield ("text", field), self.query_one(f"#scenario-{field}")
+        for kind in ScenarioList:
+            for index in range(ENTRIES):
+                yield (kind.value, index), self.query_one(f"#{kind.value}-{index}", Input)
+        for row in range(INCITEMENTS):
+            yield ("incitement", row), self.query_one(f"#incitement-{row}", Input)
+        for index, danger in enumerate(self.game.scenario.dangers):
+            for field in DANGER_TEXTS:
+                yield (
+                    ("danger", danger.id, field),
+                    self.query_one(f"#scenario-danger-{field}-{index}"),
+                )
 
     def refresh_sheet(self) -> None:
         scene = self.game.scene
@@ -143,6 +178,7 @@ class GmApp(SessionActions, BaseApp):
                     self.query_one(f"#danger-name-{index}", Input).value = danger.name
             self.show_acting()
         self.query_one("#scene-summary", Static).update(scene_summary(scene))
+        self.show_scenario()
         self.query_one("#add-danger", Button).disabled = len(scene.dangers) >= DANGERS_MAX
         for button_id in ("commit-hits", "raise-threshold", "activate"):
             self.query_one(f"#{button_id}", Button).disabled = not scene.dangers
@@ -169,6 +205,34 @@ class GmApp(SessionActions, BaseApp):
         ]
         selector.set_options([("Strongest", STRONGEST), *titles])
         selector.value = STRONGEST if scene.acting is None else scene.acting_index
+
+    def show_scenario(self) -> None:
+        scenario, profile = self.game.scenario, self.profile
+        typed = scenario.typed()
+        with self.prevent(Select.Changed, Input.Changed, TextArea.Changed):
+            for slot, field in self.scenario_fields():
+                if text_of(field) != typed[slot]:
+                    set_text(field, typed[slot])
+            for index in range(SCENARIO_DANGERS_MAX):
+                shown = index < len(scenario.dangers)
+                self.query_one(f"#scenario-danger-row-{index}").display = shown
+                if not shown:
+                    continue
+                danger = scenario.dangers[index]
+                summary = danger_summary(danger, index, self.game.scene.pc_count)
+                self.query_one(f"#scenario-danger-summary-{index}", Static).update(summary)
+                for part, value in (
+                    ("class", danger.danger_class),
+                    ("difficulty", danger.difficulty),
+                    ("standing", danger.standing),
+                ):
+                    if value is not None:
+                        self.query_one(f"#scenario-danger-{part}-{index}", Select).value = value
+        for field in self.query("#scenario .standing-field"):
+            field.display = profile.has_standing
+        full = len(scenario.dangers) >= SCENARIO_DANGERS_MAX
+        self.query_one("#add-scenario-danger", Button).disabled = full
+        self.query_one("#clear-scenario", Button).disabled = scenario == Scenario()
 
     def show_reference(self) -> None:
         """The kit's classes, and the difficulties for the scene's PCs."""
@@ -214,11 +278,16 @@ class GmApp(SessionActions, BaseApp):
         self.refresh_sheet()
 
     def show_classes(self) -> None:
-        """Offer the base classes and the kit's; the choice starts over at the first."""
-        selector = self.query_one("#danger-class", Select)
+        """Offer the base classes and the kit's; a new Danger's choice starts over at the first."""
         classes = classes_for(self.genre)
-        selector.set_options([(kind.label, kind) for kind in classes])
-        selector.value = classes[0]
+        options = [(kind.label, kind) for kind in classes]
+        with self.prevent(Select.Changed):
+            for selector in self.query("#danger-class, #new-scenario-danger-class").results(Select):
+                selector.set_options(options)
+                selector.value = classes[0]
+            for selector in self.query(ScenarioDangerSelect):
+                if selector.id.startswith("scenario-danger-class-"):
+                    selector.set_options(options)
 
     def change_kit(self, genre: Genre, answer: str) -> str | None:
         if answer == KEEP_SCENE:
@@ -237,6 +306,23 @@ class GmApp(SessionActions, BaseApp):
             standing = None
         if self.act(lambda: self.game.add_danger(name, danger_class, difficulty, standing)):
             name_field.value = ""
+
+    def add_scenario_danger(self) -> None:
+        name_field = self.query_one("#new-scenario-danger-name", Input)
+        name = name_field.value
+        kind = self.scenario_danger_kind("new-scenario-danger")
+        if self.act(lambda: self.game.add_scenario_danger(name, *kind)):
+            name_field.value = ""
+
+    def scenario_danger_kind(
+        self, prefix: str, suffix: str = ""
+    ) -> tuple[DangerClass, Difficulty, Standing | None]:
+        """The class, difficulty and standing chosen in the selects ``prefix-part-suffix``."""
+        danger_class, difficulty, standing = (
+            self.query_one(f"#{prefix}-{part}{suffix}", Select).value
+            for part in ("class", "difficulty", "standing")
+        )
+        return danger_class, difficulty, standing if self.profile.has_standing else None
 
     def remove_danger(self, index: int) -> None:
         self.act(lambda: self.game.remove_danger(index))
@@ -270,6 +356,10 @@ class GmApp(SessionActions, BaseApp):
             self.act(lambda: self.game.set_revelations(value))
         elif event.select.id == "acting":
             self.act(lambda: self.game.choose_acting(None if value == STRONGEST else value))
+        elif isinstance(event.select, ScenarioDangerSelect):
+            index = event.select.index
+            kind = self.scenario_danger_kind("scenario-danger", f"-{index}")
+            self.act(lambda: self.game.change_scenario_danger(index, *kind))
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         if event.checkbox.id == "hostile" and event.value == event.checkbox.value:
@@ -292,6 +382,9 @@ class GmApp(SessionActions, BaseApp):
 
 TYPED_BUTTONS: dict[type[Button], Callable[[GmApp, Button], None]] = {
     RemoveDangerButton: lambda app, button: app.remove_danger(button.index),
+    RemoveScenarioDangerButton: lambda app, button: app.act(
+        lambda: app.game.remove_scenario_danger(button.index)
+    ),
 }
 
 PALETTE_COMMANDS: tuple[PaletteCommand, ...] = (
@@ -312,9 +405,21 @@ APP_BUTTONS: dict[str, Callable[[GmApp], None]] = {
     "load-session": GmApp.action_load_session,
     "toggle-history": GmApp.action_toggle_history,
     "add-danger": GmApp.add_danger,
+    "add-scenario-danger": GmApp.add_scenario_danger,
     "commit-hits": GmApp.commit_hits,
     "raise-threshold": GmApp.raise_threshold,
     "task-strain": GmApp.task_strain,
     "hits-spent": GmApp.spend_hits,
     "task-done": GmApp.task_done,
 }
+
+
+def text_of(field: Input | TextArea) -> str:
+    return field.text if isinstance(field, TextArea) else field.value
+
+
+def set_text(field: Input | TextArea, text: str) -> None:
+    if isinstance(field, TextArea):
+        field.load_text(text)
+    else:
+        field.value = text
