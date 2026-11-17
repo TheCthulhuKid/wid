@@ -313,7 +313,7 @@ class BaseGame(ABC):
             raise ValueError("There is no recovery copy to restore.")
         with reported("restore the game"):
             text = self.recovery_path.read_text(encoding="utf-8")
-            recovery = Recovery.model_validate_json(text)
+            recovery = Recovery.read(text)
         self.take_over(recovery.game)
         self.name, self.path = recovery.name, recovery.path
         self.saved_snapshot = None

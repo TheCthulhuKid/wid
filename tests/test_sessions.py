@@ -38,6 +38,9 @@ def test_invalid_or_corrupt_files_are_rejected(tmp_path, saved_session_factory):
         SavedSession.model_validate(data)
     with pytest.raises(ValueError, match="unknown save kind"):
         parse_save('{"kind": "referee"}', "player")
+    del data["version"]
+    with pytest.raises(ValueError, match="has no version"):
+        parse_save(json.dumps(data), "player")
 
 
 def test_an_older_save_loads_without_notes(tmp_path, saved_session_factory):

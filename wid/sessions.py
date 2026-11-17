@@ -2,7 +2,14 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    ValidationInfo,
+    model_validator,
+)
 
 from wid.dangers import Scene
 from wid.history import HistoryEntry
@@ -58,6 +65,8 @@ def renamed(difficulty: str) -> str:
 
 
 type Upgrades = dict[int, Callable[[SaveData], SaveData]]
+# Passed when reading a file, where a missing version is refused; a save built in code has none.
+FROM_FILE = {"from_file": True}
 # Each step turns a file of the version it is keyed by into the next version's data.
 UPGRADES: Upgrades = {1: note_succumbed_checks}
 GM_UPGRADES: Upgrades = {1: upgrade_dangers}
@@ -82,15 +91,17 @@ class SaveFile(FrozenModel):
 
     @model_validator(mode="before")
     @classmethod
-    def upgrade(cls, data: Any) -> Any:
+    def upgrade(cls, data: Any, info: ValidationInfo) -> Any:
         """Bring an older save up to the current version, one step at a time.
 
-        A file from a newer wid, or with a version no wid wrote, gets a message that says so
-        instead of pydantic's "Input should be 2".
+        A file from a newer wid, with no version, or with a version no wid wrote, gets a message
+        that says so instead of pydantic's "Input should be 2".
         """
         if not isinstance(data, dict):
             return data
         current = cls.model_fields["version"].default
+        if "version" not in data and info.context == FROM_FILE:
+            raise ValueError("This file has no version, so wid did not save it.")
         version = data.get("version", current)
         # true and 1.0 both equal 1 in Python; wid never writes either.
         if type(version) is int:
@@ -267,7 +278,7 @@ def parse_save(text: str, kind: str) -> SavedSession | GmSave:
         raise ValueError(f"This file has an unknown save kind ({found!r}).")
     if found != kind:
         raise ValueError(OTHER_MODE[found])
-    return SAVE_MODELS[kind].model_validate_json(text)
+    return SAVE_MODELS[kind].model_validate_json(text, context=FROM_FILE)
 
 
 class Recovery(FrozenModel):
@@ -280,3 +291,7 @@ class Recovery(FrozenModel):
     name: str = ""
     path: str = ""
     game: SavedSession | GmSave
+
+    @classmethod
+    def read(cls, text: str) -> Self:
+        return cls.model_validate_json(text, context=FROM_FILE)
