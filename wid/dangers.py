@@ -192,6 +192,40 @@ class Danger(Replaceable):
         return self.difficulty.rule.threshold(pc_count)
 
 
+def require_fits(danger: Danger, genre: Genre) -> None:
+    """Refuse a Danger whose class or standing ``genre`` lacks."""
+    if danger.danger_class not in classes_for(genre):
+        raise ValueError(f"{PROFILES[genre].name} has no {danger.danger_class.label}s.")
+    if danger.standing is not None:
+        require_tracker(genre, "has_standing", "Standing")
+
+
+def require_own_ids(dangers: tuple[Danger, ...], next_id: int) -> None:
+    ids = [danger.id for danger in dangers]
+    if len(set(ids)) != len(ids) or any(number >= next_id for number in ids):
+        raise ValueError("Each Danger needs its own id, below the next id.")
+
+
+def dangers_in_kit[D: Danger](
+    dangers: tuple[D, ...], genre: Genre
+) -> tuple[tuple[D, ...], list[str]]:
+    """The Dangers ``genre`` has a class for, without a standing it lacks, and the labels of
+    the ones dropped."""
+    allowed = classes_for(genre)
+    has_standing = PROFILES[genre].has_standing
+    kept = tuple(
+        danger if has_standing else danger.replace(standing=None)
+        for danger in dangers
+        if danger.danger_class in allowed
+    )
+    dropped = [
+        danger.label(index)
+        for index, danger in enumerate(dangers)
+        if danger.danger_class not in allowed
+    ]
+    return kept, dropped
+
+
 PC_MIN = 1
 PC_MAX = 8
 DANGERS_MAX = 4
@@ -227,10 +261,8 @@ class Scene(Replaceable):
             raise ValueError("Progress cannot exceed the threshold.")
         if self.revelation_progress > self.revelation_total:
             raise ValueError("The revelations track cannot go past its last revelation.")
-        ids = [danger.id for danger in self.dangers]
-        if len(set(ids)) != len(ids) or any(number >= self.next_id for number in ids):
-            raise ValueError("Each Danger needs its own id, below the scene's next id.")
-        if self.acting is not None and self.acting not in ids:
+        require_own_ids(self.dangers, self.next_id)
+        if self.acting is not None and self.acting not in {danger.id for danger in self.dangers}:
             raise ValueError("The acting Danger is not in the scene.")
         return self
 
@@ -292,10 +324,7 @@ class Scene(Replaceable):
     def with_danger(self, danger: Danger, genre: Genre) -> Self:
         """The scene with ``danger`` added under the next id; refused when ``genre`` lacks its
         class or standing."""
-        if danger.danger_class not in classes_for(genre):
-            raise ValueError(f"{PROFILES[genre].name} has no {danger.danger_class.label}s.")
-        if danger.standing is not None:
-            require_tracker(genre, "has_standing", "Standing")
+        require_fits(danger, genre)
         if len(self.dangers) >= DANGERS_MAX:
             raise ValueError(f"A scene holds up to {DANGERS_MAX} Dangers.")
         added = danger.replace(id=self.next_id)
@@ -348,17 +377,7 @@ class Scene(Replaceable):
         """The scene as ``genre`` can hold it: only the Dangers it has a class for (the labels
         of the rest are returned), and only the trackers it has."""
         profile = PROFILES[genre]
-        allowed = classes_for(genre)
-        kept = tuple(
-            danger if profile.has_standing else danger.replace(standing=None)
-            for danger in self.dangers
-            if danger.danger_class in allowed
-        )
-        dropped = [
-            danger.label(index)
-            for index, danger in enumerate(self.dangers)
-            if danger.danger_class not in allowed
-        ]
+        kept, dropped = dangers_in_kit(self.dangers, genre)
         scene = self._with_dangers(kept)
         if not profile.has_barricade:
             scene = scene.replace(barricade=0)
