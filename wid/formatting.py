@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from wid.dangers import (
     BARRICADE_MAX,
+    DEFAULT_ABILITIES,
     TARGETS,
     Ability,
     Activation,
@@ -11,6 +12,7 @@ from wid.dangers import (
     Danger,
     Difficulty,
     Scene,
+    classes_for,
     defending_attribute,
 )
 from wid.profiles import PROFILES, Genre
@@ -407,6 +409,13 @@ def sheet_lines(session: RollSession) -> list[str]:
 NO_DANGER_HINT = "Add a Danger to start the scene."
 NO_ACTIVATION_HINT = "Activate the Danger to see its roll here."
 LOADOUT_COLUMNS = ("Die", "Ability", "Target", "Attribute")
+CLASS_REFERENCE_COLUMNS = ("Class", "Die 4", "Die 5")
+DIFFICULTY_REFERENCE_COLUMNS = ("Difficulty", "Hits", "Threshold", "Die 6")
+REFERENCE_DICE = (
+    f"Dice 1 to 3 are {', '.join(ability.label for ability in DEFAULT_ABILITIES[:-1])} and "
+    f"{DEFAULT_ABILITIES[-1].label} for every Danger; the class gives dice 4 and 5, the "
+    "difficulty die 6."
+)
 
 
 def hits_text(hits: int) -> str:
@@ -493,6 +502,26 @@ def activation_line(activation: Activation) -> str:
     if activation.danger.standing is not None:
         text += f"; the Danger is {activation.danger.standing.label}"
     return text
+
+
+def class_reference_rows(genre: Genre) -> list[tuple[str, str, str]]:
+    """Each class the kit offers, with the abilities it puts on dice 4 and 5."""
+    return [
+        (kind.label, *(ability.label for ability in kind.abilities)) for kind in classes_for(genre)
+    ]
+
+
+def difficulty_reference_rows(pc_count: int) -> list[tuple[str, str, str, str]]:
+    """Each difficulty with its hits to pass, its threshold for ``pc_count`` PCs and die 6."""
+    return [
+        (
+            difficulty.label,
+            str(difficulty.rule.hits_to_pass),
+            str(difficulty.rule.threshold(pc_count)),
+            difficulty.rule.ability.label,
+        )
+        for difficulty in Difficulty
+    ]
 
 
 def loadout_rows(loadout: tuple[Ability, ...], genre: Genre) -> list[tuple[str, str, str, str]]:

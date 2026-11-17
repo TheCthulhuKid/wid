@@ -10,6 +10,7 @@ from textual.widget import Widget
 from textual.widgets import (
     Button,
     Checkbox,
+    Collapsible,
     DataTable,
     Input,
     Label,
@@ -34,13 +35,16 @@ from wid.dangers import (
 from wid.formatting import (
     BONUS_LABELS,
     CHARACTER_LABELS,
+    CLASS_REFERENCE_COLUMNS,
     CORRUPTION_AMOUNTS,
+    DIFFICULTY_REFERENCE_COLUMNS,
     LOADOUT_COLUMNS,
     NO_ACTIVATION_HINT,
     NO_DANGER_HINT,
     NO_RESULT_HINT,
     POWER_LABELS,
     RANKS_HINT,
+    REFERENCE_DICE,
     strain_box_name,
 )
 from wid.profiles import PROFILES, Genre
@@ -682,6 +686,16 @@ class SceneGroup(Vertical):
                 yield Button(
                     "Task done", id="task-done", tooltip="Advance by the Task's complexity"
                 )
+        with Collapsible(title="Danger reference", collapsed=True, id="reference-section"):
+            yield Static(REFERENCE_DICE, id="reference-dice", markup=False)
+            yield DataTable(id="class-reference", cursor_type="none", zebra_stripes=True)
+            yield DataTable(id="difficulty-reference", cursor_type="none", zebra_stripes=True)
+
+    def on_mount(self) -> None:
+        self.query_one("#class-reference", DataTable).add_columns(*CLASS_REFERENCE_COLUMNS)
+        self.query_one("#difficulty-reference", DataTable).add_columns(
+            *DIFFICULTY_REFERENCE_COLUMNS
+        )
 
 
 class ActivationGroup(VerticalScroll):

@@ -15,7 +15,9 @@ from wid.dangers import (
 from wid.formatting import (
     NO_DANGER_HINT,
     activation_line,
+    class_reference_rows,
     danger_summary,
+    difficulty_reference_rows,
     loadout_heading,
     loadout_rows,
     revelations_line,
@@ -59,6 +61,10 @@ def test_danger_numbers_and_loadout():
         DangerClass.DISASTER,
     )
     assert classes_for(Genre.HECKBOY)[-1] == DangerClass.TITAN
+    assert len(class_reference_rows(Genre.CORE)) == 4
+    assert class_reference_rows(Genre.HECKBOY)[-1] == ("Titan", "Dominate", "Dominate")
+    assert difficulty_reference_rows(4)[-1] == ("Mega", "2", "16", "Kill")
+    assert difficulty_reference_rows(3)[-1][2] == "12"
     rows = loadout_rows(TITAN.loadout, Genre.HECKBOY)
     assert rows[3] == ("4", "Dominate", "PC(s) with highest scared", "Ferocity")
     assert rows[5] == ("6", "Kill", "PC(s) with most wounds", "Savvy")

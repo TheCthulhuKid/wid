@@ -26,8 +26,10 @@ from wid.formatting import (
     NO_ACTIVATION_HINT,
     activation_line,
     barricade_text,
+    class_reference_rows,
     danger_summary,
     danger_title,
+    difficulty_reference_rows,
     loadout_heading,
     loadout_rows,
     revelations_line,
@@ -154,6 +156,7 @@ class GmApp(SessionActions, BaseApp):
         table = self.query_one("#loadout", DataTable)
         table.clear()
         table.add_rows(loadout_rows(scene.loadout, self.genre))
+        self.show_reference()
         self.finish_refresh()
 
     def show_acting(self) -> None:
@@ -166,6 +169,16 @@ class GmApp(SessionActions, BaseApp):
         ]
         selector.set_options([("Strongest", STRONGEST), *titles])
         selector.value = STRONGEST if scene.acting is None else scene.acting_index
+
+    def show_reference(self) -> None:
+        """The kit's classes, and the difficulties for the scene's PCs."""
+        for table_id, rows in (
+            ("#class-reference", class_reference_rows(self.genre)),
+            ("#difficulty-reference", difficulty_reference_rows(self.game.scene.pc_count)),
+        ):
+            table = self.query_one(table_id, DataTable)
+            table.clear()
+            table.add_rows(rows)
 
     def update_trackers(self) -> None:
         """Show the kit's trackers only: a Danger's standing, the barricade, the revelations."""

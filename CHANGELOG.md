@@ -18,6 +18,8 @@ What changed in each release of wid, newest first. The format follows
   standing** adds their strain to a task.
 - In the GM mode, **Acting Danger** chooses whose loadout the activations roll on once a scene
   has two or more Dangers, and the loadout table names its Danger.
+- In the GM mode, **Danger reference** on the Scene tab shows what each class and difficulty
+  gives a Danger, for the kit and the number of PCs.
 - Oldheart: **Avoid strain** beside **Gain Corruption** takes the Corruption for strain avoided
   on a task and says so in the history.
 

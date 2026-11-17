@@ -156,6 +156,9 @@ SceneGroup { height: auto; }
 #revelation-count-field { width: 13; margin-right: 1; }
 #revelations-row Button { margin-top: 1; margin-right: 1; }
 #hostile { width: 1fr; padding: 0; border: tall transparent; }
+#reference-section { margin-top: 1; }
+#reference-dice { margin-bottom: 1; }
+#class-reference, #difficulty-reference { height: auto; margin-bottom: 1; }
 ActivationGroup { height: 1fr; padding: 1; border: solid $primary; }
 #activation, #loadout-heading { margin-bottom: 1; }
 #loadout { height: auto; }

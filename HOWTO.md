@@ -211,6 +211,9 @@ them. Opening a GM save (`wid scene.json`) starts this mode by itself.
   **Strongest**, or any one of them. Hits to pass stay the strongest's.
 - The line under the Dangers is the scene: the combined threshold, what has been committed
   and the hits to pass of the strongest Danger.
+- **Danger reference**, folded at the bottom of the tab, shows what each choice gives: each
+  class's abilities on dice 4 and 5, and each difficulty's hits to pass, threshold for the
+  current **PCs** and ability on die 6.
 - Choose an **Amount**, then press **Commit hits** to progress the threshold, or press
   **Raise threshold** when a Danger's ability raises it. Committed hits never go past the
   threshold.

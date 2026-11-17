@@ -47,7 +47,10 @@ function swap(html) {
   // A text field's value attribute is what the server last drew, not what was typed since.
   const keyed = active && ["button", "submit", "radio", "checkbox"].includes(active.type);
   const value = keyed ? active.getAttribute("value") : null;
+  // A reply draws every <details> folded, so the ones open before are opened again.
+  const opened = [...sheet().querySelectorAll("details[open][id]")].map((section) => section.id);
   sheet().outerHTML = html;
+  for (const id of opened) document.getElementById(id)?.setAttribute("open", "");
   typed = false;
   if (openQuestion()) return;
   if (!name) return;

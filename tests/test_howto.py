@@ -66,6 +66,7 @@ SCREEN_LABELS = [
     "Raise threshold",
     "Acting Danger",
     "Strongest",
+    "Danger reference",
     "Dangers fight each other",
     "Dangers clash",
     "Activate Danger",

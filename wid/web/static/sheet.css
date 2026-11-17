@@ -364,6 +364,9 @@ button:disabled, input:disabled, select:disabled {
 }
 
 .loadout th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.reference { margin-top: 1rem; }
+.reference summary { cursor: pointer; font-weight: 700; }
 .loadout td:first-child { font-weight: 800; font-variant-numeric: tabular-nums; }
 
 /* Narrow screens: one column, with the dice right after the next-test options so a roll's

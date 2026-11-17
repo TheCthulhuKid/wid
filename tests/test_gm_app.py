@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 from helpers import ScriptedRandom, click, text
-from textual.widgets import Button, DataTable, Input, Select
+from textual.widgets import Button, Collapsible, DataTable, Input, Select
 
 from wid.dangers import Complexity, DangerClass, Difficulty
 from wid.formatting import NO_DANGER_HINT
@@ -19,8 +19,10 @@ def test_a_danger_is_added_activated_removed_and_kept_across_a_kit_change():
             await pilot.pause()
             await click(app, pilot, "#load-session")
             await pilot.click("#cancel-load")
+            assert app.query_one("#reference-section", Collapsible).collapsed
             app.query_one("#genre", Select).value = Genre.HECKBOY
             await pilot.pause()
+            assert app.query_one("#class-reference", DataTable).get_row_at(4)[0] == "Titan"
             assert [kind for _, kind in app.query_one("#danger-class", Select)._options][-1] == (
                 DangerClass.TITAN
             )
