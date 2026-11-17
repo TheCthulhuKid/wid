@@ -132,6 +132,17 @@ def create_app(game: BaseGame, token: str, *, greeting: str = "") -> FastAPI:
             message, greeting = greeting, ""
             return render(request, "page.html", mode, game, message, ask=recovery_question(game))
 
+    @app.post("/typed", response_class=PlainTextResponse)
+    async def typed(request: Request) -> str:
+        """Keep typed text without redrawing the page, which would move the cursor."""
+        body = await request.body()
+        async with lock:
+            try:
+                mode.collect(game, SheetForm(body))
+            except ValueError as error:
+                return player_message(error)
+            return game.keep_recovery()
+
     @app.post("/actions/{name}", response_class=HTMLResponse)
     async def act(name: str, request: Request) -> Response:
         action = mode.actions.get(name)

@@ -10,6 +10,9 @@ let pending = false;
 // Changed while waiting: the reply draws over it, so the player is told to make it again.
 let missed = false;
 const MISSED = "A change made while wid was busy was not kept; make it again.";
+const STOPPED = "wid is not running; start it again and reload this page.";
+const TYPING_PAUSE = 3000;
+let typing;
 
 const feedback = (text) => { sheet().querySelector(".feedback").textContent = text; };
 
@@ -26,7 +29,7 @@ async function send(url, data) {
     text = await response.text();
   } catch {
     // A failed fetch means nothing answered: the window running wid --web was closed.
-    feedback("wid is not running; start it again and reload this page.");
+    feedback(STOPPED);
     missed = false;
     return;
   } finally {
@@ -110,7 +113,24 @@ document.addEventListener("input", (event) => {
   if (!sheet().contains(event.target)) return;
   typed = true;
   if (pending) missed = true;
+  clearTimeout(typing);
+  typing = setTimeout(keepTyped, TYPING_PAUSE);
 });
+
+async function keepTyped() {
+  if (pending) return;
+  try {
+    const response = await fetch("/typed", {
+      method: "POST",
+      headers: { "HX-Request": "true", "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(new FormData(sheet())),
+    });
+    const text = await response.text();
+    if (text) feedback(text);
+  } catch {
+    feedback(STOPPED);
+  }
+}
 
 // Closing or reloading the page asks first while something would be lost, as Ctrl+Q does in
 // the terminal.

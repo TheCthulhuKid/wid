@@ -188,13 +188,15 @@ file and names the flag to start wid with. A change to the GM format bumps `GmSa
 adds a step to `GM_UPGRADES`.
 
 **Recovery copy** (JSON): `recovery.json` beside the settings, and `gm-recovery.json` for the
-GM mode, so a GM and a player on one computer never overwrite each other's. While the game has
-unsaved changes and has started, `BaseGame.keep_recovery` writes it after every change (the terminal from
-`refresh_sheet`, the browser after each action), in the save format with the typed session name
-and file path beside it. It goes once nothing is unsaved (a save, a load, a new kit) or when
-the player quits after agreeing to lose the changes. On start, an untouched game offers it back;
-**Start fresh** leaves it until the new game writes over it. It is the most recent game, so two
-games running at once take turns in it. A write that fails is reported once and play goes on.
+GM mode, so a GM and a player on one computer never overwrite each other's. While a started
+game has unsaved changes, `BaseGame.keep_recovery` writes it in the save format, with the typed
+session name and file path beside it. Both front ends call it after every action, and again 3
+seconds after the last keystroke so typed text is kept too: the terminal from a timer in
+`BaseApp`, the browser through `POST /typed`, which answers without redrawing the page. The copy
+goes once nothing is unsaved, or when the player quits and agrees to lose the changes. On start,
+an untouched game offers it back; **Start fresh** leaves it until the new game writes over it.
+Two games running at once take turns in it. A write that fails is reported once and play goes
+on.
 
 **Settings** (JSON): the theme, the open tab, and whether the strain tracker and items are
 collapsed. They live in `~/.config/wid/settings.json`, `%APPDATA%\wid\settings.json` on

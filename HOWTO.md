@@ -185,7 +185,8 @@ To open a save as wid starts, name it: `wid game.json`, or `wid --web game.json`
 browser. On Windows you can also right-click a save, choose **Open with** and pick `wid.exe`.
 If the file cannot be opened, wid starts an empty game and says why.
 
-While a game has unsaved changes, wid also keeps a recovery copy of it beside its settings. If
+While a game has unsaved changes, wid also keeps a recovery copy of it beside its settings,
+including what you type, a few seconds after you stop. If
 wid closes without a save (a crash, or a closed window), the next start asks whether to
 **Restore** that game or **Start fresh** (**Keep the opened game** if you named a save to open).
 A restored game still needs saving. **Start fresh**

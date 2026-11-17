@@ -8,11 +8,13 @@ from pathlib import Path
 from random import Random
 from typing import ClassVar
 
+from textual import on
 from textual.app import App, ComposeResult, SystemCommand
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Resize
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, RichLog, Select, Static
+from textual.timer import Timer
+from textual.widgets import Button, Footer, Header, Input, RichLog, Select, Static, TextArea
 
 from wid.base_game import BaseGame, player_message
 from wid.history import HistoryEntry, history_statistics
@@ -48,6 +50,7 @@ class BaseApp(App):
     CSS_PATH = "roller.tcss"
     TITLE = "We're in Danger"
     KIT_QUESTION: ClassVar[str]
+    TYPING_PAUSE: ClassVar[float] = 3.0
     KIT_ANSWERS: ClassVar[tuple[Answer, ...]]
 
     def __init__(
@@ -61,17 +64,14 @@ class BaseApp(App):
         super().__init__()
         self.settings_path = settings_path
         self.settings = load_settings(settings_path)
-        # The kit whose highlight the danger theme shows; ``show_kit_colours`` follows the game.
         self.coloured_genre = Genre.CORE
         self.register_theme(danger_theme(self.coloured_genre))
-        # Layout choices the user made, for a mode that remembers any.
         self.layout: dict[str, object] = {}
         self.game = self.make_game(rng, recovery_path)
-        # A save named on the command line, opened once the screen is up.
         self.open_path = open_path
-        # How many history entries the log shows, so only new ones are written.
         self.logged = 0
         self.pending_genre: Genre | None = None
+        self.typing: Timer | None = None
 
     @abstractmethod
     def make_game(self, rng: Random | None, recovery_path: Path | None) -> BaseGame: ...
@@ -192,13 +192,36 @@ class BaseApp(App):
         self.refresh_sheet()
         return True
 
+    @on(Input.Changed)
+    @on(TextArea.Changed)
+    def wait_for_a_pause(self) -> None:
+        if self.typing is not None:
+            self.typing.stop()
+        self.typing = self.set_timer(self.TYPING_PAUSE, self.keep_typed)
+
+    def keep_typed(self) -> None:
+        """Copy what was typed into the game and the recovery copy, without redrawing."""
+        self.typing = None
+        if not self.is_running:
+            return
+        # A dialog hides the screen's fields from ``collect``, so wait for another pause.
+        if self.pending_genre is not None or len(self.screen_stack) > 1:
+            self.wait_for_a_pause()
+            return
+        try:
+            self.collect()
+        except ValueError as error:
+            self.feedback(player_message(error))
+            return
+        if warning := self.game.keep_recovery():
+            self.feedback(warning)
+
     def finish_refresh(self) -> None:
         """The end of every ``refresh_sheet``: the kit's colours, the log, Undo and the recovery
         copy."""
         self.show_kit_colours()
         self.write_new_history()
         self.query_one("#undo", Button).disabled = not self.game.can_undo
-        # Every change ends here, so this is where the recovery copy follows the game.
         if warning := self.game.keep_recovery():
             self.feedback(warning)
 
@@ -244,7 +267,6 @@ class BaseApp(App):
             return
         self.pending_genre = genre
         self.collect()
-        # With nothing to lose, the first answer is what the player would choose anyway.
         if not self.game.has_unsaved_state():
             self.finish_genre_change(self.KIT_ANSWERS[0].id)
             return

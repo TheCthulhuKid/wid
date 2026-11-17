@@ -1,4 +1,4 @@
-from helpers import ScriptedRandom, act, browser
+from helpers import PAGE, ScriptedRandom, act, browser
 
 from wid.game import Game
 
@@ -83,6 +83,9 @@ def test_the_first_page_offers_back_a_game_left_unsaved(tmp_path):
     assert "Restore that game?" in client.get("/").text
     act(client, "restore", confirm="1")
     assert game.session.model_dump() == left.session.model_dump()
+    typed = client.post("/typed", data={"sheet": "1", "notes": "Keep the map."}, headers=PAGE)
+    assert (typed.status_code, typed.text) == (200, "")
+    assert "Keep the map." in recovery.read_text(encoding="utf-8")
 
 
 def test_a_save_downloads_and_uploads_into_another_game():
