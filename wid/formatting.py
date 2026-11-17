@@ -430,15 +430,17 @@ def hits_text(hits: int) -> str:
     return f"{hits} {'hit' if hits == 1 else 'hits'} to pass"
 
 
-def danger_summary(danger: Danger, index: int, pc_count: int) -> str:
-    """One Danger's line, such as ``Danger 1: Heavy Brute — threshold 8, 1 hit to pass``,
-    with its standing after the class in Ball Season."""
+def danger_kind(danger: Danger) -> str:
+    """Such as ``Heavy Brute``, with the standing after the class in Ball Season."""
     kind = f"{danger.difficulty.label} {danger.danger_class.label}"
-    if danger.standing is not None:
-        kind += f", {danger.standing.label}"
+    return kind if danger.standing is None else f"{kind}, {danger.standing.label}"
+
+
+def danger_summary(danger: Danger, index: int, pc_count: int) -> str:
+    """One Danger's line, such as ``Danger 1: Heavy Brute — threshold 8, 1 hit to pass``."""
     return (
-        f"{one_line(danger.label(index))}: {kind} — threshold {danger.threshold(pc_count)}, "
-        f"{hits_text(danger.hits_to_pass)}"
+        f"{one_line(danger.label(index))}: {danger_kind(danger)} — "
+        f"threshold {danger.threshold(pc_count)}, {hits_text(danger.hits_to_pass)}"
     )
 
 

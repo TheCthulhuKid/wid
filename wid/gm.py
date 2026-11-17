@@ -25,6 +25,7 @@ from wid.formatting import (
     acting_notice,
     activation_line,
     barricade_text,
+    danger_kind,
     danger_summary,
     revelations_line,
     scenario_line,
@@ -320,8 +321,8 @@ class GmGame(BaseGame):
             return ""
         with self.undoable("scenario Danger change"):
             self.scenario = changed
-        label = changed.dangers[index].label(index)
-        return self.notice(f"Changed {label} to {difficulty.label} {danger_class.label}.")
+        danger = changed.dangers[index]
+        return self.notice(f"Changed {danger.label(index)} to {danger_kind(danger)}.")
 
     def remove_scenario_danger(self, index: int) -> str:
         label = self.scenario.danger_at(index).label(index)

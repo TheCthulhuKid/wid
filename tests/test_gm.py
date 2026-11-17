@@ -6,6 +6,7 @@ from helpers import ScriptedRandom
 from wid.dangers import DangerClass, Difficulty
 from wid.gm import GmGame
 from wid.profiles import Genre
+from wid.rolls import Standing
 from wid.sessions import GmSave
 
 
@@ -96,6 +97,16 @@ def test_the_scenario_saves_loads_and_undoes_with_the_scene(tmp_path):
     assert "Scenario: Night Ferry — Colossus (Boss Titan)" in loaded.history_text()
     assert loaded.keep_scene(Genre.CORE) == (
         "Kit changed to Core WiD. Dropped Zeus. Dropped Colossus from the scenario."
+    )
+
+
+def test_a_scenario_danger_change_names_its_standing():
+    game = GmGame()
+    game.start_new(Genre.BALL_SEASON)
+    game.add_scenario_danger("", DangerClass.BRUTE, Difficulty.HEAVY, Standing.ESTEEMED)
+    assert (
+        game.change_scenario_danger(0, DangerClass.BRUTE, Difficulty.HEAVY, Standing.SCANDALOUS)
+        == "Changed Danger 1 to Heavy Brute, Scandalous."
     )
 
 
