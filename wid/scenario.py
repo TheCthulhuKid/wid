@@ -97,6 +97,18 @@ class Scenario(Replaceable):
         added = danger.replace(id=self.next_id)
         return self.replace(dangers=(*self.dangers, added), next_id=self.next_id + 1)
 
+    def replaced_by(self, sheet: Self, genre: Genre) -> Self:
+        """``sheet`` in this scenario's place. Its Dangers are numbered on from this one's, so
+        a scene never takes a new Danger for the one it started from; one ``genre`` cannot
+        hold is refused by name."""
+        scenario = sheet.replace(dangers=(), next_id=self.next_id)
+        for danger in sheet.dangers:
+            try:
+                scenario = scenario.with_danger(danger, genre)
+            except ValueError as error:
+                raise ValueError(f"{sheet.title}, {danger.name}: {error}") from None
+        return scenario
+
     def danger_at(self, index: int) -> ScenarioDanger:
         if not 0 <= index < len(self.dangers):
             raise ValueError("No such Danger.")

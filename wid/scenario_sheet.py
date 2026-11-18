@@ -98,6 +98,20 @@ def read_sheets(text: str) -> tuple[Scenario, ...]:
     return tuple(built(draft) for draft in drafts if draft.found)
 
 
+def chosen_sheet(text: str, choice: int | None = None) -> Scenario:
+    """The one scenario in a sheet, or the one at ``choice``; several with no choice raise
+    ``ChooseScenario`` with their titles."""
+    sheets = read_sheets(text)
+    if not sheets:
+        raise ValueError("This file has no scenario: each starts with a line such as # Title.")
+    if choice is None and len(sheets) > 1:
+        raise ChooseScenario(tuple(sheet.title for sheet in sheets))
+    index = choice or 0
+    if index not in range(len(sheets)):
+        raise ValueError("No such scenario in this file.")
+    return sheets[index]
+
+
 def read_line(draft: ScenarioDraft, line: str) -> None:
     """Take one line into the scenario being read: the first reader whose pattern matches and
     that takes the line, or else the field being written."""
