@@ -253,7 +253,8 @@ It wades up from the hold.
 - **PCs**: how many player characters are in the scene (1 to 8). The Dangers' thresholds follow.
 - Once the scenario has a Danger, choose it in **Scenario Danger** and press **Start scene**: the
   scene starts with that Danger alone, and its description and notes show under the loadout
-  table. A new scene starts only once the last one has ended.
+  table. A new scene starts only once the last one has ended, and **Scenario Danger** then
+  offers the next Danger in the scenario (the first again after the last).
 - **End scene** is enabled once the scene is overcome, and **They're dead. They're all dead!**
   while it is not. Either one writes the scene and its notes to the history and empties it;
   **Undo** brings it back.

@@ -262,6 +262,7 @@ class Scene(Replaceable):
     revelation_progress: Count = 0
     revelations: Annotated[int, Field(strict=True, ge=1, le=REVELATIONS_MAX)] = REVELATIONS_DEFAULT
     notes: str = ""
+    # The scenario Danger the scene was started from; once it ends, the one the last scene was.
     scenario_danger_id: DangerId | None = None
 
     @model_validator(mode="after")
@@ -337,13 +338,23 @@ class Scene(Replaceable):
         if len(self.dangers) >= DANGERS_MAX:
             raise ValueError(f"A scene holds up to {DANGERS_MAX} Dangers.")
         added = danger.replace(id=self.next_id)
-        return self.replace(dangers=(*self.dangers, added), next_id=self.next_id + 1)
+        # A Danger added to an empty scene starts a scene of the GM's own, not the scenario's.
+        started_from = self.scenario_danger_id if self.dangers else None
+        return self.replace(
+            dangers=(*self.dangers, added),
+            next_id=self.next_id + 1,
+            scenario_danger_id=started_from,
+        )
 
     def cleared(self) -> Self:
         """An empty scene. The PC count and the revelations to find stay, and so does the id
-        counter, so Undo never takes a new Danger for an old one."""
+        counter, so Undo never takes a new Danger for an old one; the scenario Danger it was
+        started from stays, so the next scene can start from the one after."""
         return type(self)(
-            pc_count=self.pc_count, revelations=self.revelations, next_id=self.next_id
+            pc_count=self.pc_count,
+            revelations=self.revelations,
+            next_id=self.next_id,
+            scenario_danger_id=self.scenario_danger_id,
         )
 
     def starting(self, danger: Danger, genre: Genre, scenario_danger_id: int) -> Self:

@@ -223,17 +223,20 @@ class GmApp(SessionActions, BaseApp):
         selector.value = STRONGEST if scene.acting is None else scene.acting_index
 
     def show_scene_start(self) -> None:
-        """Offer the scenario's Dangers to start a scene with, once the last scene has ended."""
+        """Offer the scenario's Dangers to start a scene with, once the last scene has ended.
+        While a scene runs, the choice moves on to the next Danger; between scenes, the GM's
+        own choice stays."""
         dangers = self.game.scenario.dangers
         self.query_one("#start-scene-row").display = bool(dangers)
         selector = self.query_one("#scenario-scene", Select)
         if dangers:
             chosen = selector.value
+            keep = not self.game.scene.dangers and chosen in range(len(dangers))
             with self.prevent(Select.Changed):
                 selector.set_options(
                     [(danger_title(danger, index), index) for index, danger in enumerate(dangers)]
                 )
-                selector.value = chosen if chosen in range(len(dangers)) else 0
+                selector.value = chosen if keep else self.game.next_scenario_index
         start = self.query_one("#start-scene", Button)
         start.disabled = bool(self.game.scene.dangers) or selector.is_blank()
 

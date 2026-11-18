@@ -132,6 +132,21 @@ def test_a_scene_started_from_the_scenario_ends_once_overcome():
     assert (game.scene.progress, game.scene.notes, game.scene.scenario_danger_id) == (0, "", 1)
 
 
+def test_the_next_scene_is_offered_the_next_scenario_danger():
+    game = scenario_game()
+    game.start_scene(1)
+    # After the last Danger, the first again.
+    assert game.next_scenario_index == 0
+    game.lose_scene()
+    game.start_scene(0)
+    game.commit_hits(game.scene.threshold)
+    game.end_scene()
+    assert game.next_scenario_index == 1
+    # A scene of the GM's own shows no scenario Danger's text.
+    game.add_danger("Stray dog", DangerClass.BRUTE, Difficulty.PETTY)
+    assert game.scene_from_scenario is None
+
+
 def test_a_lost_scene_is_recorded_and_undone():
     game = scenario_game()
     game.start_scene(1)

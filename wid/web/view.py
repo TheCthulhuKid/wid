@@ -299,6 +299,7 @@ def gm_context(
         "scenario_titles": [
             danger_title(danger, index) for index, danger in enumerate(game.scenario.dangers)
         ],
+        "next_scenario_index": game.next_scenario_index,
         "roll_on_labels": ROLL_ON_LABELS,
         "scene_danger_text": scenario_danger_text(game.scene_from_scenario),
         "incitement_rolls": INCITEMENT_ROLLS,

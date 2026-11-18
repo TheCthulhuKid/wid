@@ -29,7 +29,7 @@ What changed in each release of wid, newest first. The format follows
 - In the GM mode, **Start scene** on the Scene tab runs a scenario Danger, with its description
   and notes under the loadout table; **End scene** and **They're dead. They're all dead!** write
   the scene and its **Scene notes** to the history, and **Roll on** rolls on a scenario list or
-  the incitement table.
+  the incitement table. After each scene, **Scenario Danger** offers the next one.
 - In the GM mode, **Danger reference** on the Scene tab shows what each class and difficulty
   gives a Danger, for the kit and the number of PCs.
 - Oldheart: **Avoid strain** beside **Gain Corruption** takes the Corruption for strain avoided

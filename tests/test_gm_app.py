@@ -129,6 +129,8 @@ def test_the_scene_tab_starts_a_scene_from_the_scenario():
             app.query_one("#new-scenario-danger-name", Input).value = "Colossus"
             await click(app, pilot, "#add-scenario-danger")
             app.query_one("#scenario-danger-description-0", TextArea).load_text("Wades ashore.")
+            app.query_one("#new-scenario-danger-name", Input).value = "Moth Choir"
+            await click(app, pilot, "#add-scenario-danger")
             await pilot.press("e")
             await click(app, pilot, "#start-scene")
             assert text(app, "#scene-danger-text") == "Wades ashore."
@@ -137,6 +139,8 @@ def test_the_scene_tab_starts_a_scene_from_the_scenario():
             await click(app, pilot, "#commit-hits")
             await click(app, pilot, "#commit-hits")
             assert not app.query_one("#end-scene", Button).disabled
+            await click(app, pilot, "#end-scene")
+            assert app.query_one("#scenario-scene", Select).value == 1
 
     asyncio.run(scenario())
 

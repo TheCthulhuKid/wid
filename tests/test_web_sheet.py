@@ -156,7 +156,10 @@ def test_the_gm_page_starts_a_scenario_scene():
     assert "Incitement (4): nothing is written there." in rolled.text
     act(client, "commit-hits", amount="6")
     act(client, "commit-hits", amount="6")
-    assert "Scene ended: Colossus" in act(client, "end-scene").text
+    game.add_scenario_danger("Moth Choir", DangerClass.SWARM, Difficulty.BOSS)
+    ended = act(client, "end-scene").text
+    assert "Scene ended: Colossus" in ended
+    assert '<option value="1" selected>' in ended
     assert "Fled north." in game.history[-1].notice
 
 

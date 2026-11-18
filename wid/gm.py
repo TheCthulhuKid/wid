@@ -81,8 +81,17 @@ class GmGame(BaseGame):
     @property
     def scene_from_scenario(self) -> ScenarioDanger | None:
         """The scenario Danger the scene was started from, unless the GM has since removed it."""
-        danger_id = self.scene.scenario_danger_id
+        danger_id = self.scene.scenario_danger_id if self.scene.dangers else None
         return next((danger for danger in self.scenario.dangers if danger.id == danger_id), None)
+
+    @property
+    def next_scenario_index(self) -> int:
+        """The scenario Danger to offer for the next scene: the one after the Danger the last
+        scene started from, or the first after the last or when there is none."""
+        ids = [danger.id for danger in self.scenario.dangers]
+        if self.scene.scenario_danger_id not in ids:
+            return 0
+        return (ids.index(self.scene.scenario_danger_id) + 1) % len(ids)
 
     def typed_names(self, state: GmState) -> dict[TypedSlot, str]:
         """The scene's Danger names and notes, and the scenario's typed text."""

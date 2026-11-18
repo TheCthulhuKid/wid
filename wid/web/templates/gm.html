@@ -23,7 +23,7 @@
       <div class="row named">
         <label class="field grow">Scenario Danger
           <select name="scenario-scene">
-            {% for title in scenario_titles %}<option value="{{ loop.index0 }}">{{ title }}</option>{% endfor %}
+            {% for title in scenario_titles %}<option value="{{ loop.index0 }}" {% if loop.index0 == next_scenario_index %}selected{% endif %}>{{ title }}</option>{% endfor %}
           </select>
         </label>
         <button class="primary" formaction="/actions/start-scene" {% if scene.dangers %}disabled{% endif %}>Start scene</button>
