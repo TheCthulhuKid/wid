@@ -349,6 +349,8 @@ button:disabled, input:disabled, select:disabled {
 }
 
 .danger .status { margin: 0 0 0.4rem; font-weight: 600; color: var(--ink); }
+/* The scenario Danger's description and notes keep the GM's line breaks. */
+.scene-danger { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .loadout {
   width: 100%;

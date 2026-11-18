@@ -24,7 +24,7 @@ from wid.game import Game, NameField
 from wid.gm import GmGame
 from wid.profiles import Genre
 from wid.rolls import BonusKind, PowerMode, ResourceEffect
-from wid.scenario import TypedSlot
+from wid.scenario import ScenarioList, Slot, TypedSlot
 from wid.sessions import CharacterDetails
 
 
@@ -356,15 +356,21 @@ def change_scenario_danger(game: GmGame, form: SheetForm) -> str:
     return game.change_scenario_danger(index, *kind)
 
 
+def roll_on(game: GmGame, form: SheetForm) -> str:
+    kind = form.text("roll-on")
+    return game.roll_on(Slot.INCITEMENT if kind == Slot.INCITEMENT else ScenarioList(kind))
+
+
 def collect_gm(game: GmGame, form: SheetForm) -> None:
-    """Copy the GM page's fields into the game: the session text, the Dangers' names and the
-    scenario."""
+    """Copy the GM page's fields into the game: the session text, the scene's notes, the
+    Dangers' names and the scenario."""
     if not form.has_sheet:
         return
     for name, apply in (
         ("session-name", lambda value: setattr(game, "name", value)),
         ("session-path", lambda value: setattr(game, "path", value)),
         ("notes", lambda value: setattr(game, "notes", value)),
+        ("scene-notes", game.type_scene_notes),
     ):
         if (value := form.get(name)) is not None:
             apply(value)
@@ -390,6 +396,10 @@ GM_ACTIONS: dict[str, Callable[[GmGame, SheetForm], str]] = {
     "change-scenario-danger": change_scenario_danger,
     "remove-scenario-danger": lambda game, form: game.remove_scenario_danger(form.number("index")),
     "clear-scenario": lambda game, form: game.clear_scenario(),
+    "start-scene": lambda game, form: game.start_scene(form.number("scenario-scene")),
+    "end-scene": lambda game, form: game.end_scene(),
+    "lose-scene": lambda game, form: game.lose_scene(),
+    "roll-on": roll_on,
     "commit-hits": lambda game, form: game.commit_hits(form.number("amount")),
     "raise-threshold": lambda game, form: game.raise_threshold(form.number("amount")),
     "acting": lambda game, form: game.choose_acting(

@@ -1,6 +1,7 @@
 from helpers import ScriptedRandom, act, browser
 from textual.color import Color
 
+from wid.dangers import DangerClass, Difficulty
 from wid.game import Game
 from wid.gm import GmGame
 from wid.profiles import PROFILES, Genre
@@ -141,3 +142,19 @@ def test_the_gm_page_edits_the_scenario():
     assert "Colossus: Boss Swarm" in act(client, "change-scenario-danger", index="0", **kind).text
     act(client, "update", **{"scenario-danger-0-description": "Tall."})
     assert game.scenario.dangers[0].description == "Tall."
+
+
+def test_the_gm_page_starts_a_scenario_scene():
+    game = GmGame(rng=ScriptedRandom([4]))
+    game.add_scenario_danger("Colossus", DangerClass.BRUTE, Difficulty.HEAVY)
+    client = browser(game)
+    described = {"scenario-danger-0-description": "Wades ashore."}
+    sheet = act(client, "start-scene", **{"scenario-scene": "0", **described}).text
+    assert '<p class="scene-danger">Wades ashore.</p>' in sheet
+    assert 'formaction="/actions/end-scene" title="Once the scene is overcome" disabled' in sheet
+    rolled = act(client, "roll-on", **{"roll-on": "incitement", "scene-notes": "Fled north."})
+    assert "Incitement (4): nothing is written there." in rolled.text
+    act(client, "commit-hits", amount="6")
+    act(client, "commit-hits", amount="6")
+    assert "Scene ended: Colossus" in act(client, "end-scene").text
+    assert "Fled north." in game.history[-1].notice

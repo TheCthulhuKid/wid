@@ -28,6 +28,7 @@ from wid.formatting import (
     POWER_LABELS,
     RANKS_HINT,
     REFERENCE_DICE,
+    ROLL_ON_LABELS,
     SCENARIO_LIST_LABELS,
     SPEND_LABELS,
     activation_line,
@@ -44,6 +45,7 @@ from wid.formatting import (
     resources_reminder,
     result_text,
     revelations_line,
+    scenario_danger_text,
     scene_summary,
     strain_box_name,
     strain_status,
@@ -294,6 +296,11 @@ def gm_context(
             for index, danger in enumerate(game.scenario.dangers)
         ],
         "scenario_lists": SCENARIO_LIST_LABELS,
+        "scenario_titles": [
+            danger_title(danger, index) for index, danger in enumerate(game.scenario.dangers)
+        ],
+        "roll_on_labels": ROLL_ON_LABELS,
+        "scene_danger_text": scenario_danger_text(game.scene_from_scenario),
         "incitement_rolls": INCITEMENT_ROLLS,
         "scenario_empty": game.scenario == Scenario(),
         "scenario_full": len(game.scenario.dangers) >= SCENARIO_DANGERS_MAX,

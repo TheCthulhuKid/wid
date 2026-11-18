@@ -283,7 +283,8 @@ sheet.
 
 **In the browser**, `wid --web --gm` serves the GM page instead of the character sheet, with
 the same controls. The scene is a section on the left (on a phone, first), with the scenario
-folded below it, and the activation, the loadout table and the history are on the right. The
+folded below it, and the activation, the loadout table, the scenario Danger's description and
+notes, and the history are on the right. The
 **PCs** box, **Dangers fight each other** and a scenario Danger's **Class** and **Difficulty**
 send themselves as soon as they change, as the sheet's boxes do; everything else is a button.
 **Ctrl+R** presses **Activate Danger**. The session block, downloads, uploads and the colours
