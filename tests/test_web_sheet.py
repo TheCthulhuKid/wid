@@ -158,3 +158,18 @@ def test_the_gm_page_starts_a_scenario_scene():
     act(client, "commit-hits", amount="6")
     assert "Scene ended: Colossus" in act(client, "end-scene").text
     assert "Fled north." in game.history[-1].notice
+
+
+def test_the_gm_page_uploads_a_scenario_after_asking_which():
+    game = GmGame()
+    client = browser(game)
+    sheets = {
+        "scenario-file": "# One\n\n### Bear\n*Heavy Brute*\n\n# Two\n\n### Wolf\n*Boss Swarm*\n"
+    }
+    asked = act(client, "upload-scenario", **sheets).text
+    assert 'name="scenario-choice" value="1">Two</button>' in asked
+    sheet = act(client, "upload-scenario", **{"scenario-choice": "1", **sheets}).text
+    assert "Imported the scenario Two." in sheet
+    download = client.get("/scenario.md")
+    assert download.headers["content-disposition"] == 'attachment; filename="Two.md"'
+    assert download.text.startswith("# Two\n")

@@ -194,4 +194,16 @@ def create_app(game: BaseGame, token: str, *, greeting: str = "") -> FastAPI:
             name = game.save_file_name()
         return attachment(text, "application/json", name)
 
+    if isinstance(game, GmGame):
+
+        @app.get("/scenario.md")
+        async def download_scenario() -> Response:
+            async with lock:
+                try:
+                    text = game.scenario_text()
+                except ValueError as error:
+                    return PlainTextResponse(player_message(error), 404)
+                name = game.scenario_file_name()
+            return attachment(text, "text/markdown; charset=utf-8", name)
+
     return app

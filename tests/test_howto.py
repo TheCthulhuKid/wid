@@ -73,6 +73,8 @@ SCREEN_LABELS = [
     "Scenario file",
     "Import scenario",
     "Export scenario",
+    "Upload a scenario",
+    "Download scenario",
     "Scenario Danger",
     "Start scene",
     "End scene",

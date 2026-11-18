@@ -16,6 +16,7 @@ from wid.formatting import (
     NEW_CHARACTER_QUESTION,
     NEW_GAME_QUESTION,
     RECOVERY_QUESTION,
+    SCENARIO_CHOICE_QUESTION,
     load_question,
     recovery_decline,
     replace_question,
@@ -25,6 +26,7 @@ from wid.gm import GmGame
 from wid.profiles import Genre
 from wid.rolls import BonusKind, PowerMode, ResourceEffect
 from wid.scenario import ScenarioList, Slot, TypedSlot
+from wid.scenario_sheet import ChooseScenario
 from wid.sessions import CharacterDetails
 
 
@@ -361,6 +363,24 @@ def roll_on(game: GmGame, form: SheetForm) -> str:
     return game.roll_on(Slot.INCITEMENT if kind == Slot.INCITEMENT else ScenarioList(kind))
 
 
+def upload_scenario(game: GmGame, form: SheetForm) -> str:
+    """A sheet of several scenarios asks which, carrying the file's text to the answer."""
+    text = form.text("scenario-file")
+    choice = form.number("scenario-choice") if form.get("scenario-choice") else None
+    try:
+        return game.import_scenario(text, choice)
+    except ChooseScenario as asked:
+        answers = [
+            Answer(title, "scenario-choice", str(index)) for index, title in enumerate(asked.titles)
+        ]
+        raise NeedsConfirmation(
+            SCENARIO_CHOICE_QUESTION,
+            "upload-scenario",
+            answers=answers,
+            carry={"scenario-file": text},
+        ) from None
+
+
 def collect_gm(game: GmGame, form: SheetForm) -> None:
     """Copy the GM page's fields into the game: the session text, the scene's notes, the
     Dangers' names and the scenario."""
@@ -400,6 +420,7 @@ GM_ACTIONS: dict[str, Callable[[GmGame, SheetForm], str]] = {
     "end-scene": lambda game, form: game.end_scene(),
     "lose-scene": lambda game, form: game.lose_scene(),
     "roll-on": roll_on,
+    "upload-scenario": upload_scenario,
     "commit-hits": lambda game, form: game.commit_hits(form.number("amount")),
     "raise-threshold": lambda game, form: game.raise_threshold(form.number("amount")),
     "acting": lambda game, form: game.choose_acting(

@@ -82,12 +82,13 @@ document.addEventListener("submit", (event) => {
   send(button ? button.formAction : event.target.action, new FormData(event.target, button));
 });
 
-// A save chosen in the upload box is read here and sent as text with the sheet, so the game
-// needs no file upload handling. The box has no name, so the file itself is not sent.
-async function upload(file) {
+// A file chosen in an upload box (a save, or the GM's scenario sheet) is read here and sent as
+// text in the field the box names, so the game needs no file upload handling. The box has no
+// name, so the file itself is not sent.
+async function upload(control, file) {
   const data = new FormData(sheet());
-  data.set("session-file", await file.text());
-  send("/actions/upload", data);
+  data.set(control.dataset.field, await file.text());
+  send(`/actions/${control.dataset.upload}`, data);
 }
 
 // Selects and boxes marked data-action send the sheet as soon as they change.
@@ -100,7 +101,7 @@ document.addEventListener("change", (event) => {
     return;
   }
   if (file) {
-    upload(file);
+    upload(control, file);
     return;
   }
   const data = new FormData(sheet());

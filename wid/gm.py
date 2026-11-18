@@ -371,6 +371,10 @@ class GmGame(BaseGame):
             raise ValueError("The scenario is empty: write or import one first.")
         return write_sheet(self.scenario, self.genre)
 
+    def scenario_file_name(self) -> str:
+        """The scenario's title as a file name, for a download."""
+        return f"{one_line(self.scenario.title) or 'scenario'}.md"
+
     def export_scenario(self, text: str, *, overwrite: bool = False) -> str:
         sheet = self.scenario_text()
         with reported("export scenario"):

@@ -155,6 +155,12 @@
 
     <details class="block scenario" id="scenario-section">
       <summary><h2>Scenario</h2></summary>
+      <div class="row named">
+        <label class="field grow">Upload a scenario
+          <input type="file" accept=".md,.markdown,text/markdown,text/plain" data-upload="upload-scenario" data-field="scenario-file">
+        </label>
+        {% if not scenario_empty %}<a class="button" href="/scenario.md" download>Download scenario</a>{% endif %}
+      </div>
       {% for name, label in (("title", "Title"), ("author", "Author"), ("themes", "Themes")) %}
       <label class="field">{{ label }}<input name="{{ field(('text', name)) }}" value="{{ scenario[name] }}"></label>
       {% endfor %}

@@ -323,7 +323,9 @@ notes, and the history are on the right. The
 **PCs** box, **Dangers fight each other** and a scenario Danger's **Class** and **Difficulty**
 send themselves as soon as they change, as the sheet's boxes do; everything else is a button.
 **Ctrl+R** presses **Activate Danger**. The session block, downloads, uploads and the colours
-work as on the sheet, and a player's save uploaded here is refused the same way.
+work as on the sheet, and a player's save uploaded here is refused the same way. Instead of the
+**Scenario file** box, the scenario section has **Upload a scenario**, which asks which one when
+the file holds several, and **Download scenario**.
 
 ## Play in the browser
 
