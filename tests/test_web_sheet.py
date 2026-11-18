@@ -1,6 +1,7 @@
 from helpers import ScriptedRandom, act, browser
 from textual.color import Color
 
+from wid.dangers import DangerClass, Difficulty
 from wid.game import Game
 from wid.gm import GmGame
 from wid.profiles import PROFILES, Genre
@@ -89,13 +90,13 @@ def test_bad_fields_are_refused_without_breaking_the_page_or_losing_typing():
     refused = act(client, "update", fear="7", notes="Keep this")
     assert refused.status_code == 200
     assert "Scared" in refused.text
-    assert game.fear_level == 0
+    assert game.next_test.fear_level == 0
     assert game.notes == "Keep this"
     assert client.get("/").status_code == 200
     game.start_game((1, 2, 3))
     game.roll()
     act(client, "update", die="9")
-    assert game.item_target is None
+    assert game.next_test.item_target is None
 
 
 def test_the_gm_page_runs_a_scene_and_refuses_a_player_save():
@@ -127,3 +128,51 @@ def test_the_gm_page_runs_a_scene_and_refuses_a_player_save():
     player_save.start_game((1, 2, 3))
     refused = act(client, "upload", **{"session-file": player_save.save_text()}).text
     assert "start wid without --gm" in refused
+
+
+def test_the_gm_page_edits_the_scenario():
+    game = GmGame()
+    client = browser(game)
+    new = {"new-scenario-danger-class": "brute", "new-scenario-danger-difficulty": "mega"}
+    fields = {"scenario-text-title": "Night Ferry", "new-scenario-danger-name": "Colossus", **new}
+    sheet = act(client, "add-scenario-danger", **fields).text
+    assert "Colossus: Mega Brute — threshold 16, 2 hits to pass" in sheet
+    assert 'value="Night Ferry"' in sheet
+    kind = {"scenario-kind-0-class": "swarm", "scenario-kind-0-difficulty": "boss"}
+    assert "Colossus: Boss Swarm" in act(client, "change-scenario-danger", index="0", **kind).text
+    act(client, "update", **{"scenario-danger-0-description": "Tall."})
+    assert game.scenario.dangers[0].description == "Tall."
+
+
+def test_the_gm_page_starts_a_scenario_scene():
+    game = GmGame(rng=ScriptedRandom([4]))
+    game.add_scenario_danger("Colossus", DangerClass.BRUTE, Difficulty.HEAVY)
+    client = browser(game)
+    described = {"scenario-danger-0-description": "Wades ashore."}
+    sheet = act(client, "start-scene", **{"scenario-scene": "0", **described}).text
+    assert '<p class="scene-danger">Wades ashore.</p>' in sheet
+    assert 'formaction="/actions/end-scene" title="Once the scene is overcome" disabled' in sheet
+    rolled = act(client, "roll-on", **{"roll-on": "incitement", "scene-notes": "Fled north."})
+    assert "Incitement (4): nothing is written there." in rolled.text
+    act(client, "commit-hits", amount="6")
+    act(client, "commit-hits", amount="6")
+    game.add_scenario_danger("Moth Choir", DangerClass.SWARM, Difficulty.BOSS)
+    ended = act(client, "end-scene").text
+    assert "Scene ended: Colossus" in ended
+    assert '<option value="1" selected>' in ended
+    assert "Fled north." in game.history[-1].notice
+
+
+def test_the_gm_page_uploads_a_scenario_after_asking_which():
+    game = GmGame()
+    client = browser(game)
+    sheets = {
+        "scenario-file": "# One\n\n### Bear\n*Heavy Brute*\n\n# Two\n\n### Wolf\n*Boss Swarm*\n"
+    }
+    asked = act(client, "upload-scenario", **sheets).text
+    assert 'name="scenario-choice" value="1">Two</button>' in asked
+    sheet = act(client, "upload-scenario", **{"scenario-choice": "1", **sheets}).text
+    assert "Imported the scenario Two." in sheet
+    download = client.get("/scenario.md")
+    assert download.headers["content-disposition"] == 'attachment; filename="Two.md"'
+    assert download.text.startswith("# Two\n")

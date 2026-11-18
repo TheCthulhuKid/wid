@@ -59,7 +59,7 @@ def test_recovery_after_a_danger_gives_back_what_the_kit_says():
     assert survivor.recover_after(Difficulty.MEGA) == (
         "Recovery after a Mega Danger — Resources +3: 6 in the pool."
     )
-    assert survivor.recover_after(Difficulty.COMPETENT).endswith(
+    assert survivor.recover_after(Difficulty.HEAVY).endswith(
         "Resources +0: 6 in the pool. The pool holds at most 6."
     )
     with pytest.raises(ValueError, match="does not say how much"):

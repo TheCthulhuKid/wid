@@ -13,7 +13,8 @@ from random import Random
 import uvicorn
 from textual.widgets import Markdown, TabbedContent, TextArea
 
-from wid.game import BaseGame, Game
+from wid.base_game import BaseGame
+from wid.game import Game
 from wid.gm import GmGame
 from wid.settings import load_settings
 from wid.ui.app import RollerApp

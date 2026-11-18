@@ -1,25 +1,12 @@
-"""One sitting at the table: the state every front end drives, and the messages it reports.
+"""The player's game: the character sheet and its actions, on top of ``BaseGame``."""
 
-``BaseGame`` holds what every mode shares: the history, the session name, notes and file path,
-Undo, saving, loading, exporting and the recovery copy. ``Game`` is the player's game and adds
-the character sheet and its actions. Each action changes the game and returns the feedback to
-show (empty when there is nothing to say); refused actions raise ``ValueError`` with a message
-for the player. History entries are appended here, so front ends only display ``history``.
-Saving and exporting raise ``FileExistsError`` (with the target in ``filename``) when they would
-replace a file, so the front end can ask before calling again with ``overwrite=True``.
-"""
-
-from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Iterator
-from contextlib import contextmanager, suppress
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from random import Random
-from typing import Any, Literal, NamedTuple
+from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ValidationError
-
-from wid.dangers import Difficulty, recovery_amount
-from wid.export import history_markdown
+from wid.base_game import BaseGame
+from wid.dangers import Difficulty, Replaceable, recovery_amount
 from wid.formatting import (
     BONUS_LABELS,
     check_summary,
@@ -31,7 +18,7 @@ from wid.formatting import (
     standing_notice,
     strain_notice,
 )
-from wid.history import ROLL_ACTION, HistoryEntry, history_statistics
+from wid.history import ROLL_ACTION, HistoryEntry
 from wid.profiles import PROFILES, Genre, Recovers, WiDProfile
 from wid.rolls import (
     SACRIFICE_RESOURCES,
@@ -43,17 +30,9 @@ from wid.rolls import (
     RollResult,
     RollSession,
     Standing,
-    roll_d6,
+    StrainTracker,
 )
-from wid.sessions import (
-    NAME_MAX,
-    CharacterDetails,
-    Recovery,
-    SavedSession,
-    parse_save,
-    session_file_path,
-)
-from wid.storage import write_text
+from wid.sessions import CharacterDetails, SavedSession, parse_save
 
 type NameField = Literal["bonus", "power", "manifestation", "tech", "strain"]
 
@@ -70,329 +49,23 @@ RENAMERS: dict[NameField, Callable[[RollSession, Any, str], object]] = {
 type NameSlot = tuple[NameField, int | BonusKind]
 
 
-def player_message(error: Exception) -> str:
-    """The reason to show the player: pydantic's first message, without its prefix."""
-    if isinstance(error, ValidationError):
-        return error.errors()[0]["msg"].removeprefix("Value error, ")
-    # An OS error reads "No such file or directory: game.json", without Python's "[Errno 2]".
-    if isinstance(error, OSError) and error.strerror:
-        return f"{error.strerror}: {error.filename}" if error.filename else error.strerror
-    return str(error)
+class NextTest(Replaceable):
+    """The options for the next test, and the dice picked from the current result."""
 
+    tested_attribute: str
+    fear_level: int = 0
+    assisted: bool = False
+    expertise: bool = False
+    power: PowerMode = PowerMode.NONE
+    target_standing: Standing | None = None
+    reroll_selection: tuple[int, ...] = ()
+    item_target: int | None = None
 
-# A save needs a name; the recovery copy and a browser download of a game without one use this.
-UNNAMED = "Unsaved game"
-# How many changes Undo can take back.
-UNDO_LIMIT = 50
-
-
-class Before(NamedTuple):
-    """The game just before a change, and the change's name for "Undid the last ..."."""
-
-    change: str
-    state: BaseModel
-    # The names just after the change, to tell which the player typed since.
-    names: dict[Any, str]
-    # Only a roll resets the tested attribute, the one-test options and the picks; None otherwise.
-    options: tuple[Any, ...] | None
-
-
-class BaseGame(ABC):
-    """What every mode shares. A mode supplies its state (``state``, the names typed into it,
-    ``restore``), what a save keeps (``snapshot``, ``saved_session``, ``parse_save``,
-    ``take_over``) and the sheet an export lists."""
-
-    def __init__(self, *, rng: Random | None = None, recovery_path: Path | None = None):
-        self.rng = rng if rng is not None else Random()
-        self.history: list[HistoryEntry] = []
-        self.name = ""
-        self.path = ""
-        self.notes = ""
-        self.undo_stack: list[Before] = []
-        # What the last save or load held, to tell whether anything has changed since.
-        self.saved_snapshot: dict[str, object] | None = None
-        # Where unsaved changes are kept in case wid closes; None keeps no copy (as in tests).
-        self.recovery_path = recovery_path
-        # What this run last wrote there, so an unchanged game is not written again.
-        self.recovery_snapshot: dict[str, object] | None = None
-        self.recovery_failed = False
-
-    @property
-    @abstractmethod
-    def state(self) -> BaseModel:
-        """The model Undo copies before a change and puts back after."""
-
-    @property
-    @abstractmethod
-    def in_play(self) -> bool:
-        """Whether the state has anything to lose, apart from the history and typed text."""
-
-    @property
-    def savable(self) -> bool:
-        """Whether the state can go into a save file yet."""
-        return True
-
-    @abstractmethod
-    def typed_names(self, state: BaseModel) -> dict[Any, str]:
-        """The names the player types into ``state``, by slot, kept across an undo."""
-
-    @abstractmethod
-    def restore(self, state: BaseModel, names: dict[Any, str], action: str) -> None:
-        """Put ``state`` back with ``names`` typed into it, and log ``action``."""
-
-    def options(self) -> tuple[Any, ...]:
-        """What an undoable change made with ``options=True`` also puts back."""
-        return ()
-
-    def restore_options(self, options: tuple[Any, ...]) -> None:
-        """Put back what ``options`` kept; nothing, unless the mode has options."""
-
-    @abstractmethod
-    def saved_session(self, name: str) -> BaseModel:
-        """The game as a save file holds it, under ``name``."""
-
-    @abstractmethod
-    def parse_save(self, text: str) -> BaseModel:
-        """A save of this mode from its JSON; a ``ValueError`` says why one cannot be read."""
-
-    @abstractmethod
-    def sheet_lines(self) -> list[str]:
-        """The state as short lines for an export's sheet section."""
-
-    def export_character(self) -> CharacterDetails | None:
-        """The character an export names under the title, when the mode has one."""
-        return None
-
-    def record(self, entry: HistoryEntry) -> None:
-        self.history.append(entry)
-
-    def notice(self, message: str) -> str:
-        self.record(HistoryEntry(notice=message))
-        return message
-
-    def roll_one_die(self) -> str:
-        return self.notice(f"Rolled 1d6: {roll_d6(self.rng)}.")
-
-    def has_unsaved_state(self) -> bool:
-        """Whether anything would be lost by replacing this game.
-
-        After a save or load, that is any change since; before one, anything at all.
-        """
-        if self.saved_snapshot is not None:
-            return self.snapshot() != self.saved_snapshot
-        return bool(self.history) or self.wrote_anything() or self.in_play
-
-    def snapshot(self) -> dict[str, object]:
-        """What a save keeps, apart from the file path, which only says where it goes."""
-        return {"history": tuple(self.history), "name": self.name, "notes": self.notes}
-
-    def wrote_anything(self) -> bool:
-        """Whether the player typed anything: the session name or notes.
-
-        The file path is left out: it is where a load reads from, so it would always count.
-        """
-        return bool(self.name or self.notes)
-
-    def save(self, *, overwrite: bool = False) -> str:
-        if not self.name.strip():
-            raise ValueError("Name the session before saving.")
-        try:
-            path = session_file_path(self.path)
-            saved = self.saved_session(self.name)
-            saved.save(path, overwrite=overwrite)
-        except FileExistsError:
-            raise
-        except (OSError, ValueError) as error:
-            raise ValueError(f"Could not save session: {player_message(error)}") from error
-        self.name = saved.name
-        self.saved_snapshot = self.snapshot()
-        return f"Saved {saved.name} to {path}."
-
-    def read_save(self, text: str) -> tuple[BaseModel, Path]:
-        """Read a session file without changing the game, so the player can confirm first."""
-        try:
-            path = session_file_path(text)
-            contents = path.read_text(encoding="utf-8")
-        except (OSError, ValueError) as error:
-            raise ValueError(f"Could not load session: {player_message(error)}") from error
-        return self.read_save_text(contents), path
-
-    def read_save_text(self, text: str) -> BaseModel:
-        """Read a save from its text, such as a file uploaded in the browser."""
-        try:
-            return self.parse_save(text)
-        except ValueError as error:
-            raise ValueError(f"Could not load session: {player_message(error)}") from error
-
-    def load(self, saved: BaseModel, path: Path | None) -> str:
-        """Take over ``saved``; ``path`` is the file it came from, None for an uploaded one."""
-        self.take_over(saved)
-        self.path = str(path) if path is not None else ""
-        self.saved_snapshot = self.snapshot()
-        return f"Loaded {saved.name} from {path}." if path is not None else f"Loaded {saved.name}."
-
-    def save_text(self) -> str:
-        """The game as a save file holds it, for the browser to download."""
-        if not self.savable:
-            raise ValueError("Start the game before downloading a save.")
-        return self.saved_session(self.name.strip() or UNNAMED).model_dump_json(indent=2)
-
-    def file_name(self) -> str:
-        """The session file's name, or "" when no file is set (``..`` names none)."""
-        name = Path(self.path.strip()).name
-        return "" if name == ".." else name
-
-    def save_file_name(self) -> str:
-        """The session file's name, or one made from the session name, for a download."""
-        return self.file_name() or f"{self.name.strip() or 'session'}.json"
-
-    def take_over(self, saved: BaseModel) -> None:
-        """Replace this game with ``saved``: the history, name and notes, with nothing to undo."""
-        self.history = list(saved.history)
-        self.name = saved.name
-        self.notes = saved.notes
-        self.undo_stack = []
-
-    @contextmanager
-    def undoable(self, change: str, *, options: bool = False) -> Iterator[None]:
-        """Run a change to the state so Undo can take it back; a refused change adds nothing.
-
-        ``options`` keeps the mode's options too, for a change that resets them.
-        """
-        state = self.state.model_copy(deep=True)
-        kept = self.options() if options else None
-        yield
-        before = Before(change, state, self.typed_names(self.state), kept)
-        self.undo_stack = [*self.undo_stack, before][-UNDO_LIMIT:]
-
-    @property
-    def can_undo(self) -> bool:
-        return bool(self.undo_stack)
-
-    def undo(self) -> str:
-        """Take back the last change to the state; the history keeps it and notes the undo.
-
-        A roll taken back is not given back to the dice: rolling again gives new faces.
-        """
-        if not self.undo_stack:
-            raise ValueError("There is nothing to undo.")
-        before = self.undo_stack.pop()
-        restored = self.typed_names(before.state)
-        # A name belongs to the player, not to the change: one typed since it stays.
-        kept = {
-            slot: name
-            for slot, name in self.typed_names(self.state).items()
-            if slot in restored and name != before.names.get(slot)
-        }
-        action = f"Undid the last {before.change}"
-        self.restore(before.state, kept, action)
-        if before.options is not None:
-            self.restore_options(before.options)
-        return f"{action}."
-
-    def keep_recovery(self) -> str:
-        """Bring the recovery copy in step with the game, after any change.
-
-        While something is unsaved the copy holds the game; once nothing is (after a save, a
-        load or a new kit), the copy this run wrote goes. While the game cannot be saved yet, an
-        earlier copy is left alone. A copy that cannot be written is reported once, as a message
-        to show, and play carries on.
-        """
-        if self.recovery_path is None:
-            return ""
-        try:
-            if not self.has_unsaved_state():
-                if self.recovery_snapshot is not None:
-                    self.discard_recovery()
-            elif self.savable and self.snapshot() != self.recovery_snapshot:
-                self.write_recovery()
-        except (OSError, ValueError) as error:
-            if self.recovery_failed:
-                return ""
-            self.recovery_failed = True
-            return f"Could not keep a recovery copy: {player_message(error)}"
-        return ""
-
-    def write_recovery(self) -> None:
-        # The stand-in is cut to what a save allows; ``name`` keeps the full text.
-        stand_in = (self.name.strip() or UNNAMED)[:NAME_MAX]
-        recovery = Recovery(name=self.name, path=self.path, game=self.saved_session(stand_in))
-        self.recovery_path.parent.mkdir(parents=True, exist_ok=True)
-        write_text(self.recovery_path, recovery.model_dump_json(indent=2), overwrite=True)
-        self.recovery_snapshot = self.snapshot()
-
-    def discard_recovery(self) -> None:
-        """Remove the recovery copy, as when the player chose to lose the unsaved changes."""
-        # A copy that cannot be removed is only offered again on the next start.
-        if self.recovery_path is not None:
-            with suppress(OSError):
-                self.recovery_path.unlink(missing_ok=True)
-        self.recovery_snapshot = None
-
-    def recovery_available(self) -> bool:
-        """Whether a copy from an earlier run waits, and taking it would lose nothing here."""
-        return (
-            self.recovery_path is not None
-            and self.recovery_path.is_file()
-            and not self.has_unsaved_state()
+    def after_roll(self) -> Self:
+        """Clear the options that last one test; Scared and the attribute stay."""
+        return self.replace(
+            assisted=False, expertise=False, power=PowerMode.NONE, target_standing=None
         )
-
-    def restore_recovery(self) -> str:
-        """Take back the game an earlier run left unsaved; it stays unsaved until saved."""
-        if self.recovery_path is None:
-            raise ValueError("There is no recovery copy to restore.")
-        try:
-            text = self.recovery_path.read_text(encoding="utf-8")
-            recovery = Recovery.model_validate_json(text)
-        except (OSError, ValueError) as error:
-            raise ValueError(f"Could not restore the game: {player_message(error)}") from error
-        self.take_over(recovery.game)
-        self.name, self.path = recovery.name, recovery.path
-        self.saved_snapshot = None
-        # The copy already holds this game, so the next change need not write it again first.
-        self.recovery_snapshot = self.snapshot()
-        return "Restored the game wid had kept; save it to keep it for good."
-
-    def open_file(self, text: str) -> str:
-        """Load the save named on the command line; one that cannot be loaded says why instead."""
-        try:
-            saved, path = self.read_save(text)
-        except ValueError as error:
-            return str(error)
-        return self.load(saved, path)
-
-    def default_export_path(self) -> str:
-        """The session file's path with a .md ending, or a plain name when none is set."""
-        if not self.file_name():
-            return "history.md"
-        return str(Path(self.path.strip()).with_suffix(".md"))
-
-    def require_history(self) -> None:
-        if not self.history:
-            raise ValueError("There is no history to export yet.")
-
-    def history_text(self) -> str:
-        """The history as the Markdown an export writes (or a browser downloads)."""
-        self.require_history()
-        return history_markdown(
-            self.name,
-            self.export_character(),
-            self.history,
-            sheet=self.sheet_lines(),
-            notes=self.notes,
-            statistics=history_statistics(self.history),
-        )
-
-    def export_history(self, text: str, *, overwrite: bool = False) -> str:
-        markdown = self.history_text()
-        try:
-            path = session_file_path(text, label="history file")
-            write_text(path, markdown, overwrite=overwrite)
-        except FileExistsError:
-            raise
-        except (OSError, ValueError) as error:
-            raise ValueError(f"Could not export history: {player_message(error)}") from error
-        return f"Exported {len(self.history)} history entries to {path}."
 
 
 class Game(BaseGame):
@@ -406,15 +79,7 @@ class Game(BaseGame):
         """A fresh character of ``genre``: session, details and the options for the next test."""
         self.session = RollSession(profile_id=genre)
         self.character = CharacterDetails()
-        self.tested_attribute = PROFILES[genre].attributes[0]
-        self.fear_level = 0
-        self.assisted = False
-        self.expertise = False
-        self.power = PowerMode.NONE
-        self.target_standing: Standing | None = None
-        # Choices about the current result, kept so a save can restore them.
-        self.reroll_selection: tuple[int, ...] = ()
-        self.item_target: int | None = None
+        self.next_test = NextTest(tested_attribute=PROFILES[genre].attributes[0])
         # A new sheet has nothing to take back.
         self.undo_stack = []
 
@@ -447,10 +112,11 @@ class Game(BaseGame):
                 expertise_name=session.bonuses.expertise,
             )
         )
-        self.reroll_selection = ()
         # A new roll can have fewer dice than the one the item was aimed at.
-        if self.item_target is not None and self.item_target >= self.dice_count:
-            self.item_target = None
+        target = self.next_test.item_target
+        if target is not None and target >= self.dice_count:
+            target = None
+        self.next_test = self.next_test.replace(reroll_selection=(), item_target=target)
 
     @property
     def dice_count(self) -> int:
@@ -477,15 +143,17 @@ class Game(BaseGame):
         if not 0 <= fear_level <= SCARED_MAX:
             raise ValueError(f"Scared runs from 0 to {SCARED_MAX}.")
         count = self.dice_count
-        self.fear_level = fear_level
-        self.assisted = assisted
-        self.expertise = expertise
-        self.power = power
-        self.target_standing = target_standing if self.profile.has_standing else None
         picked = {index for index in reroll if 0 <= index < count}
-        self.reroll_selection = tuple(sorted(picked)) if self.profile.has_rerolls else ()
         on_a_die = item_target is not None and 0 <= item_target < count
-        self.item_target = item_target if on_a_die else None
+        self.next_test = self.next_test.replace(
+            fear_level=fear_level,
+            assisted=assisted,
+            expertise=expertise,
+            power=power,
+            target_standing=target_standing if self.profile.has_standing else None,
+            reroll_selection=tuple(sorted(picked)) if self.profile.has_rerolls else (),
+            item_target=item_target if on_a_die else None,
+        )
 
     def rename(self, field: NameField, slot: int | BonusKind, name: str) -> None:
         """Name a bonus, power, manifestation, Tech piece or strain row; nothing is logged."""
@@ -504,19 +172,19 @@ class Game(BaseGame):
 
     def draft_request(self, *, preview: bool = False) -> RollRequest:
         """The next test as the options stand; ``preview`` skips the rank, which needs setup."""
-        session = self.session
+        session, options = self.session, self.next_test
         return RollRequest(
             profile_id=session.profile_id,
-            attribute=self.tested_attribute,
-            attribute_rank=1 if preview else session.attribute_rank(self.tested_attribute),
-            assisted=self.assisted,
-            fear_level=self.fear_level,
-            expertise=self.expertise,
-            power=self.power if self.profile.has_powers else PowerMode.NONE,
+            attribute=options.tested_attribute,
+            attribute_rank=1 if preview else session.attribute_rank(options.tested_attribute),
+            assisted=options.assisted,
+            fear_level=options.fear_level,
+            expertise=options.expertise,
+            power=options.power if self.profile.has_powers else PowerMode.NONE,
             resource_die=session.resource_die,
             manifestations=len(session.manifestations),
             standing=session.standing,
-            target_standing=self.target_standing,
+            target_standing=options.target_standing,
         )
 
     def start_game(self, ranks: tuple[int, ...]) -> str:
@@ -528,12 +196,10 @@ class Game(BaseGame):
         with self.undoable("roll", options=True):
             if attribute is not None:
                 self.session.attribute_rank(attribute)
-                self.tested_attribute = attribute
+                self.next_test = self.next_test.replace(tested_attribute=attribute)
             result = self.session.roll(self.draft_request(), rng=self.rng)
             self.log_result(result, ROLL_ACTION)
-            self.assisted = self.expertise = False
-            self.power = PowerMode.NONE
-            self.target_standing = None
+            self.next_test = self.next_test.after_roll()
         return ""
 
     def reroll(self, indices: set[int]) -> str:
@@ -585,21 +251,22 @@ class Game(BaseGame):
             and index not in result.applied_tech
         )
 
-    def set_strain_box(self, index: int, marked: bool) -> str:
+    def change_strain(self, wording: str, update: Callable[[StrainTracker], StrainTracker]) -> str:
         with self.undoable("strain change"):
-            self.session.strain = self.session.strain.set_box(index, marked)
+            self.session.strain = update(self.session.strain)
+        return self.notice(strain_notice(wording, self.session.strain))
+
+    def set_strain_box(self, index: int, marked: bool) -> str:
         change = "Marked" if marked else "Cleared"
-        return self.notice(strain_notice(f"{change} strain box {index + 1}", self.session.strain))
+        return self.change_strain(
+            f"{change} strain box {index + 1}", lambda strain: strain.set_box(index, marked)
+        )
 
     def take_strain(self) -> str:
-        with self.undoable("strain change"):
-            self.session.strain = self.session.strain.take_by_hand()
-        return self.notice(strain_notice("Took 1 strain", self.session.strain))
+        return self.change_strain("Took 1 strain", StrainTracker.take_by_hand)
 
     def take_wound(self) -> str:
-        with self.undoable("strain change"):
-            self.session.strain = self.session.strain.take_wound()
-        return self.notice(strain_notice("Took a wound", self.session.strain))
+        return self.change_strain("Took a wound", StrainTracker.take_wound)
 
     def second_wind(self) -> str:
         with self.undoable("Second Wind"):
@@ -640,21 +307,16 @@ class Game(BaseGame):
                 change = strain_notice(f"cleared {cleared} strain", self.session.strain)
         return self.notice(recovery_notice(difficulty, change))
 
-    def build_barricade(self, spent: int) -> str:
+    def spend_on_barricade(self, spent: int, *, build: bool) -> str:
+        """Build a barricade, or strengthen the one there."""
         with self.undoable("barricade"):
-            strength = self.session.spend_on_barricade(spent, build=True)
-        return self.notice(
-            f"Built a barricade of strength {strength} for {spent} Resources: "
-            f"{self.session.resources} in the pool."
+            strength = self.session.spend_on_barricade(spent, build=build)
+        change = (
+            f"Built a barricade of strength {strength}"
+            if build
+            else f"Strengthened the barricade by {strength}"
         )
-
-    def strengthen_barricade(self, spent: int) -> str:
-        with self.undoable("barricade"):
-            strength = self.session.spend_on_barricade(spent, build=False)
-        return self.notice(
-            f"Strengthened the barricade by {strength} for {spent} Resources: "
-            f"{self.session.resources} in the pool."
-        )
+        return self.notice(f"{change} for {spent} Resources: {self.session.resources} in the pool.")
 
     def sacrifice_item(self, kind: BonusKind) -> str:
         name = getattr(self.session.bonuses, kind).strip()
@@ -681,15 +343,14 @@ class Game(BaseGame):
             check = self.session.add_corruption(amount, rng=self.rng)
         return self.notice(f"{change} {check_summary(check)}")
 
-    def add_manifestation(self) -> str:
+    def change_manifestations(self, *, add: bool) -> str:
+        """Add a manifestation by hand, or remove the newest."""
         with self.undoable("manifestation change"):
-            self.session.add_manifestation()
-        return self.notice("Manifestation added by hand.")
-
-    def remove_manifestation(self) -> str:
-        with self.undoable("manifestation change"):
-            self.session.remove_manifestation()
-        return self.notice("Manifestation removed by hand.")
+            if add:
+                self.session.add_manifestation()
+            else:
+                self.session.remove_manifestation()
+        return self.notice(f"Manifestation {'added' if add else 'removed'} by hand.")
 
     def set_standing(self, standing: int) -> str:
         # Clicking the dot already chosen moves nothing, so there is nothing to log or undo.
@@ -707,9 +368,7 @@ class Game(BaseGame):
     def change_kit(self, genre: Genre) -> str:
         """A genre kit lasts a whole game, so changing it starts over: sheet, history and file."""
         self.reset_sheet(genre)
-        self.history.clear()
-        self.name = self.path = self.notes = ""
-        self.saved_snapshot = None
+        self.start_over()
         return f"New {PROFILES[genre].name} game started."
 
     def snapshot(self) -> dict[str, object]:
@@ -719,14 +378,7 @@ class Game(BaseGame):
             **super().snapshot(),
             "session": self.session.model_dump(),
             "character": self.character,
-            "draft": (
-                self.tested_attribute,
-                self.fear_level,
-                self.assisted,
-                self.expertise,
-                self.power,
-                self.target_standing,
-            ),
+            "draft": self.next_test.model_dump(exclude={"reroll_selection", "item_target"}),
         }
 
     def wrote_anything(self) -> bool:
@@ -748,8 +400,8 @@ class Game(BaseGame):
             notes=self.notes,
             character=self.character,
             history=tuple(self.history),
-            reroll_indices=self.reroll_selection,
-            item_target=self.item_target,
+            reroll_indices=self.next_test.reroll_selection,
+            item_target=self.next_test.item_target,
         )
 
     def parse_save(self, text: str) -> SavedSession:
@@ -761,36 +413,23 @@ class Game(BaseGame):
         self.session = saved.session.model_copy(deep=True)
         self.character = saved.character
         draft = saved.draft
-        self.tested_attribute = draft.attribute
-        self.fear_level = draft.fear_level
-        self.assisted = draft.assisted
-        self.expertise = draft.expertise
-        self.power = draft.power
-        self.target_standing = draft.target_standing
-        self.reroll_selection = saved.reroll_indices
-        self.item_target = saved.item_target
-
-    def options(self) -> tuple[Any, ...]:
-        return (
-            self.tested_attribute,
-            self.assisted,
-            self.expertise,
-            self.power,
-            self.target_standing,
-            self.reroll_selection,
-            self.item_target,
+        self.next_test = NextTest(
+            tested_attribute=draft.attribute,
+            fear_level=draft.fear_level,
+            assisted=draft.assisted,
+            expertise=draft.expertise,
+            power=draft.power,
+            target_standing=draft.target_standing,
+            reroll_selection=saved.reroll_indices,
+            item_target=saved.item_target,
         )
 
-    def restore_options(self, options: tuple[Any, ...]) -> None:
-        (
-            self.tested_attribute,
-            self.assisted,
-            self.expertise,
-            self.power,
-            self.target_standing,
-            self.reroll_selection,
-            self.item_target,
-        ) = options
+    def options(self) -> NextTest:
+        return self.next_test
+
+    def restore_options(self, options: NextTest) -> None:
+        # A roll leaves Scared as it is, so undoing one keeps the Scared set since.
+        self.next_test = options.replace(fear_level=self.next_test.fear_level)
 
     def restore(self, state: RollSession, names: dict[NameSlot, str], action: str) -> None:
         shown = self.session.current_result

@@ -102,8 +102,11 @@ wid/
 ├── profiles.py         # Genre metadata and attributes
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── dangers.py          # The GM's Dangers: loadouts, a scene's threshold and activation
+├── scenario.py         # A scenario sheet: its fields, lists, incitement and Dangers
+├── scenario_sheet.py   # A scenario sheet in Markdown, read and written for import and export
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
-├── game.py             # One sitting: BaseGame (history, save, undo, recovery) and the player's Game
+├── base_game.py        # What every mode shares: history, save, load, export, undo, recovery
+├── game.py             # The player's game: the character sheet and its actions
 ├── gm.py               # The GM's game: the kit, the scene and an action for each control
 ├── export.py           # Markdown export: the sheet, the notes and the action history
 ├── history.py          # Structured action history entries, their text, and dice statistics
@@ -140,7 +143,7 @@ Front ends call `Game` (`wid/game.py`), which owns the session, history, roll op
 character, notes and file path, records history and words the feedback; game rules stay in
 the domain models, independent of Textual. What is not the character sheet (the history, the
 session name, notes and file path, Undo, saving, loading, exporting and the recovery copy) is
-`BaseGame`, so another mode of play only supplies its own state and save model. The terminal
+`BaseGame` (`wid/base_game.py`), so another mode of play only supplies its own state and save model. The terminal
 screens split the same way: `BaseApp` (`wid/ui/base.py`) holds the theme and settings, the
 feedback line, `act`, the history log, the kit question and the command palette, and
 `RollerApp` and `GmApp` (`wid/ui/gm_app.py`) compose their panels and name their buttons. The terminal app copies what the player typed into
@@ -159,17 +162,12 @@ Package initializers do not import the application.
 
 ## Files the program writes
 
-**Session files** (JSON, chosen by the player). **Save session** is explicit, never automatic.
-The terminal and the browser version read and write the same files.
-A file holds the session name, character details, notes, genre, attribute ranks, the roll
-options, item and expertise names, the Heckboy power names and the power chosen for the next
-roll, the Tech slots and their names, the Oldheart manifestations, the Ball Season Standing, the
-This Isn't Happening Resources (pool, waiting die, crafted item), the strain boxes and their
-names, cumulative power strain, Corruption, the current dice and result, the dice selected for a
-reroll and the die chosen for an item, and the full history. Loading never rolls dice, charges
-resources or refills Tech. Window layout, the Edit/Preview choice, the undo history and the
-random generator's state are not saved, and the theme lives in the settings file instead. So
-**Undo** has nothing to take back right after a load, until the next change.
+**Session files** (JSON, chosen by the player). **Save session** is explicit, never automatic,
+and the terminal and the browser read and write the same files. A file holds everything on the
+sheet, the options for the next roll, the current result with the dice picked from it, the notes
+and the history (`SavedSession` in `wid/sessions.py`). Loading never rolls dice, charges
+resources or refills Tech. The layout, the Edit/Preview choice, the undo history and the random
+generator are not saved, so **Undo** has nothing to take back right after a load.
 
 - The format is versioned (`version: 2`); files from an unknown version, a marked wound with an
   unmarked box before it, or invalid values are rejected without replacing the current game. A
@@ -181,24 +179,25 @@ random generator's state are not saved, and the theme lives in the settings file
   half-written save. A new save will not overwrite an existing file without confirmation; on
   filesystems without hard links the name is reserved first.
 
-**GM session files** are the same kind of file with `kind: "gm"` and their own `version: 1`
-(`GmSave` in `wid/sessions.py`). One holds the session name, the genre kit, the PC count, the
-Dangers with their names, classes, difficulties and (Ball Season) standing, the hits committed,
-the raised threshold, whether the Dangers fight each other, the barricade (This Isn't
-Happening), the revelations track and how many revelations there are (Oldheart), the notes and
-the history. A file whose scene holds something its kit lacks is refused. The last activation is not
-saved; the history has it. A player's file has no `kind`, and each mode refuses the other's
-file with a message naming the flag to start wid with. A change to the GM format bumps
-`GmSave.version` and gets its own upgrade table, separate from the player's.
+**GM session files** have `kind: "gm"` and their own `version: 2` (`GmSave` in
+`wid/sessions.py`). They hold the session name, the kit, the scene and its notes (`Scene` in
+`wid/dangers.py`), the scenario (`Scenario` in `wid/scenario.py`), the notes and the history. A
+scene or scenario that holds something its kit lacks is refused. The last activation and the
+scenes already ended are only in the history. The scene and the scenario each number their Dangers with a counter that is never
+reused, so Undo can tell Dangers apart after one is removed. A player's file has no `kind`, and each mode refuses the other's
+file and names the flag to start wid with. A change to the GM format bumps `GmSave.version` and
+adds a step to `GM_UPGRADES`.
 
 **Recovery copy** (JSON): `recovery.json` beside the settings, and `gm-recovery.json` for the
-GM mode, so a GM and a player on one computer never overwrite each other's. While the game has
-unsaved changes and has started, `BaseGame.keep_recovery` writes it after every change (the terminal from
-`refresh_sheet`, the browser after each action), in the save format with the typed session name
-and file path beside it. It goes once nothing is unsaved (a save, a load, a new kit) or when
-the player quits after agreeing to lose the changes. On start, an untouched game offers it back;
-**Start fresh** leaves it until the new game writes over it. It is the most recent game, so two
-games running at once take turns in it. A write that fails is reported once and play goes on.
+GM mode, so a GM and a player on one computer never overwrite each other's. While a started
+game has unsaved changes, `BaseGame.keep_recovery` writes it in the save format, with the typed
+session name and file path beside it. Both front ends call it after every action, and again 3
+seconds after the last keystroke so typed text is kept too: the terminal from a timer in
+`BaseApp`, the browser through `POST /typed`, which answers without redrawing the page. The copy
+goes once nothing is unsaved, or when the player quits and agrees to lose the changes. On start,
+an untouched game offers it back; **Start fresh** leaves it until the new game writes over it.
+Two games running at once take turns in it. A write that fails is reported once and play goes
+on.
 
 **Settings** (JSON): the theme, the open tab, and whether the strain tracker and items are
 collapsed. They live in `~/.config/wid/settings.json`, `%APPDATA%\wid\settings.json` on

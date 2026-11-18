@@ -24,8 +24,7 @@ def test_a_saved_game_loads_with_its_draft_and_history(tmp_path):
     game.roll()
     game.character = CharacterDetails(**details)
     game.notes = notes
-    game.fear_level = 3
-    game.reroll_selection = (1,)
+    game.next_test = game.next_test.replace(fear_level=3, reroll_selection=(1,))
     game.name = "A dangerous evening"
     game.path = str(path)
     game.save()
@@ -63,6 +62,22 @@ def test_a_game_left_unsaved_is_offered_back_on_start(tmp_path):
             await pilot.pause()
             assert app.session.model_dump() == left.session.model_dump()
             assert text(app, "#feedback").startswith("Restored the game")
+
+    asyncio.run(scenario())
+
+
+def test_typing_reaches_the_recovery_copy_after_a_pause(tmp_path):
+    recovery = tmp_path / "recovery.json"
+
+    async def scenario():
+        app = RollerApp(recovery_path=recovery)
+        app.TYPING_PAUSE = 0.1
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            app.act(lambda: app.game.start_game((1, 2, 3)))
+            app.query_one("#session-notes", TextArea).load_text("Keep the map.")
+            await pilot.pause(0.3)
+            assert "Keep the map." in recovery.read_text(encoding="utf-8")
 
     asyncio.run(scenario())
 

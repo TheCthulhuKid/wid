@@ -1,13 +1,21 @@
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, ClassVar, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    ValidationInfo,
+    model_validator,
+)
 
 from wid.dangers import Scene
 from wid.history import HistoryEntry
 from wid.profiles import PROFILES, Genre
 from wid.rolls import STANDING_START, FrozenModel, Index, RollRequest, RollSession
+from wid.scenario import Scenario
 from wid.storage import write_text
 
 
@@ -42,9 +50,27 @@ def note_succumbed_checks(data: SaveData) -> SaveData:
     return data
 
 
-# Each function turns a save file of the version it is keyed by into the next version's data.
-# A change to the save format bumps ``SavedSession.version`` and adds one function here.
-UPGRADES: dict[int, Callable[[SaveData], SaveData]] = {1: note_succumbed_checks}
+def upgrade_dangers(data: SaveData) -> SaveData:
+    """Version 2 gives each Danger an id, in the order the scene lists them, and calls the
+    competent difficulty heavy, as the game's creator renamed it."""
+    scene = data["scene"]
+    dangers = [
+        {**danger, "id": index, "difficulty": renamed(danger["difficulty"])}
+        for index, danger in enumerate(scene["dangers"])
+    ]
+    return {**data, "scene": {**scene, "dangers": dangers, "next_id": len(dangers)}}
+
+
+def renamed(difficulty: str) -> str:
+    return "heavy" if difficulty == "competent" else difficulty
+
+
+type Upgrades = dict[int, Callable[[SaveData], SaveData]]
+# Passed when reading a file, where a missing version is refused; a save built in code has none.
+FROM_FILE = {"from_file": True}
+# Each step turns a file of the version it is keyed by into the next version's data.
+UPGRADES: Upgrades = {1: note_succumbed_checks}
+GM_UPGRADES: Upgrades = {1: upgrade_dangers}
 
 
 def upgrade_step(step: Callable[[SaveData], SaveData], data: SaveData, version: int) -> SaveData:
@@ -55,7 +81,6 @@ def upgrade_step(step: Callable[[SaveData], SaveData], data: SaveData, version: 
         raise ValueError(f"This file could not be upgraded from save format {version}.") from error
 
 
-# The longest session name a save holds.
 NAME_MAX = 100
 SessionName = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=NAME_MAX)
@@ -63,11 +88,39 @@ SessionName = Annotated[
 
 
 class SaveFile(FrozenModel):
+    upgrades: ClassVar[Upgrades]
+
+    @model_validator(mode="before")
+    @classmethod
+    def upgrade(cls, data: Any, info: ValidationInfo) -> Any:
+        """Bring an older save up to the current version, one step at a time.
+
+        A file from a newer wid, with no version, or with a version no wid wrote, gets a message
+        that says so instead of pydantic's "Input should be 2".
+        """
+        if not isinstance(data, dict):
+            return data
+        current = cls.model_fields["version"].default
+        if "version" not in data and info.context == FROM_FILE:
+            raise ValueError("This file has no version, so wid did not save it.")
+        version = data.get("version", current)
+        # true and 1.0 both equal 1 in Python; wid never writes either.
+        if type(version) is int:
+            while (step := cls.upgrades.get(version)) is not None:
+                data = {**upgrade_step(step, data, version), "version": version + 1}
+                version += 1
+            if version == current:
+                return data
+            if version > current:
+                raise ValueError("This file was saved by a newer wid. Update wid to load it.")
+        raise ValueError(f"This file has an unknown save format version ({version!r}).")
+
     def save(self, path: Path, *, overwrite: bool = False) -> None:
         write_text(path, self.model_dump_json(indent=2), overwrite=overwrite)
 
 
 class SavedSession(SaveFile):
+    upgrades = UPGRADES
     version: Literal[2] = 2
     name: SessionName
     session: RollSession
@@ -77,29 +130,6 @@ class SavedSession(SaveFile):
     history: tuple[HistoryEntry, ...] = ()
     reroll_indices: tuple[Index, ...] = ()
     item_target: Index | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def upgrade(cls, data: Any) -> Any:
-        """Bring an older save file up to the current version, one step at a time.
-
-        A file from a newer wid, or with a version no wid wrote, is refused with a message that
-        says so, instead of pydantic's "Input should be 2".
-        """
-        if not isinstance(data, dict):
-            return data
-        current = cls.model_fields["version"].default
-        version = data.get("version", current)
-        # Python counts true as 1, and JSON can hold 1.0; wid never writes either.
-        if type(version) is int:
-            while (step := UPGRADES.get(version)) is not None:
-                data = {**upgrade_step(step, data, version), "version": version + 1}
-                version += 1
-            if version == current:
-                return data
-            if version > current:
-                raise ValueError("This file was saved by a newer wid. Update wid to load it.")
-        raise ValueError(f"This file has an unknown save format version ({version!r}).")
 
     @model_validator(mode="after")
     def validate_state(self) -> Self:
@@ -198,14 +228,16 @@ class SavedSession(SaveFile):
 
 
 class GmSave(SaveFile):
-    """A GM's game: the kit and the scene. ``kind`` tells it from a player's save, which has
-    none, and its version counts on its own."""
+    """A GM's game: the kit, the scene and the scenario. ``kind`` tells it from a player's
+    save, which has none, and its version counts on its own."""
 
+    upgrades = GM_UPGRADES
     kind: Literal["gm"] = "gm"
-    version: Literal[1] = 1
+    version: Literal[2] = 2
     name: SessionName
     genre: Genre
     scene: Scene
+    scenario: Scenario = Scenario()
     notes: str = ""
     history: tuple[HistoryEntry, ...] = ()
 
@@ -213,6 +245,8 @@ class GmSave(SaveFile):
     def validate_kit(self) -> Self:
         if not self.scene.fits(self.genre):
             raise ValueError(f"The scene holds something {PROFILES[self.genre].name} lacks.")
+        if not self.scenario.fits(self.genre):
+            raise ValueError(f"The scenario holds something {PROFILES[self.genre].name} lacks.")
         return self
 
 
@@ -248,7 +282,7 @@ def parse_save(text: str, kind: str) -> SavedSession | GmSave:
         raise ValueError(f"This file has an unknown save kind ({found!r}).")
     if found != kind:
         raise ValueError(OTHER_MODE[found])
-    return SAVE_MODELS[kind].model_validate_json(text)
+    return SAVE_MODELS[kind].model_validate_json(text, context=FROM_FILE)
 
 
 class Recovery(FrozenModel):
@@ -261,3 +295,7 @@ class Recovery(FrozenModel):
     name: str = ""
     path: str = ""
     game: SavedSession | GmSave
+
+    @classmethod
+    def read(cls, text: str) -> Self:
+        return cls.model_validate_json(text, context=FROM_FILE)

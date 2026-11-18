@@ -105,17 +105,19 @@ def test_barricades_cost_resources_and_a_sacrificed_item_gives_three():
     game.change_kit(KIT)
     # Endurance 2 and Charity 3, so the pool starts at 3.
     game.start_game((1, 2, 3))
-    assert (
-        game.build_barricade(2) == "Built a barricade of strength 1 for 2 Resources: 1 in the pool."
+    assert game.spend_on_barricade(2, build=True) == (
+        "Built a barricade of strength 1 for 2 Resources: 1 in the pool."
     )
     with pytest.raises(ValueError, match="fewer than 1 Resources"):
-        game.strengthen_barricade(1)
+        game.spend_on_barricade(1, build=False)
     game.session.adjust_resources(4)
     with pytest.raises(ValueError, match="at least 2 Resources, your Endurance"):
-        game.build_barricade(1)
-    assert game.build_barricade(4).startswith("Built a barricade of strength 3 for 4 Resources")
+        game.spend_on_barricade(1, build=True)
+    assert game.spend_on_barricade(4, build=True).startswith(
+        "Built a barricade of strength 3 for 4 Resources"
+    )
     game.session.adjust_resources(3)
-    assert game.strengthen_barricade(2) == (
+    assert game.spend_on_barricade(2, build=False) == (
         "Strengthened the barricade by 2 for 2 Resources: 2 in the pool."
     )
     game.rename("bonus", BonusKind.APPROPRIATE_ITEM, "Crowbar")

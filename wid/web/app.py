@@ -27,7 +27,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.templating import Jinja2Templates
 
-from wid.game import BaseGame, Game, player_message
+from wid.base_game import BaseGame, player_message
+from wid.game import Game
 from wid.gm import GmGame
 from wid.web.forms import (
     ACTIONS,
@@ -131,6 +132,17 @@ def create_app(game: BaseGame, token: str, *, greeting: str = "") -> FastAPI:
             message, greeting = greeting, ""
             return render(request, "page.html", mode, game, message, ask=recovery_question(game))
 
+    @app.post("/typed", response_class=PlainTextResponse)
+    async def typed(request: Request) -> str:
+        """Keep typed text without redrawing the page, which would move the cursor."""
+        body = await request.body()
+        async with lock:
+            try:
+                mode.collect(game, SheetForm(body))
+            except ValueError as error:
+                return player_message(error)
+            return game.keep_recovery()
+
     @app.post("/actions/{name}", response_class=HTMLResponse)
     async def act(name: str, request: Request) -> Response:
         action = mode.actions.get(name)
@@ -168,7 +180,7 @@ def create_app(game: BaseGame, token: str, *, greeting: str = "") -> FastAPI:
             try:
                 text = game.history_text()
             except ValueError as error:
-                return PlainTextResponse(str(error), 404)
+                return PlainTextResponse(player_message(error), 404)
             name = Path(game.default_export_path()).name
         return attachment(text, "text/markdown; charset=utf-8", name)
 
@@ -178,8 +190,20 @@ def create_app(game: BaseGame, token: str, *, greeting: str = "") -> FastAPI:
             try:
                 text = game.save_text()
             except ValueError as error:
-                return PlainTextResponse(str(error), 404)
+                return PlainTextResponse(player_message(error), 404)
             name = game.save_file_name()
         return attachment(text, "application/json", name)
+
+    if isinstance(game, GmGame):
+
+        @app.get("/scenario.md")
+        async def download_scenario() -> Response:
+            async with lock:
+                try:
+                    text = game.scenario_text()
+                except ValueError as error:
+                    return PlainTextResponse(player_message(error), 404)
+                name = game.scenario_file_name()
+            return attachment(text, "text/markdown; charset=utf-8", name)
 
     return app

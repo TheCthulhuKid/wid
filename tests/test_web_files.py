@@ -1,4 +1,4 @@
-from helpers import ScriptedRandom, act, browser
+from helpers import PAGE, ScriptedRandom, act, browser
 
 from wid.game import Game
 
@@ -71,6 +71,23 @@ def test_the_history_exports_to_a_file_and_downloads(tmp_path):
     assert download.text.startswith("# Friday")
 
 
+def test_the_first_page_offers_back_a_game_left_unsaved(tmp_path):
+    recovery = tmp_path / "recovery.json"
+    left = Game(rng=ScriptedRandom([4] * 8), recovery_path=recovery)
+    left.start_game((1, 2, 3))
+    left.roll()
+    left.keep_recovery()
+
+    game = Game(recovery_path=recovery)
+    client = browser(game)
+    assert "Restore that game?" in client.get("/").text
+    act(client, "restore", confirm="1")
+    assert game.session.model_dump() == left.session.model_dump()
+    typed = client.post("/typed", data={"sheet": "1", "notes": "Keep the map."}, headers=PAGE)
+    assert (typed.status_code, typed.text) == (200, "")
+    assert "Keep the map." in recovery.read_text(encoding="utf-8")
+
+
 def test_a_save_downloads_and_uploads_into_another_game():
     game = started()
     game.name = "Friday"
@@ -88,3 +105,5 @@ def test_a_save_downloads_and_uploads_into_another_game():
     assert "Load Friday? This replaces the current game and history." in asked
     act(other_client, "upload", confirm="1", **{"session-file": download.text})
     assert other.name == "Friday"
+    other.name = "x" * 101
+    assert other_client.get("/session.json").text == "String should have at most 100 characters"

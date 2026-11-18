@@ -1,5 +1,6 @@
 """The GM's Danger rules: classes, difficulties, loadouts, a scene's threshold and activation."""
 
+from enum import StrEnum
 from random import Random
 from typing import Annotated, Self
 
@@ -81,7 +82,7 @@ class DifficultyRule(FrozenModel):
 
 class Difficulty(Word):
     PETTY = "petty"
-    COMPETENT = "competent"
+    HEAVY = "heavy"
     BOSS = "boss"
     MEGA = "mega"
 
@@ -99,7 +100,7 @@ DIFFICULTY_RULES = {
     Difficulty.PETTY: DifficultyRule(
         ability=Ability.HARASS, hits_to_pass=1, multiplier=1, addend=1
     ),
-    Difficulty.COMPETENT: DifficultyRule(ability=Ability.HARASS, hits_to_pass=1, multiplier=2),
+    Difficulty.HEAVY: DifficultyRule(ability=Ability.HARASS, hits_to_pass=1, multiplier=2),
     Difficulty.BOSS: DifficultyRule(ability=Ability.SCARE, hits_to_pass=2, multiplier=3),
     Difficulty.MEGA: DifficultyRule(ability=Ability.KILL, hits_to_pass=2, multiplier=4),
 }
@@ -136,13 +137,13 @@ def require_tracker(genre: Genre, flag: str, tracker: str) -> None:
 RECOVERY: dict[Genre, dict[Difficulty, int]] = {
     Genre.HECKBOY: {
         Difficulty.PETTY: 2,
-        Difficulty.COMPETENT: 2,
+        Difficulty.HEAVY: 2,
         Difficulty.BOSS: 3,
         Difficulty.MEGA: 3,
     },
     Genre.THIS_ISNT_HAPPENING: {
         Difficulty.PETTY: 0,
-        Difficulty.COMPETENT: 1,
+        Difficulty.HEAVY: 1,
         Difficulty.BOSS: 2,
         Difficulty.MEGA: 3,
     },
@@ -157,6 +158,8 @@ def recovery_amount(genre: Genre, difficulty: Difficulty) -> int:
 
 # Dice 1 to 3 of every loadout.
 DEFAULT_ABILITIES = (Ability.HARASS, Ability.SCARE, Ability.KILL)
+Count = Annotated[int, Field(strict=True, ge=0)]
+type DangerId = Count
 
 
 class Replaceable(FrozenModel):
@@ -166,6 +169,8 @@ class Replaceable(FrozenModel):
 
 
 class Danger(Replaceable):
+    # Set by the scene it joins, so Undo can tell Dangers apart after one is removed.
+    id: DangerId = 0
     name: str = ""
     danger_class: DangerClass
     difficulty: Difficulty
@@ -189,6 +194,40 @@ class Danger(Replaceable):
         return self.difficulty.rule.threshold(pc_count)
 
 
+def require_fits(danger: Danger, genre: Genre) -> None:
+    """Refuse a Danger whose class or standing ``genre`` lacks."""
+    if danger.danger_class not in classes_for(genre):
+        raise ValueError(f"{PROFILES[genre].name} has no {danger.danger_class.label}s.")
+    if danger.standing is not None:
+        require_tracker(genre, "has_standing", "Standing")
+
+
+def require_own_ids(dangers: tuple[Danger, ...], next_id: int) -> None:
+    ids = [danger.id for danger in dangers]
+    if len(set(ids)) != len(ids) or any(number >= next_id for number in ids):
+        raise ValueError("Each Danger needs its own id, below the next id.")
+
+
+def dangers_in_kit[D: Danger](
+    dangers: tuple[D, ...], genre: Genre
+) -> tuple[tuple[D, ...], list[str]]:
+    """The Dangers ``genre`` has a class for, without a standing it lacks, and the labels of
+    the ones dropped."""
+    allowed = classes_for(genre)
+    has_standing = PROFILES[genre].has_standing
+    kept = tuple(
+        danger if has_standing else danger.replace(standing=None)
+        for danger in dangers
+        if danger.danger_class in allowed
+    )
+    dropped = [
+        danger.label(index)
+        for index, danger in enumerate(dangers)
+        if danger.danger_class not in allowed
+    ]
+    return kept, dropped
+
+
 PC_MIN = 1
 PC_MAX = 8
 DANGERS_MAX = 4
@@ -197,7 +236,11 @@ BARRICADE_MAX = 6
 REVELATION_STEP = 4
 REVELATIONS_DEFAULT = 3
 REVELATIONS_MAX = 6
-Count = Annotated[int, Field(strict=True, ge=0)]
+
+
+class SceneEnd(StrEnum):
+    ENDED = "ended"
+    LOST = "lost"
 
 
 class Scene(Replaceable):
@@ -205,6 +248,10 @@ class Scene(Replaceable):
 
     pc_count: Annotated[int, Field(strict=True, ge=PC_MIN, le=PC_MAX)] = 4
     dangers: tuple[Danger, ...] = Field(default=(), max_length=DANGERS_MAX)
+    # Never reused, even after the Danger that had it is removed.
+    next_id: DangerId = 0
+    # The id of the Danger whose loadout the scene rolls on; None for the strongest.
+    acting: DangerId | None = None
     progress: Count = 0
     # Added to the Dangers' thresholds, as Ball Season's manipulate does.
     raised: Count = 0
@@ -214,6 +261,9 @@ class Scene(Replaceable):
     # Oldheart: the spots advanced towards revelations, and how many there are to find.
     revelation_progress: Count = 0
     revelations: Annotated[int, Field(strict=True, ge=1, le=REVELATIONS_MAX)] = REVELATIONS_DEFAULT
+    notes: str = ""
+    # The scenario Danger the scene was started from; once it ends, the one the last scene was.
+    scenario_danger_id: DangerId | None = None
 
     @model_validator(mode="after")
     def _within_bounds(self) -> Self:
@@ -221,6 +271,9 @@ class Scene(Replaceable):
             raise ValueError("Progress cannot exceed the threshold.")
         if self.revelation_progress > self.revelation_total:
             raise ValueError("The revelations track cannot go past its last revelation.")
+        require_own_ids(self.dangers, self.next_id)
+        if self.acting is not None and self.acting not in {danger.id for danger in self.dangers}:
+            raise ValueError("The acting Danger is not in the scene.")
         return self
 
     @property
@@ -238,14 +291,25 @@ class Scene(Replaceable):
 
     @property
     def strongest(self) -> Danger | None:
-        """The Danger whose loadout the scene rolls on; the first of equals."""
+        """The Danger with the highest difficulty; the first of equals."""
         if not self.dangers:
             return None
         return max(self.dangers, key=lambda danger: danger.difficulty.rank)
 
     @property
+    def acting_index(self) -> int | None:
+        """The index of the Danger whose loadout the scene rolls on: the chosen one, or the
+        strongest."""
+        if not self.dangers:
+            return None
+        if self.acting is None:
+            return self.dangers.index(self.strongest)
+        return next(index for index, danger in enumerate(self.dangers) if danger.id == self.acting)
+
+    @property
     def loadout(self) -> tuple[Ability, ...]:
-        return self.strongest.loadout if self.strongest else ()
+        index = self.acting_index
+        return () if index is None else self.dangers[index].loadout
 
     @property
     def hits_to_pass(self) -> int:
@@ -268,14 +332,35 @@ class Scene(Replaceable):
         return scene.replace(progress=min(self.progress, scene.threshold))
 
     def with_danger(self, danger: Danger, genre: Genre) -> Self:
-        """The scene with ``danger`` added, refused when ``genre`` lacks its class or standing."""
-        if danger.danger_class not in classes_for(genre):
-            raise ValueError(f"{PROFILES[genre].name} has no {danger.danger_class.label}s.")
-        if danger.standing is not None:
-            require_tracker(genre, "has_standing", "Standing")
+        """The scene with ``danger`` added under the next id; refused when ``genre`` lacks its
+        class or standing."""
+        require_fits(danger, genre)
         if len(self.dangers) >= DANGERS_MAX:
             raise ValueError(f"A scene holds up to {DANGERS_MAX} Dangers.")
-        return self.replace(dangers=(*self.dangers, danger))
+        added = danger.replace(id=self.next_id)
+        # A Danger added to an empty scene starts a scene of the GM's own, not the scenario's.
+        started_from = self.scenario_danger_id if self.dangers else None
+        return self.replace(
+            dangers=(*self.dangers, added),
+            next_id=self.next_id + 1,
+            scenario_danger_id=started_from,
+        )
+
+    def cleared(self) -> Self:
+        """An empty scene. The PC count and the revelations to find stay, and so does the id
+        counter, so Undo never takes a new Danger for an old one; the scenario Danger it was
+        started from stays, so the next scene can start from the one after."""
+        return type(self)(
+            pc_count=self.pc_count,
+            revelations=self.revelations,
+            next_id=self.next_id,
+            scenario_danger_id=self.scenario_danger_id,
+        )
+
+    def starting(self, danger: Danger, genre: Genre, scenario_danger_id: int) -> Self:
+        """A fresh scene with ``danger`` alone, started from the scenario Danger of that id."""
+        scene = self.cleared().with_danger(danger, genre)
+        return scene.replace(scenario_danger_id=scenario_danger_id)
 
     def move_barricade(self, step: int, genre: Genre) -> Self:
         require_tracker(genre, "has_barricade", "barricade")
@@ -304,6 +389,12 @@ class Scene(Replaceable):
         dangers = (*self.dangers[:index], danger.replace(name=name), *self.dangers[index + 1 :])
         return self.replace(dangers=dangers)
 
+    def with_acting(self, index: int | None) -> Self:
+        """The scene rolling on the Danger at ``index``, or on the strongest for None."""
+        if index is None:
+            return self.replace(acting=None)
+        return self.replace(acting=self.danger_at(index).id)
+
     def without(self, index: int) -> Self:
         """The scene without the Danger at ``index``, the progress kept within the threshold."""
         self.danger_at(index)
@@ -318,17 +409,7 @@ class Scene(Replaceable):
         """The scene as ``genre`` can hold it: only the Dangers it has a class for (the labels
         of the rest are returned), and only the trackers it has."""
         profile = PROFILES[genre]
-        allowed = classes_for(genre)
-        kept = tuple(
-            danger if profile.has_standing else danger.replace(standing=None)
-            for danger in self.dangers
-            if danger.danger_class in allowed
-        )
-        dropped = [
-            danger.label(index)
-            for index, danger in enumerate(self.dangers)
-            if danger.danger_class not in allowed
-        ]
+        kept, dropped = dangers_in_kit(self.dangers, genre)
         scene = self._with_dangers(kept)
         if not profile.has_barricade:
             scene = scene.replace(barricade=0)
@@ -341,7 +422,9 @@ class Scene(Replaceable):
         return self.in_kit(genre) == (self, [])
 
     def _with_dangers(self, dangers: tuple[Danger, ...]) -> Self:
-        scene = self.replace(dangers=dangers, progress=0)
+        # Once the acting Danger is gone, the scene rolls on the strongest again.
+        acting = self.acting if any(danger.id == self.acting for danger in dangers) else None
+        scene = self.replace(dangers=dangers, acting=acting, progress=0)
         return scene.replace(progress=min(self.progress, scene.threshold))
 
 
@@ -363,14 +446,15 @@ def defending_attribute(genre: Genre, die: int) -> str:
 
 
 class Activation(FrozenModel):
-    """One roll of 3d6: the ability, the target and the defending attribute each die picked,
-    and the standing of the Danger whose loadout was rolled on, where it has one."""
+    """One roll of 3d6 on a Danger's loadout: the ability, the target and the defending
+    attribute each die picked, and the Danger as it was, with its index in the scene."""
 
     dice: tuple[Die, Die, Die]
     ability: Ability
     target: str
     attribute: str
-    standing: Standing | None = None
+    danger: Danger
+    index: Count
 
 
 def activate(scene: Scene, genre: Genre, rng: Random) -> Activation:
@@ -383,5 +467,6 @@ def activate(scene: Scene, genre: Genre, rng: Random) -> Activation:
         ability=scene.loadout[dice[0] - 1],
         target=TARGETS[dice[1] - 1],
         attribute=defending_attribute(genre, dice[2]),
-        standing=scene.strongest.standing,
+        danger=scene.dangers[scene.acting_index],
+        index=scene.acting_index,
     )

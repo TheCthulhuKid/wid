@@ -5,6 +5,8 @@ What changed in each release of wid, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-18
+
 ### Added
 
 - Heckboy: **Second Wind** beside **Take 1 wound** clears 2 strain once per character. Wounds,
@@ -16,6 +18,22 @@ What changed in each release of wid, newest first. The format follows
 - Ball Season: **Target standing** before a roll says how many more hits the test needs to pass,
   one per tier of standing between you and the target; in the GM mode, **PCs of another
   standing** adds their strain to a task.
+- In the GM mode, **Acting Danger** chooses whose loadout the activations roll on once a scene
+  has two or more Dangers, and the loadout table names its Danger.
+- In the GM mode, the **Scenario** tab holds the scenario sheet: its title, pitch and cast, the
+  four lists and the incitement table, and up to six Dangers with descriptions and notes. It is
+  saved with the GM's game. **A** opens it in the terminal; in the browser it is a section below
+  the scene.
+- In the GM mode, **Import scenario** and **Export scenario** on the Scenario tab read and write
+  a scenario sheet in Markdown, named in **Scenario file**. A file of several scenarios asks
+  which one, and an export writes wid's hits, threshold and loadout table for each Danger. In
+  the browser, **Upload a scenario** and **Download scenario** do the same.
+- In the GM mode, **Start scene** on the Scene tab runs a scenario Danger, with its description
+  and notes under the loadout table; **End scene** and **They're dead. They're all dead!** write
+  the scene and its **Scene notes** to the history, and **Roll on** rolls on a scenario list or
+  the incitement table. After each scene, **Scenario Danger** offers the next one.
+- In the GM mode, **Danger reference** on the Scene tab shows what each class and difficulty
+  gives a Danger, for the kit and the number of PCs.
 - Oldheart: **Avoid strain** beside **Gain Corruption** takes the Corruption for strain avoided
   on a task and says so in the history.
 
@@ -24,6 +42,33 @@ What changed in each release of wid, newest first. The format follows
 - Each genre kit has its own highlight colour in the default "danger" theme and in the browser:
   green for Ball Season, orange for Heckboy, plum for Oldheart, brown for This Isn't Happening
   and blue for Second Contact. Core WiD stays red, and fumbles stay red in every kit.
+- In the GM mode, an activation names the Danger it rolled for, such as "Zeus (Mega Titan)
+  activates (4, 2, 5): Kill — …".
+- **Undo** goes back up to 10 changes, not 50, in both modes.
+- The how-to's **Undo** paragraph is shorter.
+- In the GM mode, the Competent difficulty is now **Heavy**, as the game's creator renamed it.
+  A GM save from 0.5.0 opens with its Competent Dangers as Heavy.
+- GM saves have a new format. Older GM saves still open, but a GM save from this version needs
+  this version of wid or later.
+
+### Fixed
+
+- In the browser, wid now asks whether to **Restore** a game it closed without saving, as the
+  terminal does. Before, the question never showed, and the next change replaced the kept copy.
+- In the GM mode, Undo after removing a Danger no longer moves a name you typed since onto
+  another Danger.
+- A GM save from a newer wid now says to update wid, instead of "Input should be 1".
+- What you type, such as notes and names, reaches the recovery copy a few seconds after you
+  stop typing, in the terminal and the browser. Before, it waited for the next button or box.
+- A save file with no version is refused, saying wid did not save it. Before, it was read as
+  the current version.
+- In the browser, **Download save** and **Download history** include what you typed just
+  before, and a download that is refused says why on the page. Before, the file left out text
+  typed since the last button or box, and a refused download only failed.
+- In the GM mode, **Raise threshold** waits for a Danger, as **Commit hits** does. Before, it
+  raised the threshold of an empty scene, and the first Danger added started with that raise.
+- In the terminal, settings that cannot be saved are reported as other file errors are, such as
+  "Could not save settings: Permission denied: …/settings.json", without Python's error number.
 
 ## [0.5.0] - 2026-10-28
 
@@ -172,7 +217,8 @@ What changed in each release of wid, newest first. The format follows
 - Themes, remembered with your settings.
 - A Windows program that needs no Python, and installing with uv.
 
-[Unreleased]: https://github.com/TheCthulhuKid/wid/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/TheCthulhuKid/wid/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/TheCthulhuKid/wid/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/TheCthulhuKid/wid/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/TheCthulhuKid/wid/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/TheCthulhuKid/wid/compare/v0.4.0...v0.4.1

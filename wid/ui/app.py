@@ -98,8 +98,8 @@ GAME_BUTTONS: dict[str, Callable[[Game], str]] = {
     "resources-up": lambda game: game.adjust_resources(1),
     "lose-crafted-item": Game.lose_crafted_item,
     "roll-d6": Game.roll_one_die,
-    "add-manifestation": Game.add_manifestation,
-    "remove-manifestation": Game.remove_manifestation,
+    "add-manifestation": lambda game: game.change_manifestations(add=True),
+    "remove-manifestation": lambda game: game.change_manifestations(add=False),
 }
 
 
@@ -275,19 +275,19 @@ class RollerApp(SessionActions, BaseApp):
         self.clear_log()
         self.refresh_sheet()
         # The die an item was aimed at, once the selector has the dice of the shown result.
-        if game.item_target is not None:
+        if game.next_test.item_target is not None:
             with self.prevent(Select.Changed):
-                self.query_one("#item-target", Select).value = game.item_target
+                self.query_one("#item-target", Select).value = game.next_test.item_target
 
     def show_draft(self) -> None:
         """Show the options for the next test, which a roll clears."""
-        game = self.game
+        options = self.game.next_test
         with self.prevent(Select.Changed, Checkbox.Changed):
-            self.query_one("#fear", Select).value = game.fear_level
-            self.query_one("#assisted", Checkbox).value = game.assisted
-            self.query_one("#expertise", Checkbox).value = game.expertise
-            self.set_power(game.power)
-            target = game.target_standing
+            self.query_one("#fear", Select).value = options.fear_level
+            self.query_one("#assisted", Checkbox).value = options.assisted
+            self.query_one("#expertise", Checkbox).value = options.expertise
+            self.set_power(options.power)
+            target = options.target_standing
             self.query_one("#target-standing", Select).value = (
                 Select.NULL if target is None else target
             )
@@ -541,8 +541,7 @@ class RollerApp(SessionActions, BaseApp):
 
     def spend_on_barricade(self, build: bool) -> None:
         spent = self.query_one("#barricade-spend", Select).value
-        action = self.game.build_barricade if build else self.game.strengthen_barricade
-        self.act(lambda: action(spent))
+        self.act(lambda: self.game.spend_on_barricade(spent, build=build))
 
     def recover_after(self) -> None:
         difficulty = self.query_one("#recovery-difficulty", Select).value
@@ -574,7 +573,7 @@ class RollerApp(SessionActions, BaseApp):
         )
         with self.prevent(Checkbox.Changed):
             for box in self.query(RerollDie):
-                box.value = box.index in self.game.reroll_selection
+                box.value = box.index in self.game.next_test.reroll_selection
         self.update_reroll_controls()
         self.update_bonus_controls()
 

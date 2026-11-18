@@ -9,20 +9,24 @@ from collections.abc import Callable, Sequence
 from typing import NamedTuple
 from urllib.parse import parse_qs
 
+from wid.base_game import BaseGame
 from wid.dangers import Complexity, DangerClass, Difficulty, Standing
 from wid.formatting import (
     GM_KIT_QUESTION,
     NEW_CHARACTER_QUESTION,
     NEW_GAME_QUESTION,
     RECOVERY_QUESTION,
+    SCENARIO_CHOICE_QUESTION,
     load_question,
     recovery_decline,
     replace_question,
 )
-from wid.game import BaseGame, Game, NameField
+from wid.game import Game, NameField
 from wid.gm import GmGame
 from wid.profiles import Genre
 from wid.rolls import BonusKind, PowerMode, ResourceEffect
+from wid.scenario import ScenarioList, Slot, TypedSlot
+from wid.scenario_sheet import ChooseScenario
 from wid.sessions import CharacterDetails
 
 
@@ -150,13 +154,14 @@ def collect(game: Game, form: SheetForm) -> None:
             lambda index, value, field=field: game.rename(field, index, value),
         )
 
+    options = game.next_test
     game.set_test_options(
-        fear_level=form.number("fear") if form.get("fear") else game.fear_level,
+        fear_level=form.number("fear") if form.get("fear") else options.fear_level,
         assisted=form.ticked("assisted"),
         expertise=form.ticked("expertise"),
-        power=PowerMode(form.get("power") or game.power),
+        power=PowerMode(form.get("power") or options.power),
         reroll=form.numbers("reroll"),
-        item_target=form.number("die") if form.get("die") is not None else game.item_target,
+        item_target=form.number("die") if form.get("die") is not None else options.item_target,
         target_standing=target_standing(form, game),
     )
 
@@ -166,7 +171,7 @@ def target_standing(form: SheetForm, game: Game) -> Standing | None:
     box says No standing."""
     chosen = form.get("target-standing")
     if chosen is None:
-        return game.target_standing
+        return game.next_test.target_standing
     return Standing(chosen) if chosen else None
 
 
@@ -314,33 +319,84 @@ ACTIONS: dict[str, Callable[[Game, SheetForm], str]] = {
     "spend-resources": lambda game, form: game.spend_resources(ResourceEffect(form.text("effect"))),
     "lose-crafted-item": lambda game, form: game.lose_crafted_item(),
     "sacrifice-item": lambda game, form: game.sacrifice_item(BonusKind(form.text("kind"))),
-    "build-barricade": lambda game, form: game.build_barricade(form.number("barricade-spend")),
-    "strengthen-barricade": lambda game, form: game.strengthen_barricade(
-        form.number("barricade-spend")
+    "build-barricade": lambda game, form: game.spend_on_barricade(
+        form.number("barricade-spend"), build=True
+    ),
+    "strengthen-barricade": lambda game, form: game.spend_on_barricade(
+        form.number("barricade-spend"), build=False
     ),
     "gain-corruption": lambda game, form: game.gain_corruption(form.number("corruption-amount")),
     "avoid-strain": lambda game, form: game.avoid_strain(form.number("corruption-amount")),
     "recover": lambda game, form: game.recover_after(Difficulty(form.text("recovery-difficulty"))),
-    "add-manifestation": lambda game, form: game.add_manifestation(),
-    "remove-manifestation": lambda game, form: game.remove_manifestation(),
+    "add-manifestation": lambda game, form: game.change_manifestations(add=True),
+    "remove-manifestation": lambda game, form: game.change_manifestations(add=False),
     "standing": lambda game, form: game.set_standing(form.number("standing")),
     "new-character": new_character,
     "change-kit": change_kit,
 }
 
 
+def slot_field(slot: TypedSlot) -> str:
+    """The form field for a slot of ``Scenario.typed``, such as ``scenario-danger-0-name``."""
+    return "-".join(("scenario", *map(str, slot)))
+
+
+def scenario_danger_kind(
+    form: SheetForm, prefix: str
+) -> tuple[DangerClass, Difficulty, Standing | None]:
+    standing = form.get(f"{prefix}-standing")
+    return (
+        DangerClass(form.text(f"{prefix}-class")),
+        Difficulty(form.text(f"{prefix}-difficulty")),
+        Standing(standing) if standing else None,
+    )
+
+
+def change_scenario_danger(game: GmGame, form: SheetForm) -> str:
+    index = form.number("index")
+    kind = scenario_danger_kind(form, f"scenario-kind-{index}")
+    return game.change_scenario_danger(index, *kind)
+
+
+def roll_on(game: GmGame, form: SheetForm) -> str:
+    kind = form.text("roll-on")
+    return game.roll_on(Slot.INCITEMENT if kind == Slot.INCITEMENT else ScenarioList(kind))
+
+
+def upload_scenario(game: GmGame, form: SheetForm) -> str:
+    """A sheet of several scenarios asks which, carrying the file's text to the answer."""
+    text = form.text("scenario-file")
+    choice = form.number("scenario-choice") if form.get("scenario-choice") else None
+    try:
+        return game.import_scenario(text, choice)
+    except ChooseScenario as asked:
+        answers = [
+            Answer(title, "scenario-choice", str(index)) for index, title in enumerate(asked.titles)
+        ]
+        raise NeedsConfirmation(
+            SCENARIO_CHOICE_QUESTION,
+            "upload-scenario",
+            answers=answers,
+            carry={"scenario-file": text},
+        ) from None
+
+
 def collect_gm(game: GmGame, form: SheetForm) -> None:
-    """Copy the GM page's fields into the game: the session text and the Dangers' names."""
+    """Copy the GM page's fields into the game: the session text, the scene's notes, the
+    Dangers' names and the scenario."""
     if not form.has_sheet:
         return
     for name, apply in (
         ("session-name", lambda value: setattr(game, "name", value)),
         ("session-path", lambda value: setattr(game, "path", value)),
         ("notes", lambda value: setattr(game, "notes", value)),
+        ("scene-notes", game.type_scene_notes),
     ):
         if (value := form.get(name)) is not None:
             apply(value)
     take_numbered(form, "danger-name", len(game.scene.dangers), game.rename_danger)
+    typed = {slot: form.get(slot_field(slot)) for slot in game.scenario.typed()}
+    game.type_into_scenario({slot: text for slot, text in typed.items() if text is not None})
 
 
 # The GM's page.
@@ -354,8 +410,22 @@ GM_ACTIONS: dict[str, Callable[[GmGame, SheetForm], str]] = {
         Standing(form.text("standing")) if form.get("standing") else None,
     ),
     "remove-danger": lambda game, form: game.remove_danger(form.number("index")),
+    "add-scenario-danger": lambda game, form: game.add_scenario_danger(
+        form.text("new-scenario-danger-name"), *scenario_danger_kind(form, "new-scenario-danger")
+    ),
+    "change-scenario-danger": change_scenario_danger,
+    "remove-scenario-danger": lambda game, form: game.remove_scenario_danger(form.number("index")),
+    "clear-scenario": lambda game, form: game.clear_scenario(),
+    "start-scene": lambda game, form: game.start_scene(form.number("scenario-scene")),
+    "end-scene": lambda game, form: game.end_scene(),
+    "lose-scene": lambda game, form: game.lose_scene(),
+    "roll-on": roll_on,
+    "upload-scenario": upload_scenario,
     "commit-hits": lambda game, form: game.commit_hits(form.number("amount")),
     "raise-threshold": lambda game, form: game.raise_threshold(form.number("amount")),
+    "acting": lambda game, form: game.choose_acting(
+        form.number("acting") if form.get("acting") else None
+    ),
     "hostile": lambda game, form: game.set_hostile(form.ticked("hostile")),
     "activate": lambda game, form: game.activate(),
     "clash": lambda game, form: game.clash(),

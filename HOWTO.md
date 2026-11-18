@@ -40,13 +40,10 @@ each pool size came up. Rerolls and bonuses are left out, so no die counts twice
 ready to paste into a chat. In the terminal it goes through the terminal's clipboard, which most
 terminals pass on (macOS Terminal does not).
 
-**Undo** (under the result) takes back the last change to the sheet: a roll, a reroll, an item,
-expertise or Tech bonus, New scenario, a sacrificed piece of Tech, strain, Standing, Resources,
-a lost crafted item, Corruption or a manifestation. Press it again for the one before, up to 50
-changes. The history keeps what happened and notes each undo.
-An undone roll is not rolled back into the dice: rolling again gives new numbers. Names typed
-since the change stay, and only undoing a roll brings back the attribute, Assisted, Expertise
-and power it cleared. Loading a game, starting a new character or changing the kit starts with
+**Undo** (under the result) takes back your last change to the sheet; press it again for the
+one before, up to 10. The history keeps what happened and notes each undo. Rolling again after
+undoing a roll gives new dice, not the same ones. Names you typed since stay, and undoing a roll
+brings back the options it cleared. Loading a game, a new character or a new kit starts with
 nothing to undo.
 
 ## Items and expertise
@@ -188,7 +185,8 @@ To open a save as wid starts, name it: `wid game.json`, or `wid --web game.json`
 browser. On Windows you can also right-click a save, choose **Open with** and pick `wid.exe`.
 If the file cannot be opened, wid starts an empty game and says why.
 
-While a game has unsaved changes, wid also keeps a recovery copy of it beside its settings. If
+While a game has unsaved changes, wid also keeps a recovery copy of it beside its settings,
+including what you type, a few seconds after you stop. If
 wid closes without a save (a crash, or a closed window), the next start asks whether to
 **Restore** that game or **Start fresh** (**Keep the opened game** if you named a save to open).
 A restored game still needs saving. **Start fresh**
@@ -200,18 +198,80 @@ holds whichever changed last.
 
 Running the game rather than playing a character? Start wid with `wid --gm` (from a release
 download, `.\wid.exe --gm` on Windows or `./wid --gm` on Linux and macOS). The screen has no
-character sheet: the **Scene** tab on the left holds the Dangers, and the right side rolls for
-them. Opening a GM save (`wid scene.json`) starts this mode by itself.
+character sheet: the **Scenario** tab holds your prep, the **Scene** tab the Dangers you are
+running, and the right side rolls for them. Opening a GM save (`wid scene.json`) starts this
+mode by itself.
+
+**Scenario** tab, the scenario sheet:
+
+- **Title**, **Author**, **Themes**, **Pitch** and **Cast**.
+- **Scene starters**, **NPCs**, **Waypoints** and **Obstacles**, six entries each, and the
+  **Incitement** table, each folded until you open it.
+- The scenario's Dangers, up to six. Fill in the row at the bottom and press
+  **Add scenario Danger**; each one then has its summary, name, **Class**, **Difficulty**, a
+  description and notes, and **Remove**.
+- **Clear scenario** empties the sheet, and **Undo** brings it back. What you type is never
+  logged and stays when you undo.
+- **Scenario file**, at the top, names a Markdown file. **Import scenario** replaces the
+  scenario with the one in the file (**Undo** brings the old one back); a file of several
+  scenarios asks which. **Export scenario** writes the scenario there, with wid's hits,
+  threshold and loadout table for each Danger, and asks before replacing a file.
+
+A scenario file looks like this. Each `# Title` starts a scenario, and each `### Name` with
+its *Difficulty Class* line is a Danger; the description follows its table, and **Notes:**
+holds your prep notes. A loadout table is optional, but one that differs from wid's is refused.
+A **Tasks** section is skipped, as wid works out task strain itself.
+
+```markdown
+# The Night Ferry
+
+*By A. Writer*
+
+**Pitch:** The last ferry of the night never reaches the other shore.
+
+**Waypoints**
+- The car deck
+- The bridge
+
+**Incitement**
+| d6 | |
+|----|---|
+| 1–2 | The fog thickens |
+| 3–4 | The engines stop |
+| 5–6 | A new **Danger** comes aboard |
+
+### Colossus
+*Heavy Brute*
+
+It wades up from the hold.
+
+**Notes:** Starts below deck.
+```
 
 **Scene** tab:
 
 - **PCs**: how many player characters are in the scene (1 to 8). The Dangers' thresholds follow.
+- Once the scenario has a Danger, choose it in **Scenario Danger** and press **Start scene**: the
+  scene starts with that Danger alone, and its description and notes show under the loadout
+  table. A new scene starts only once the last one has ended, and **Scenario Danger** then
+  offers the next Danger in the scenario (the first again after the last).
+- **End scene** is enabled once the scene is overcome, and **They're dead. They're all dead!**
+  while it is not. Either one writes the scene and its notes to the history and empties it;
+  **Undo** brings it back.
+- **Roll on** a scenario list or the **Incitement** table, then press **Roll**: the history
+  names the entry the die lands on.
+- **Scene notes** are kept with the scene and go to the history when it ends.
 - To add a Danger, type a name (optional), choose its **Class** and **Difficulty** and press
   **Add Danger**. The four base classes are always offered; each kit adds its own class.
   Each Danger is listed with its threshold and the hits a PC needs to pass; type its name in
   the box beneath, or press **Remove** to take it out of the scene. A scene holds up to four.
+- With two or more Dangers, **Acting Danger** chooses whose loadout the activations roll on:
+  **Strongest**, or any one of them. Hits to pass stay the strongest's.
 - The line under the Dangers is the scene: the combined threshold, what has been committed
   and the hits to pass of the strongest Danger.
+- **Danger reference**, folded at the bottom of the tab, shows what each choice gives: each
+  class's abilities on dice 4 and 5, and each difficulty's hits to pass, threshold for the
+  current **PCs** and ability on die 6.
 - Choose an **Amount**, then press **Commit hits** to progress the threshold, or press
   **Raise threshold** when a Danger's ability raises it. Committed hits never go past the
   threshold.
@@ -237,8 +297,9 @@ Changing kit with **Keep scene** drops the trackers the new kit lacks along with
 
 On the right, **Activate Danger** (or **Ctrl+R**) rolls 3d6 and shows which ability the Danger
 uses, who it targets and the attribute the targets defend with, in the words of the current
-kit. The table below it is the loadout of the strongest Danger, one row per die. **Roll 1d6**
-rolls a single die, and **Undo** takes back the last change to the scene (not an activation).
+kit. The table below it is the acting Danger's loadout, one row per die, with its name above.
+**Roll 1d6** rolls a single die, and **Undo** takes back the last change to the scene (not an
+activation).
 
 The **Session** tab, **Save session**, **Load session**, **Export history**, the history log,
 the theme and the command palette work as in the player's mode. A GM save is its own kind of
@@ -252,16 +313,20 @@ class the new kit lacks is dropped and named; **Undo** brings it back), **Start 
 everything, and **Cancel** keeps the current kit. The player's mode offers **Save first** too,
 beside **Start new game** and **Keep current game**.
 
-Keys: **E** opens the Scene tab and **S** the Session tab; **Ctrl+R** activates the Danger. The
+Keys: **A** opens the Scenario tab, **E** the Scene tab and **S** the Session tab; **Ctrl+R** activates the Danger. The
 other keys are the ones below, except **C**, **T** and **I**, which belong to the character
 sheet.
 
 **In the browser**, `wid --web --gm` serves the GM page instead of the character sheet, with
-the same controls. The scene is a section on the left (on a phone, first), the activation, the
-loadout table and the history on the right. The **PCs** box and **Dangers fight each other**
+the same controls. The scene is a section on the left (on a phone, first), with the scenario
+folded below it, and the activation, the loadout table, the scenario Danger's description and
+notes, and the history are on the right. The
+**PCs** box, **Dangers fight each other** and a scenario Danger's **Class** and **Difficulty**
 send themselves as soon as they change, as the sheet's boxes do; everything else is a button.
 **Ctrl+R** presses **Activate Danger**. The session block, downloads, uploads and the colours
-work as on the sheet, and a player's save uploaded here is refused the same way.
+work as on the sheet, and a player's save uploaded here is refused the same way. Instead of the
+**Scenario file** box, the scenario section has **Upload a scenario**, which asks which one when
+the file holds several, and **Download scenario**.
 
 ## Play in the browser
 

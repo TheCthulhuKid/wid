@@ -33,11 +33,14 @@ def test_invalid_or_corrupt_files_are_rejected(tmp_path, saved_session_factory):
     with pytest.raises(ValueError):
         read_saved(path)
     data = saved_session_factory().model_dump(mode="json")
-    data["version"] = 3
+    data["version"] = SavedSession.model_fields["version"].default + 1
     with pytest.raises(ValueError, match="saved by a newer wid"):
         SavedSession.model_validate(data)
     with pytest.raises(ValueError, match="unknown save kind"):
         parse_save('{"kind": "referee"}', "player")
+    del data["version"]
+    with pytest.raises(ValueError, match="has no version"):
+        parse_save(json.dumps(data), "player")
 
 
 def test_an_older_save_loads_without_notes(tmp_path, saved_session_factory):
@@ -47,4 +50,4 @@ def test_an_older_save_loads_without_notes(tmp_path, saved_session_factory):
     data["version"] = 1
     path.write_text(json.dumps(data), encoding="utf-8")
     older = read_saved(path)
-    assert (older.notes, older.version) == ("", 2)
+    assert (older.notes, older.version) == ("", SavedSession.model_fields["version"].default)

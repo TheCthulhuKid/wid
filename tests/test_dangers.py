@@ -15,7 +15,10 @@ from wid.dangers import (
 from wid.formatting import (
     NO_DANGER_HINT,
     activation_line,
+    class_reference_rows,
     danger_summary,
+    difficulty_reference_rows,
+    loadout_heading,
     loadout_rows,
     revelations_line,
     scene_summary,
@@ -23,8 +26,8 @@ from wid.formatting import (
 )
 from wid.profiles import Genre
 
-BRUTE = Danger(danger_class=DangerClass.BRUTE, difficulty=Difficulty.COMPETENT)
-TITAN = Danger(name="Zeus", danger_class=DangerClass.TITAN, difficulty=Difficulty.MEGA)
+BRUTE = Danger(danger_class=DangerClass.BRUTE, difficulty=Difficulty.HEAVY)
+TITAN = Danger(id=1, name="Zeus", danger_class=DangerClass.TITAN, difficulty=Difficulty.MEGA)
 
 
 def test_danger_numbers_and_loadout():
@@ -39,7 +42,7 @@ def test_danger_numbers_and_loadout():
         Ability.HARASS,
     )
     assert BRUTE.label(0) == "Danger 1"
-    assert danger_summary(BRUTE, 0, 4) == "Danger 1: Competent Brute — threshold 8, 1 hit to pass"
+    assert danger_summary(BRUTE, 0, 4) == "Danger 1: Heavy Brute — threshold 8, 1 hit to pass"
 
     assert TITAN.threshold(3) == 12
     assert TITAN.hits_to_pass == 2
@@ -58,6 +61,10 @@ def test_danger_numbers_and_loadout():
         DangerClass.DISASTER,
     )
     assert classes_for(Genre.HECKBOY)[-1] == DangerClass.TITAN
+    assert len(class_reference_rows(Genre.CORE)) == 4
+    assert class_reference_rows(Genre.HECKBOY)[-1] == ("Titan", "Dominate", "Dominate")
+    assert difficulty_reference_rows(4)[-1] == ("Mega", "2", "16", "Kill")
+    assert difficulty_reference_rows(3)[-1][2] == "12"
     rows = loadout_rows(TITAN.loadout, Genre.HECKBOY)
     assert rows[3] == ("4", "Dominate", "PC(s) with highest scared", "Ferocity")
     assert rows[5] == ("6", "Kill", "PC(s) with most wounds", "Savvy")
@@ -65,11 +72,20 @@ def test_danger_numbers_and_loadout():
 
 def test_scene_combines_its_dangers():
     assert scene_summary(Scene()) == NO_DANGER_HINT
-    scene = Scene(pc_count=3, dangers=(BRUTE, TITAN), hostile=True).raise_threshold(2)
+    scene = Scene(pc_count=3, dangers=(BRUTE, TITAN), next_id=2, hostile=True).raise_threshold(2)
     assert scene.threshold == 6 + 12 + 2
     assert scene.strongest == TITAN
     assert scene.loadout == TITAN.loadout
     assert scene.hits_to_pass == 2
+    assert loadout_heading(scene) == "Loadout: Zeus (Mega Titan)"
+    # The GM can roll on the weaker Danger; hits to pass stay the strongest's.
+    chosen = scene.with_acting(0)
+    assert (chosen.loadout, chosen.hits_to_pass) == (BRUTE.loadout, 2)
+    assert loadout_heading(chosen) == "Loadout: Danger 1 (Heavy Brute)"
+    assert scene.with_acting(1).without(0).acting == TITAN.id
+    assert chosen.without(0).acting is None
+    with pytest.raises(ValueError, match="not in the scene"):
+        Scene(dangers=(BRUTE,), next_id=1, acting=1)
     assert scene_summary(scene) == (
         "Threshold 20 (raised 2), progress 0 — 2 hits to pass. Dangers fight each other"
     )
@@ -87,8 +103,10 @@ def test_scene_combines_its_dangers():
     assert removed.progress == 8
     with pytest.raises(ValueError):
         committed.without(2)
-    with pytest.raises(ValueError):
-        Scene(dangers=(BRUTE,), progress=9)
+    with pytest.raises(ValueError, match="Progress cannot exceed"):
+        Scene(dangers=(BRUTE,), next_id=1, progress=9)
+    with pytest.raises(ValueError, match="its own id"):
+        Scene(dangers=(BRUTE, BRUTE), next_id=1)
 
     core, dropped = committed.in_kit(Genre.CORE)
     assert core.dangers == (BRUTE,)
@@ -132,7 +150,7 @@ def test_each_kits_scene_tracker_counts_and_is_refused_elsewhere():
         Scene().advance_revelations(1, Genre.CORE)
 
     # Another kit keeps none of them.
-    everything = Scene(dangers=(esteemed,), barricade=3, revelation_progress=5)
+    everything = Scene(dangers=(esteemed,), next_id=1, barricade=3, revelation_progress=5)
     core, dropped = everything.in_kit(Genre.CORE)
     assert (core.dangers, core.barricade, core.revelation_progress, dropped) == (
         (),
@@ -146,13 +164,14 @@ def test_each_kits_scene_tracker_counts_and_is_refused_elsewhere():
 
 
 def test_activation_uses_the_kits_attributes():
-    scene = Scene(dangers=(TITAN,))
+    scene = Scene(dangers=(TITAN,), next_id=2)
     activation = activate(scene, Genre.HECKBOY, ScriptedRandom([4, 2, 5]))
     assert activation.ability == Ability.DOMINATE
     assert activation.target == "PC who acted most recently"
     assert activation.attribute == "Savvy"
     assert activation_line(activation) == (
-        "Activation (4, 2, 5): Dominate — PC who acted most recently, defending with Savvy"
+        "Zeus (Mega Titan) activates (4, 2, 5): Dominate — PC who acted most recently, "
+        "defending with Savvy"
     )
     with pytest.raises(ValueError):
         activate(Scene(), Genre.HECKBOY, ScriptedRandom([1, 1, 1]))

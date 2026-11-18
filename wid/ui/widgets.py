@@ -10,6 +10,7 @@ from textual.widget import Widget
 from textual.widgets import (
     Button,
     Checkbox,
+    Collapsible,
     DataTable,
     Input,
     Label,
@@ -34,13 +35,19 @@ from wid.dangers import (
 from wid.formatting import (
     BONUS_LABELS,
     CHARACTER_LABELS,
+    CLASS_REFERENCE_COLUMNS,
     CORRUPTION_AMOUNTS,
+    DIFFICULTY_REFERENCE_COLUMNS,
+    INCITEMENT_ROLLS,
     LOADOUT_COLUMNS,
     NO_ACTIVATION_HINT,
     NO_DANGER_HINT,
     NO_RESULT_HINT,
     POWER_LABELS,
     RANKS_HINT,
+    REFERENCE_DICE,
+    ROLL_ON_LABELS,
+    SCENARIO_LIST_LABELS,
     strain_box_name,
 )
 from wid.profiles import PROFILES, Genre
@@ -59,6 +66,7 @@ from wid.rolls import (
     StrainTracker,
     standing_label,
 )
+from wid.scenario import ENTRIES, SCENARIO_DANGERS_MAX
 
 
 class AttributeRollButton(Button):
@@ -454,7 +462,7 @@ class KitControls(Vertical):
                 yield Label("Danger")
                 yield Select(
                     [(difficulty.label, difficulty) for difficulty in Difficulty],
-                    value=Difficulty.COMPETENT,
+                    value=Difficulty.HEAVY,
                     allow_blank=False,
                     id="recovery-difficulty",
                     tooltip="The difficulty of the Danger just overcome",
@@ -570,6 +578,10 @@ class RemoveDangerButton(Button):
 AMOUNTS = range(1, 7)
 
 
+# The Acting Danger choice for the strongest; the others are the Dangers' indices.
+STRONGEST = -1
+
+
 class SceneGroup(Vertical):
     """The GM's scene: the PCs, the Dangers, the threshold and whether the Dangers clash."""
 
@@ -582,6 +594,10 @@ class SceneGroup(Vertical):
                 allow_blank=False,
                 id="pc-count",
             )
+        # Shown once the scenario has a Danger to start a scene with.
+        with Horizontal(id="start-scene-row"):
+            yield Select([], prompt="Scenario Danger", id="scenario-scene")
+            yield Button("Start scene", id="start-scene", variant="primary")
         with Horizontal(id="new-danger"):
             with Vertical(classes="field"):
                 yield Label("Name")
@@ -598,7 +614,7 @@ class SceneGroup(Vertical):
                 yield Label("Difficulty")
                 yield Select(
                     [(difficulty.label, difficulty) for difficulty in Difficulty],
-                    value=Difficulty.COMPETENT,
+                    value=Difficulty.HEAVY,
                     allow_blank=False,
                     id="difficulty",
                 )
@@ -620,7 +636,15 @@ class SceneGroup(Vertical):
                     with Horizontal(classes="danger-controls"):
                         yield DangerName(index)
                         yield RemoveDangerButton(index)
+        with Horizontal(id="acting-row"):
+            yield Label("Acting Danger")
+            yield Select(
+                [("Strongest", STRONGEST)], value=STRONGEST, allow_blank=False, id="acting"
+            )
         yield Static(NO_DANGER_HINT, id="scene-summary", markup=False)
+        with Horizontal(id="scene-end-row"):
+            yield Button("End scene", id="end-scene", tooltip="Once the scene is overcome")
+            yield Button("They're dead. They're all dead!", id="lose-scene", variant="error")
         with Horizontal(id="threshold-row"):
             with Vertical(classes="field", id="amount-field"):
                 yield Label("Amount")
@@ -673,14 +697,126 @@ class SceneGroup(Vertical):
                 yield Button(
                     "Task done", id="task-done", tooltip="Advance by the Task's complexity"
                 )
+        with Horizontal(id="roll-on-row"):
+            yield Label("Roll on")
+            yield Select(
+                [(label, kind) for kind, label in ROLL_ON_LABELS.items()],
+                allow_blank=False,
+                id="roll-on-list",
+            )
+            yield Button("Roll", id="roll-on", tooltip="Roll 1d6 on the scenario")
+        yield Label("Scene notes")
+        yield TextArea(id="scene-notes", classes="short-text")
+        with Collapsible(title="Danger reference", collapsed=True, id="reference-section"):
+            yield Static(REFERENCE_DICE, id="reference-dice", markup=False)
+            yield DataTable(id="class-reference", cursor_type="none", zebra_stripes=True)
+            yield DataTable(id="difficulty-reference", cursor_type="none", zebra_stripes=True)
+
+    def on_mount(self) -> None:
+        self.query_one("#class-reference", DataTable).add_columns(*CLASS_REFERENCE_COLUMNS)
+        self.query_one("#difficulty-reference", DataTable).add_columns(
+            *DIFFICULTY_REFERENCE_COLUMNS
+        )
+
+
+class ScenarioDangerSelect(Select):
+    """The class, difficulty or standing of the scenario Danger at ``index``."""
+
+    def __init__(self, index: int, part: str, options: list, value: object, **kwargs) -> None:
+        super().__init__(
+            options, value=value, allow_blank=False, id=f"scenario-danger-{part}-{index}", **kwargs
+        )
+        self.index = index
+
+
+class RemoveScenarioDangerButton(Button):
+    def __init__(self, index: int, **kwargs):
+        super().__init__("Remove", id=f"remove-scenario-danger-{index}", **kwargs)
+        self.index = index
+
+
+def kind_selects(index: int | None = None) -> ComposeResult:
+    """Class, Difficulty and Standing for the scenario Danger at ``index``, or a new one."""
+    parts = (
+        ("Class", "class", [(kind.label, kind) for kind in DangerClass], DangerClass.BRUTE),
+        ("Difficulty", "difficulty", [(each.label, each) for each in Difficulty], Difficulty.HEAVY),
+        ("Standing", "standing", [(each.label, each) for each in Standing], Standing.REPUTABLE),
+    )
+    for label, part, options, value in parts:
+        with Vertical(classes=f"field {part}-field"):
+            yield Label(label)
+            if index is None:
+                yield Select(
+                    options, value=value, allow_blank=False, id=f"new-scenario-danger-{part}"
+                )
+            else:
+                yield ScenarioDangerSelect(index, part, options, value)
+
+
+class ScenarioGroup(Vertical):
+    """The GM's scenario sheet: its text, lists, incitement and Dangers, then its notes."""
+
+    def compose(self) -> ComposeResult:
+        yield Label("Scenario file (Markdown)")
+        yield Input(placeholder="/path/to/scenario.md", id="scenario-path")
+        with Horizontal(classes="button-row"):
+            yield Button("Import scenario", id="import-scenario")
+            yield Button("Export scenario", id="export-scenario")
+        for field, label in (("title", "Title"), ("author", "Author"), ("themes", "Themes")):
+            with Vertical(classes="field"):
+                yield Label(label)
+                yield Input(id=f"scenario-{field}")
+        for field, label in (("pitch", "Pitch"), ("cast", "Cast")):
+            yield Label(label)
+            yield TextArea(id=f"scenario-{field}", classes="short-text")
+        for kind, title in SCENARIO_LIST_LABELS.items():
+            with Collapsible(title=title, collapsed=True, id=f"{kind.value}-section"):
+                for index in range(ENTRIES):
+                    yield Input(placeholder=str(index + 1), id=f"{kind.value}-{index}")
+        with Collapsible(title="Incitement", collapsed=True, id="incitement-section"):
+            for row, roll in enumerate(INCITEMENT_ROLLS):
+                yield Input(placeholder=roll, id=f"incitement-{row}")
+        with Vertical(id="scenario-dangers"):
+            for index in range(SCENARIO_DANGERS_MAX):
+                with Vertical(classes="danger-row", id=f"scenario-danger-row-{index}"):
+                    yield Static(id=f"scenario-danger-summary-{index}", markup=False)
+                    with Horizontal(classes="danger-controls"):
+                        yield Input(
+                            placeholder=f"Danger {index + 1}", id=f"scenario-danger-name-{index}"
+                        )
+                        yield RemoveScenarioDangerButton(index)
+                    with Horizontal(classes="scenario-danger-kind"):
+                        yield from kind_selects(index)
+                    yield TextArea(
+                        placeholder="Description",
+                        id=f"scenario-danger-description-{index}",
+                        classes="short-text",
+                    )
+                    yield TextArea(
+                        placeholder="Notes",
+                        id=f"scenario-danger-notes-{index}",
+                        classes="short-text",
+                    )
+        with Horizontal(id="new-scenario-danger"):
+            with Vertical(classes="field"):
+                yield Label("Name")
+                yield Input(placeholder="Optional", id="new-scenario-danger-name")
+            yield from kind_selects()
+        with Horizontal(id="scenario-buttons"):
+            yield Button("Add scenario Danger", id="add-scenario-danger", variant="primary")
+            yield Button("Clear scenario", id="clear-scenario", variant="warning")
+        yield Label("Scenario notes")
+        yield TextArea(id="scenario-notes", classes="short-text")
 
 
 class ActivationGroup(VerticalScroll):
-    """The last activation and the loadout table of the scene's strongest Danger."""
+    """The last activation and the loadout table of the Danger that acts."""
 
     def compose(self) -> ComposeResult:
         yield Static(NO_ACTIVATION_HINT, id="activation", markup=False)
+        yield Static(id="loadout-heading", markup=False)
         yield DataTable(id="loadout", cursor_type="none", zebra_stripes=True)
+        yield Static(id="scene-danger-text", markup=False)
 
     def on_mount(self) -> None:
         self.query_one(DataTable).add_columns(*LOADOUT_COLUMNS)

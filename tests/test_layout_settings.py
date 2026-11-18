@@ -56,6 +56,7 @@ def test_an_unwritable_settings_file_is_reported_not_fatal(tmp_path):
         await pilot.press("t")
         await pilot.pause()
         assert collapsed(app, "strain")
-        assert "Could not save settings" in str(app.query_one("#feedback").content)
+        message = str(app.query_one("#feedback").content)
+        assert message.startswith("Could not save settings: File exists: ")
 
     run_app(scenario, size=(100, 45), settings_path=blocker / "settings.json")

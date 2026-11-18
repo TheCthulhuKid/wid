@@ -82,6 +82,12 @@ h2 {
   font-weight: 700;
 }
 
+h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;
@@ -343,6 +349,8 @@ button:disabled, input:disabled, select:disabled {
 }
 
 .danger .status { margin: 0 0 0.4rem; font-weight: 600; color: var(--ink); }
+/* The scenario Danger's description and notes keep the GM's line breaks. */
+.scene-danger { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .loadout {
   width: 100%;
@@ -358,6 +366,11 @@ button:disabled, input:disabled, select:disabled {
 }
 
 .loadout th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.reference { margin-top: 1rem; }
+.reference summary { cursor: pointer; font-weight: 700; }
+.scenario > summary { cursor: pointer; }
+.scenario > summary h2 { display: inline; }
 .loadout td:first-child { font-weight: 800; font-variant-numeric: tabular-nums; }
 
 /* Narrow screens: one column, with the dice right after the next-test options so a roll's

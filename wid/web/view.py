@@ -2,6 +2,7 @@
 
 from markdown_it import MarkdownIt
 
+from wid.base_game import BaseGame
 from wid.dangers import (
     BARRICADE_MAX,
     DANGERS_MAX,
@@ -17,23 +18,34 @@ from wid.dangers import (
 from wid.formatting import (
     BONUS_LABELS,
     CHARACTER_LABELS,
+    CLASS_REFERENCE_COLUMNS,
     CORRUPTION_AMOUNTS,
+    DIFFICULTY_REFERENCE_COLUMNS,
+    INCITEMENT_ROLLS,
     LOADOUT_COLUMNS,
     NO_ACTIVATION_HINT,
     NO_RESULT_HINT,
     POWER_LABELS,
     RANKS_HINT,
+    REFERENCE_DICE,
+    ROLL_ON_LABELS,
+    SCENARIO_LIST_LABELS,
     SPEND_LABELS,
     activation_line,
+    class_reference_rows,
     corruption_status,
     danger_summary,
+    danger_title,
+    difficulty_reference_rows,
     extra_hits_text,
+    loadout_heading,
     loadout_rows,
     pool_line,
     resources_line,
     resources_reminder,
     result_text,
     revelations_line,
+    scenario_danger_text,
     scene_summary,
     strain_box_name,
     strain_status,
@@ -42,7 +54,7 @@ from wid.formatting import (
     tech_slot_label,
     tech_starting_line,
 )
-from wid.game import BaseGame, Game
+from wid.game import Game
 from wid.gm import GmGame
 from wid.history import history_statistics
 from wid.profiles import PROFILES, Genre
@@ -57,7 +69,8 @@ from wid.rolls import (
     BonusKind,
     PowerMode,
 )
-from wid.web.forms import NeedsConfirmation
+from wid.scenario import SCENARIO_DANGERS_MAX, Scenario
+from wid.web.forms import NeedsConfirmation, slot_field
 
 # The terminal's Danger theme on paper, and a dark variant for dark mode or the page's switch;
 # the highlight is the kit's (below). The outcome colours are checked against the paper the dice
@@ -220,7 +233,7 @@ def sheet_context(
         "spend_labels": SPEND_LABELS,
         "character_labels": CHARACTER_LABELS,
         "difficulties": tuple(Difficulty),
-        "default_difficulty": Difficulty.COMPETENT,
+        "default_difficulty": Difficulty.HEAVY,
         "standings": tuple(Standing),
         "extra_hits": extra_hits_text(result.request.extra_hits) if result is not None else "",
         "ranks_hint": RANKS_HINT,
@@ -252,7 +265,16 @@ def gm_context(
         "scene_summary": scene_summary(scene),
         "activation": activation_line(activation) if activation else NO_ACTIVATION_HINT,
         "loadout_columns": LOADOUT_COLUMNS,
+        "loadout_heading": loadout_heading(scene),
+        "reference_dice": REFERENCE_DICE,
+        "reference_tables": (
+            (CLASS_REFERENCE_COLUMNS, class_reference_rows(game.genre)),
+            (DIFFICULTY_REFERENCE_COLUMNS, difficulty_reference_rows(scene.pc_count)),
+        ),
         "loadout_rows": loadout_rows(scene.loadout, game.genre),
+        "danger_titles": [
+            danger_title(danger, index) for index, danger in enumerate(scene.dangers)
+        ],
         "classes": classes_for(game.genre),
         "difficulties": tuple(Difficulty),
         "complexities": tuple(Complexity),
@@ -264,8 +286,24 @@ def gm_context(
         "revelation_counts": range(1, REVELATIONS_MAX + 1),
         "revelations_done": scene.revelation_progress >= scene.revelation_total,
         "default_class": DangerClass.BRUTE,
-        "default_difficulty": Difficulty.COMPETENT,
+        "default_difficulty": Difficulty.HEAVY,
         "pc_counts": range(PC_MIN, PC_MAX + 1),
         "amounts": range(1, 7),
         "scene_full": len(scene.dangers) >= DANGERS_MAX,
+        "scenario": game.scenario,
+        "scenario_dangers": [
+            danger_summary(danger, index, scene.pc_count)
+            for index, danger in enumerate(game.scenario.dangers)
+        ],
+        "scenario_lists": SCENARIO_LIST_LABELS,
+        "scenario_titles": [
+            danger_title(danger, index) for index, danger in enumerate(game.scenario.dangers)
+        ],
+        "next_scenario_index": game.next_scenario_index,
+        "roll_on_labels": ROLL_ON_LABELS,
+        "scene_danger_text": scenario_danger_text(game.scene_from_scenario),
+        "incitement_rolls": INCITEMENT_ROLLS,
+        "scenario_empty": game.scenario == Scenario(),
+        "scenario_full": len(game.scenario.dangers) >= SCENARIO_DANGERS_MAX,
+        "field": slot_field,
     }

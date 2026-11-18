@@ -1,19 +1,18 @@
-// Sends the sheet to the game and shows the sheet it sends back. Every button in the sheet is
-// a plain form button whose formaction names the game action, so this script only posts the
-// form and swaps the reply in. The HX-Request header is what the server's safety check expects
-// (see wid/web/app.py): pages from other sites cannot add it.
+// Posts the sheet to the action its button names and swaps the reply in. wid/web/app.py refuses
+// actions without the HX-Request header, which pages from other sites cannot add.
 
 const sheet = () => document.getElementById("sheet");
 
-// Whether the player typed since the last reply: the game has not seen that text yet.
+// Typed since the last reply, so the game has not seen it yet.
 let typed = false;
-// Whether a request is waiting for its reply. Anything sent meanwhile is dropped, so a double
-// click rolls once.
+// Anything sent while a request waits is dropped, so a double click rolls once.
 let pending = false;
-// Whether the player changed a box or typed while waiting. The reply redraws the sheet and undoes
-// that, so the player is told to make it again rather than left wondering where it went.
+// Changed while waiting: the reply draws over it, so the player is told to make it again.
 let missed = false;
 const MISSED = "A change made while wid was busy was not kept; make it again.";
+const STOPPED = "wid is not running; start it again and reload this page.";
+const TYPING_PAUSE = 3000;
+let typing;
 
 const feedback = (text) => { sheet().querySelector(".feedback").textContent = text; };
 
@@ -30,7 +29,7 @@ async function send(url, data) {
     text = await response.text();
   } catch {
     // A failed fetch means nothing answered: the window running wid --web was closed.
-    feedback("wid is not running; start it again and reload this page.");
+    feedback(STOPPED);
     missed = false;
     return;
   } finally {
@@ -44,33 +43,37 @@ async function send(url, data) {
   }
 }
 
-// Replace the sheet, then put the focus back on the same control so typing and keyboard play
-// carry on where they were.
+// Focus goes back to the same control, so typing and keyboard play carry on.
 function swap(html) {
   const active = document.activeElement;
   const name = active && active.getAttribute("name");
-  // Only buttons and boxes need their value to tell them apart. A text field's value attribute
-  // is the text the server last drew, so it no longer matches once the player has typed.
+  // A text field's value attribute is what the server last drew, not what was typed since.
   const keyed = active && ["button", "submit", "radio", "checkbox"].includes(active.type);
   const value = keyed ? active.getAttribute("value") : null;
+  // A reply draws every <details> folded, so the ones open before are opened again.
+  const opened = [...sheet().querySelectorAll("details[open][id]")].map((section) => section.id);
   sheet().outerHTML = html;
+  for (const id of opened) document.getElementById(id)?.setAttribute("open", "");
   typed = false;
-  // A question from the game (replace a file, discard a game) opens as a modal dialog.
-  const ask = sheet().querySelector("dialog[data-ask]");
-  if (ask) {
-    // Cancel or Escape removes it, so its carried fields (such as an upload) are not sent along
-    // with every later action.
-    ask.addEventListener("close", () => ask.remove());
-    ask.showModal();
-    return;
-  }
+  if (openQuestion()) return;
   if (!name) return;
-  // A value can hold what the player typed, quotes included, so the selector is escaped.
   const field = `[name="${CSS.escape(name)}"]`;
   const selector = value === null ? field : `${field}[value="${CSS.escape(value)}"]`;
   const again = sheet().querySelector(selector);
   if (again) again.focus({ preventScroll: true });
 }
+
+function openQuestion() {
+  const ask = sheet().querySelector("dialog[data-ask]");
+  if (!ask) return false;
+  // Removed on close, or its carried fields (an upload) would go out with every later action.
+  ask.addEventListener("close", () => ask.remove());
+  ask.showModal();
+  return true;
+}
+
+// The first page can already ask something: whether to restore a game wid closed without saving.
+openQuestion();
 
 document.addEventListener("submit", (event) => {
   if (event.target !== sheet()) return;
@@ -79,12 +82,13 @@ document.addEventListener("submit", (event) => {
   send(button ? button.formAction : event.target.action, new FormData(event.target, button));
 });
 
-// A save chosen in the upload box is read here and sent as text with the sheet, so the game
-// needs no file upload handling. The box has no name, so the file itself is not sent.
-async function upload(file) {
+// A file chosen in an upload box (a save, or the GM's scenario sheet) is read here and sent as
+// text in the field the box names, so the game needs no file upload handling. The box has no
+// name, so the file itself is not sent.
+async function upload(control, file) {
   const data = new FormData(sheet());
-  data.set("session-file", await file.text());
-  send("/actions/upload", data);
+  data.set(control.dataset.field, await file.text());
+  send(`/actions/${control.dataset.upload}`, data);
 }
 
 // Selects and boxes marked data-action send the sheet as soon as they change.
@@ -97,7 +101,7 @@ document.addEventListener("change", (event) => {
     return;
   }
   if (file) {
-    upload(file);
+    upload(control, file);
     return;
   }
   const data = new FormData(sheet());
@@ -110,7 +114,51 @@ document.addEventListener("input", (event) => {
   if (!sheet().contains(event.target)) return;
   typed = true;
   if (pending) missed = true;
+  clearTimeout(typing);
+  typing = setTimeout(keepTyped, TYPING_PAUSE);
 });
+
+// A download is the server's game, so what was typed goes first; a refusal shows in the
+// feedback line, where a failed download alone would show nothing.
+let following = false;
+document.addEventListener("click", async (event) => {
+  const link = event.target.closest("a[download]");
+  if (!link || following || !sheet().contains(link)) return;
+  event.preventDefault();
+  if (typed) {
+    clearTimeout(typing);
+    await keepTyped();
+  }
+  let response;
+  try {
+    response = await fetch(link.href);
+  } catch {
+    feedback(STOPPED);
+    return;
+  }
+  if (!response.ok) {
+    feedback(await response.text());
+    return;
+  }
+  following = true;
+  link.click();
+  following = false;
+});
+
+async function keepTyped() {
+  if (pending) return;
+  try {
+    const response = await fetch("/typed", {
+      method: "POST",
+      headers: { "HX-Request": "true", "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(new FormData(sheet())),
+    });
+    const text = await response.text();
+    if (text) feedback(text);
+  } catch {
+    feedback(STOPPED);
+  }
+}
 
 // Closing or reloading the page asks first while something would be lost, as Ctrl+Q does in
 // the terminal.

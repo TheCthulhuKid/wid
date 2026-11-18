@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from wid.dangers import (
     BARRICADE_MAX,
+    DEFAULT_ABILITIES,
     TARGETS,
     Ability,
     Activation,
@@ -11,6 +12,8 @@ from wid.dangers import (
     Danger,
     Difficulty,
     Scene,
+    SceneEnd,
+    classes_for,
     defending_attribute,
 )
 from wid.profiles import PROFILES, Genre
@@ -33,6 +36,7 @@ from wid.rolls import (
     TechState,
     standing_label,
 )
+from wid.scenario import RollOn, Scenario, ScenarioDanger, ScenarioList, Slot
 
 BONUS_LABELS = {
     BonusKind.EXPERTISE: "Expertise",
@@ -203,6 +207,7 @@ GM_KIT_QUESTION = (
     "the new kit lacks is dropped). Start new clears them. Unsaved changes will be lost."
 )
 QUIT_QUESTION = "Quit? Unsaved changes will be lost."
+SCENARIO_CHOICE_QUESTION = "This file holds several scenarios. Which one do you want?"
 RECOVERY_QUESTION = (
     "wid closed last time with unsaved changes, and kept a copy. Restore that game? If not, the "
     "copy stays until this game has something to lose."
@@ -406,22 +411,40 @@ def sheet_lines(session: RollSession) -> list[str]:
 # The GM's scene. The rules behind these numbers are the book's.
 NO_DANGER_HINT = "Add a Danger to start the scene."
 NO_ACTIVATION_HINT = "Activate the Danger to see its roll here."
+SCENARIO_LIST_LABELS = {
+    ScenarioList.SCENE_STARTERS: "Scene starters",
+    ScenarioList.NPCS: "NPCs",
+    ScenarioList.WAYPOINTS: "Waypoints",
+    ScenarioList.OBSTACLES: "Obstacles",
+}
+# What **Roll on** offers: the four lists, then the incitement table.
+ROLL_ON_LABELS: dict[RollOn, str] = {**SCENARIO_LIST_LABELS, Slot.INCITEMENT: "Incitement"}
+INCITEMENT_ROLLS = ("1–2", "3–4", "5–6")
 LOADOUT_COLUMNS = ("Die", "Ability", "Target", "Attribute")
+CLASS_REFERENCE_COLUMNS = ("Class", "Die 4", "Die 5")
+DIFFICULTY_REFERENCE_COLUMNS = ("Difficulty", "Hits", "Threshold", "Die 6")
+REFERENCE_DICE = (
+    f"Dice 1 to 3 are {', '.join(ability.label for ability in DEFAULT_ABILITIES[:-1])} and "
+    f"{DEFAULT_ABILITIES[-1].label} for every Danger; the class gives dice 4 and 5, the "
+    "difficulty die 6."
+)
 
 
 def hits_text(hits: int) -> str:
     return f"{hits} {'hit' if hits == 1 else 'hits'} to pass"
 
 
-def danger_summary(danger: Danger, index: int, pc_count: int) -> str:
-    """One Danger's line, such as ``Danger 1: Competent Brute — threshold 8, 1 hit to pass``,
-    with its standing after the class in Ball Season."""
+def danger_kind(danger: Danger) -> str:
+    """Such as ``Heavy Brute``, with the standing after the class in Ball Season."""
     kind = f"{danger.difficulty.label} {danger.danger_class.label}"
-    if danger.standing is not None:
-        kind += f", {danger.standing.label}"
+    return kind if danger.standing is None else f"{kind}, {danger.standing.label}"
+
+
+def danger_summary(danger: Danger, index: int, pc_count: int) -> str:
+    """One Danger's line, such as ``Danger 1: Heavy Brute — threshold 8, 1 hit to pass``."""
     return (
-        f"{one_line(danger.label(index))}: {kind} — threshold {danger.threshold(pc_count)}, "
-        f"{hits_text(danger.hits_to_pass)}"
+        f"{one_line(danger.label(index))}: {danger_kind(danger)} — "
+        f"threshold {danger.threshold(pc_count)}, {hits_text(danger.hits_to_pass)}"
     )
 
 
@@ -464,16 +487,89 @@ def task_strain_line(complexity: Complexity, pc_count: int, mismatched: int = 0)
     return f"{text}."
 
 
+def danger_title(danger: Danger, index: int) -> str:
+    """A Danger's name with its difficulty and class, such as ``Zeus (Mega Titan)``."""
+    kind = f"{danger.difficulty.label} {danger.danger_class.label}"
+    return f"{one_line(danger.label(index))} ({kind})"
+
+
+def scenario_line(scenario: Scenario) -> str:
+    """The scenario for an export's sheet, such as ``Scenario: Night Ferry — Colossus (Mega
+    Titan)``."""
+    text = f"Scenario: {one_line(scenario.title.strip()) or 'Untitled'}"
+    if scenario.dangers:
+        titles = (danger_title(danger, index) for index, danger in enumerate(scenario.dangers))
+        text += f" — {', '.join(titles)}"
+    return text
+
+
+def scene_record(scene: Scene, end: SceneEnd) -> str:
+    """History entry for a scene that ended, such as ``Scene ended: The Lantern Man (Heavy
+    Brute), progress 8 of 8.``, with the scene's notes below."""
+    titles = ", ".join(danger_title(danger, index) for index, danger in enumerate(scene.dangers))
+    text = f"Scene {end}: {titles}, progress {scene.progress} of {scene.threshold}."
+    if end == SceneEnd.LOST:
+        text += " They're dead. They're all dead!"
+    notes = scene.notes.strip()
+    return f"{text}\n{notes}" if notes else text
+
+
+def roll_on_line(kind: RollOn, die: int, entry: str) -> str:
+    """History line for a roll on the scenario, such as ``Waypoints (4): The old bus depot.``"""
+    entry = one_line(entry.strip()) or "nothing is written there"
+    return f"{ROLL_ON_LABELS[kind]} ({die}): {entry}."
+
+
+def scenario_danger_text(danger: ScenarioDanger | None) -> str:
+    """The description and prep notes of the scenario Danger a scene was started from."""
+    if danger is None:
+        return ""
+    return "\n\n".join(text.strip() for text in (danger.description, danger.notes) if text.strip())
+
+
+def loadout_heading(scene: Scene) -> str:
+    """Whose loadout the activation table shows, or nothing with no Danger."""
+    index = scene.acting_index
+    return "" if index is None else f"Loadout: {danger_title(scene.dangers[index], index)}"
+
+
+def acting_notice(scene: Scene) -> str:
+    if scene.acting is None:
+        return "Acting Danger: the strongest."
+    index = scene.acting_index
+    return f"Acting Danger: {danger_title(scene.dangers[index], index)}."
+
+
 def activation_line(activation: Activation) -> str:
     """History line for an activation, the three dice in the order they were rolled."""
     dice = ", ".join(str(die) for die in activation.dice)
     text = (
-        f"Activation ({dice}): {activation.ability.label} — {activation.target}, "
-        f"defending with {activation.attribute}"
+        f"{danger_title(activation.danger, activation.index)} activates ({dice}): "
+        f"{activation.ability.label} — {activation.target}, defending with {activation.attribute}"
     )
-    if activation.standing is not None:
-        text += f"; the Danger is {activation.standing.label}"
+    if activation.danger.standing is not None:
+        text += f"; the Danger is {activation.danger.standing.label}"
     return text
+
+
+def class_reference_rows(genre: Genre) -> list[tuple[str, str, str]]:
+    """Each class the kit offers, with the abilities it puts on dice 4 and 5."""
+    return [
+        (kind.label, *(ability.label for ability in kind.abilities)) for kind in classes_for(genre)
+    ]
+
+
+def difficulty_reference_rows(pc_count: int) -> list[tuple[str, str, str, str]]:
+    """Each difficulty with its hits to pass, its threshold for ``pc_count`` PCs and die 6."""
+    return [
+        (
+            difficulty.label,
+            str(difficulty.rule.hits_to_pass),
+            str(difficulty.rule.threshold(pc_count)),
+            difficulty.rule.ability.label,
+        )
+        for difficulty in Difficulty
+    ]
 
 
 def loadout_rows(loadout: tuple[Ability, ...], genre: Genre) -> list[tuple[str, str, str, str]]:
