@@ -117,6 +117,33 @@ document.addEventListener("input", (event) => {
   typing = setTimeout(keepTyped, TYPING_PAUSE);
 });
 
+// A download is the server's game, so what was typed goes first; a refusal shows in the
+// feedback line, where a failed download alone would show nothing.
+let following = false;
+document.addEventListener("click", async (event) => {
+  const link = event.target.closest("a[download]");
+  if (!link || following || !sheet().contains(link)) return;
+  event.preventDefault();
+  if (typed) {
+    clearTimeout(typing);
+    await keepTyped();
+  }
+  let response;
+  try {
+    response = await fetch(link.href);
+  } catch {
+    feedback(STOPPED);
+    return;
+  }
+  if (!response.ok) {
+    feedback(await response.text());
+    return;
+  }
+  following = true;
+  link.click();
+  following = false;
+});
+
 async function keepTyped() {
   if (pending) return;
   try {

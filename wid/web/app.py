@@ -180,7 +180,7 @@ def create_app(game: BaseGame, token: str, *, greeting: str = "") -> FastAPI:
             try:
                 text = game.history_text()
             except ValueError as error:
-                return PlainTextResponse(str(error), 404)
+                return PlainTextResponse(player_message(error), 404)
             name = Path(game.default_export_path()).name
         return attachment(text, "text/markdown; charset=utf-8", name)
 
@@ -190,7 +190,7 @@ def create_app(game: BaseGame, token: str, *, greeting: str = "") -> FastAPI:
             try:
                 text = game.save_text()
             except ValueError as error:
-                return PlainTextResponse(str(error), 404)
+                return PlainTextResponse(player_message(error), 404)
             name = game.save_file_name()
         return attachment(text, "application/json", name)
 

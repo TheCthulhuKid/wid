@@ -56,6 +56,9 @@ What changed in each release of wid, newest first. The format follows
   stop typing, in the terminal and the browser. Before, it waited for the next button or box.
 - A save file with no version is refused, saying wid did not save it. Before, it was read as
   the current version.
+- In the browser, **Download save** and **Download history** include what you typed just
+  before, and a download that is refused says why on the page. Before, the file left out text
+  typed since the last button or box, and a refused download only failed.
 - In the GM mode, **Raise threshold** waits for a Danger, as **Commit hits** does. Before, it
   raised the threshold of an empty scene, and the first Danger added started with that raise.
 - In the terminal, settings that cannot be saved are reported as other file errors are, such as
