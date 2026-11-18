@@ -2,7 +2,15 @@ import asyncio
 
 import pytest
 from helpers import ScriptedRandom, click, text
-from textual.widgets import Button, Collapsible, DataTable, Input, Select, TabbedContent
+from textual.widgets import (
+    Button,
+    Collapsible,
+    DataTable,
+    Input,
+    Select,
+    TabbedContent,
+    TextArea,
+)
 
 from wid.dangers import Complexity, DangerClass, Difficulty
 from wid.formatting import NO_DANGER_HINT
@@ -108,5 +116,26 @@ def test_the_scenario_tab_edits_the_sheet():
             app.query_one("#scenario-danger-difficulty-0", Select).value = Difficulty.MEGA
             await pilot.pause()
             assert app.game.scenario.dangers[0].difficulty == Difficulty.MEGA
+
+    asyncio.run(scenario())
+
+
+def test_the_scene_tab_starts_a_scene_from_the_scenario():
+    async def scenario():
+        app = GmApp()
+        async with app.run_test(size=(120, 50)) as pilot:
+            await pilot.pause()
+            assert not app.query_one("#start-scene-row").display
+            app.query_one("#new-scenario-danger-name", Input).value = "Colossus"
+            await click(app, pilot, "#add-scenario-danger")
+            app.query_one("#scenario-danger-description-0", TextArea).load_text("Wades ashore.")
+            await pilot.press("e")
+            await click(app, pilot, "#start-scene")
+            assert text(app, "#scene-danger-text") == "Wades ashore."
+            assert app.query_one("#end-scene", Button).disabled
+            app.query_one("#amount", Select).value = 6
+            await click(app, pilot, "#commit-hits")
+            await click(app, pilot, "#commit-hits")
+            assert not app.query_one("#end-scene", Button).disabled
 
     asyncio.run(scenario())

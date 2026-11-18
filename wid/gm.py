@@ -75,6 +75,12 @@ class GmGame(BaseGame):
     def profile(self) -> WiDProfile:
         return PROFILES[self.genre]
 
+    @property
+    def scene_from_scenario(self) -> ScenarioDanger | None:
+        """The scenario Danger the scene was started from, unless the GM has since removed it."""
+        danger_id = self.scene.scenario_danger_id
+        return next((danger for danger in self.scenario.dangers if danger.id == danger_id), None)
+
     def typed_names(self, state: GmState) -> dict[TypedSlot, str]:
         """The scene's Danger names and notes, and the scenario's typed text."""
         names = {(Slot.SCENE_DANGER, danger.id): danger.name for danger in state.scene.dangers}

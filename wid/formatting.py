@@ -36,7 +36,7 @@ from wid.rolls import (
     TechState,
     standing_label,
 )
-from wid.scenario import RollOn, Scenario, ScenarioList, Slot
+from wid.scenario import RollOn, Scenario, ScenarioDanger, ScenarioList, Slot
 
 BONUS_LABELS = {
     BonusKind.EXPERTISE: "Expertise",
@@ -416,6 +416,8 @@ SCENARIO_LIST_LABELS = {
     ScenarioList.WAYPOINTS: "Waypoints",
     ScenarioList.OBSTACLES: "Obstacles",
 }
+# What **Roll on** offers: the four lists, then the incitement table.
+ROLL_ON_LABELS: dict[RollOn, str] = {**SCENARIO_LIST_LABELS, Slot.INCITEMENT: "Incitement"}
 INCITEMENT_ROLLS = ("1–2", "3–4", "5–6")
 LOADOUT_COLUMNS = ("Die", "Ability", "Target", "Attribute")
 CLASS_REFERENCE_COLUMNS = ("Class", "Die 4", "Die 5")
@@ -513,8 +515,15 @@ def scene_record(scene: Scene, end: SceneEnd) -> str:
 
 def roll_on_line(kind: RollOn, die: int, entry: str) -> str:
     """History line for a roll on the scenario, such as ``Waypoints (4): The old bus depot.``"""
-    title = "Incitement" if kind == Slot.INCITEMENT else SCENARIO_LIST_LABELS[kind]
-    return f"{title} ({die}): {one_line(entry.strip()) or 'nothing is written there'}."
+    entry = one_line(entry.strip()) or "nothing is written there"
+    return f"{ROLL_ON_LABELS[kind]} ({die}): {entry}."
+
+
+def scenario_danger_text(danger: ScenarioDanger | None) -> str:
+    """The description and prep notes of the scenario Danger a scene was started from."""
+    if danger is None:
+        return ""
+    return "\n\n".join(text.strip() for text in (danger.description, danger.notes) if text.strip())
 
 
 def loadout_heading(scene: Scene) -> str:

@@ -216,6 +216,15 @@ mode by itself.
 **Scene** tab:
 
 - **PCs**: how many player characters are in the scene (1 to 8). The Dangers' thresholds follow.
+- Once the scenario has a Danger, choose it in **Scenario Danger** and press **Start scene**: the
+  scene starts with that Danger alone, and its description and notes show under the loadout
+  table. A new scene starts only once the last one has ended.
+- **End scene** is enabled once the scene is overcome, and **They're dead. They're all dead!**
+  while it is not. Either one writes the scene and its notes to the history and empties it;
+  **Undo** brings it back.
+- **Roll on** a scenario list or the **Incitement** table, then press **Roll**: the history
+  names the entry the die lands on.
+- **Scene notes** are kept with the scene and go to the history when it ends.
 - To add a Danger, type a name (optional), choose its **Class** and **Difficulty** and press
   **Add Danger**. The four base classes are always offered; each kit adds its own class.
   Each Danger is listed with its threshold and the hits a PC needs to pass; type its name in

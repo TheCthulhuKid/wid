@@ -46,6 +46,7 @@ from wid.formatting import (
     POWER_LABELS,
     RANKS_HINT,
     REFERENCE_DICE,
+    ROLL_ON_LABELS,
     SCENARIO_LIST_LABELS,
     strain_box_name,
 )
@@ -593,6 +594,10 @@ class SceneGroup(Vertical):
                 allow_blank=False,
                 id="pc-count",
             )
+        # Shown once the scenario has a Danger to start a scene with.
+        with Horizontal(id="start-scene-row"):
+            yield Select([], prompt="Scenario Danger", id="scenario-scene")
+            yield Button("Start scene", id="start-scene", variant="primary")
         with Horizontal(id="new-danger"):
             with Vertical(classes="field"):
                 yield Label("Name")
@@ -637,6 +642,9 @@ class SceneGroup(Vertical):
                 [("Strongest", STRONGEST)], value=STRONGEST, allow_blank=False, id="acting"
             )
         yield Static(NO_DANGER_HINT, id="scene-summary", markup=False)
+        with Horizontal(id="scene-end-row"):
+            yield Button("End scene", id="end-scene", tooltip="Once the scene is overcome")
+            yield Button("They're dead. They're all dead!", id="lose-scene", variant="error")
         with Horizontal(id="threshold-row"):
             with Vertical(classes="field", id="amount-field"):
                 yield Label("Amount")
@@ -689,6 +697,16 @@ class SceneGroup(Vertical):
                 yield Button(
                     "Task done", id="task-done", tooltip="Advance by the Task's complexity"
                 )
+        with Horizontal(id="roll-on-row"):
+            yield Label("Roll on")
+            yield Select(
+                [(label, kind) for kind, label in ROLL_ON_LABELS.items()],
+                allow_blank=False,
+                id="roll-on-list",
+            )
+            yield Button("Roll", id="roll-on", tooltip="Roll 1d6 on the scenario")
+        yield Label("Scene notes")
+        yield TextArea(id="scene-notes", classes="short-text")
         with Collapsible(title="Danger reference", collapsed=True, id="reference-section"):
             yield Static(REFERENCE_DICE, id="reference-dice", markup=False)
             yield DataTable(id="class-reference", cursor_type="none", zebra_stripes=True)
@@ -793,6 +811,7 @@ class ActivationGroup(VerticalScroll):
         yield Static(NO_ACTIVATION_HINT, id="activation", markup=False)
         yield Static(id="loadout-heading", markup=False)
         yield DataTable(id="loadout", cursor_type="none", zebra_stripes=True)
+        yield Static(id="scene-danger-text", markup=False)
 
     def on_mount(self) -> None:
         self.query_one(DataTable).add_columns(*LOADOUT_COLUMNS)

@@ -34,6 +34,7 @@ from wid.formatting import (
     loadout_heading,
     loadout_rows,
     revelations_line,
+    scenario_danger_text,
     scene_summary,
 )
 from wid.gm import GmGame
@@ -74,6 +75,8 @@ START_NEW = "start-new"
 GAME_BUTTONS: dict[str, Callable[[GmGame], str]] = {
     "undo": GmGame.undo,
     "clear-scenario": GmGame.clear_scenario,
+    "end-scene": GmGame.end_scene,
+    "lose-scene": GmGame.lose_scene,
     "roll-d6": GmGame.roll_one_die,
     "activate": GmGame.activate,
     "clash": GmGame.clash,
@@ -143,6 +146,7 @@ class GmApp(SessionActions, BaseApp):
         game.name = self.query_one("#session-name", Input).value
         game.path = self.query_one("#session-path", Input).value
         game.notes = self.query_one("#session-notes", TextArea).text
+        game.type_scene_notes(self.query_one("#scene-notes", TextArea).text)
         game.type_into_scenario({slot: text_of(field) for slot, field in self.scenario_fields()})
 
     def scenario_fields(self) -> Iterator[tuple[TypedSlot, Input | TextArea]]:
@@ -180,6 +184,12 @@ class GmApp(SessionActions, BaseApp):
             self.show_acting()
         self.query_one("#scene-summary", Static).update(scene_summary(scene))
         self.show_scenario()
+        self.show_scene_start()
+        self.query_one("#end-scene", Button).disabled = not scene.overcome
+        self.query_one("#lose-scene", Button).disabled = not scene.dangers or scene.overcome
+        notes = self.query_one("#scene-notes", TextArea)
+        if notes.text != scene.notes:
+            notes.load_text(scene.notes)
         self.query_one("#add-danger", Button).disabled = len(scene.dangers) >= DANGERS_MAX
         for button_id in ("commit-hits", "raise-threshold", "activate"):
             self.query_one(f"#{button_id}", Button).disabled = not scene.dangers
@@ -193,6 +203,8 @@ class GmApp(SessionActions, BaseApp):
         table = self.query_one("#loadout", DataTable)
         table.clear()
         table.add_rows(loadout_rows(scene.loadout, self.genre))
+        danger_text = scenario_danger_text(self.game.scene_from_scenario)
+        self.query_one("#scene-danger-text", Static).update(danger_text)
         self.show_reference()
         self.finish_refresh()
 
@@ -206,6 +218,21 @@ class GmApp(SessionActions, BaseApp):
         ]
         selector.set_options([("Strongest", STRONGEST), *titles])
         selector.value = STRONGEST if scene.acting is None else scene.acting_index
+
+    def show_scene_start(self) -> None:
+        """Offer the scenario's Dangers to start a scene with, once the last scene has ended."""
+        dangers = self.game.scenario.dangers
+        self.query_one("#start-scene-row").display = bool(dangers)
+        selector = self.query_one("#scenario-scene", Select)
+        if dangers:
+            chosen = selector.value
+            with self.prevent(Select.Changed):
+                selector.set_options(
+                    [(danger_title(danger, index), index) for index, danger in enumerate(dangers)]
+                )
+                selector.value = chosen if chosen in range(len(dangers)) else 0
+        start = self.query_one("#start-scene", Button)
+        start.disabled = bool(self.game.scene.dangers) or selector.is_blank()
 
     def show_scenario(self) -> None:
         scenario, profile = self.game.scenario, self.profile
@@ -325,6 +352,14 @@ class GmApp(SessionActions, BaseApp):
         )
         return danger_class, difficulty, standing if self.profile.has_standing else None
 
+    def start_scene(self) -> None:
+        index = self.query_one("#scenario-scene", Select).value
+        self.act(lambda: self.game.start_scene(index))
+
+    def roll_on(self) -> None:
+        kind = self.query_one("#roll-on-list", Select).value
+        self.act(lambda: self.game.roll_on(kind))
+
     def remove_danger(self, index: int) -> None:
         self.act(lambda: self.game.remove_danger(index))
 
@@ -349,12 +384,14 @@ class GmApp(SessionActions, BaseApp):
         complexity = self.query_one("#task", Select).value
         self.act(lambda: self.game.task_done(complexity))
 
-    def select_changed(self, event: Select.Changed) -> None:
+    def select_changed(self, event: Select.Changed) -> None:  # maybe shorten this later
         value = event.value
         if event.select.id == "pc-count":
             self.act(lambda: self.game.set_pc_count(value))
         elif event.select.id == "revelation-count":
             self.act(lambda: self.game.set_revelations(value))
+        elif event.select.id == "scenario-scene":
+            self.show_scene_start()
         elif event.select.id == "acting":
             self.act(lambda: self.game.choose_acting(None if value == STRONGEST else value))
         elif isinstance(event.select, ScenarioDangerSelect):
@@ -407,6 +444,8 @@ APP_BUTTONS: dict[str, Callable[[GmApp], None]] = {
     "toggle-history": GmApp.action_toggle_history,
     "add-danger": GmApp.add_danger,
     "add-scenario-danger": GmApp.add_scenario_danger,
+    "start-scene": GmApp.start_scene,
+    "roll-on": GmApp.roll_on,
     "commit-hits": GmApp.commit_hits,
     "raise-threshold": GmApp.raise_threshold,
     "task-strain": GmApp.task_strain,

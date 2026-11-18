@@ -124,6 +124,12 @@ SceneGroup { height: auto; }
 #pc-row { height: 3; }
 #pc-row Label { width: 6; padding: 1 0; }
 #pc-count { width: 8; }
+#start-scene-row, #scene-end-row, #roll-on-row { height: 3; }
+#start-scene, #roll-on { margin-left: 1; }
+#end-scene { width: auto; min-width: 11; margin-right: 1; }
+#roll-on-row Label { width: 9; padding: 1 0; }
+#roll-on-list { width: 1fr; }
+#scene-notes { height: 4; }
 #new-danger { height: 4; }
 #new-danger .field { width: 1fr; margin-right: 1; }
 #class-field, #difficulty-field { width: 16; }
@@ -170,6 +176,7 @@ ScenarioGroup { height: auto; }
 #class-reference, #difficulty-reference { height: auto; margin-bottom: 1; }
 ActivationGroup { height: 1fr; padding: 1; border: solid $primary; }
 #activation, #loadout-heading { margin-bottom: 1; }
+#scene-danger-text { margin-top: 1; }
 #loadout { height: auto; }
 .short #pc-row { height: 1; }
 .short #pc-row Label { padding: 0; }
@@ -190,6 +197,8 @@ ActivationGroup { height: 1fr; padding: 1; border: solid $primary; }
 .short #scene-summary { margin: 0; }
 .short #acting-row { height: 1; }
 .short #acting-row Label { padding: 0; }
+.short #start-scene-row, .short #scene-end-row, .short #roll-on-row { height: 1; }
+.short #roll-on-row Label { padding: 0; }
 
 /* Danger theme: cream paper behind lavender fields, with a charcoal title bar. */
 .-theme-danger Screen { background: $background; }
