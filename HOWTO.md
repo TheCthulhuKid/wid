@@ -212,6 +212,41 @@ mode by itself.
   description and notes, and **Remove**.
 - **Clear scenario** empties the sheet, and **Undo** brings it back. What you type is never
   logged and stays when you undo.
+- **Scenario file**, at the top, names a Markdown file. **Import scenario** replaces the
+  scenario with the one in the file (**Undo** brings the old one back); a file of several
+  scenarios asks which. **Export scenario** writes the scenario there, with wid's hits,
+  threshold and loadout table for each Danger, and asks before replacing a file.
+
+A scenario file looks like this. Each `# Title` starts a scenario, and each `### Name` with
+its *Difficulty Class* line is a Danger; the description follows its table, and **Notes:**
+holds your prep notes. A loadout table is optional, but one that differs from wid's is refused.
+A **Tasks** section is skipped, as wid works out task strain itself.
+
+```markdown
+# The Night Ferry
+
+*By A. Writer*
+
+**Pitch:** The last ferry of the night never reaches the other shore.
+
+**Waypoints**
+- The car deck
+- The bridge
+
+**Incitement**
+| d6 | |
+|----|---|
+| 1–2 | The fog thickens |
+| 3–4 | The engines stop |
+| 5–6 | A new **Danger** comes aboard |
+
+### Colossus
+*Heavy Brute*
+
+It wades up from the hold.
+
+**Notes:** Starts below deck.
+```
 
 **Scene** tab:
 

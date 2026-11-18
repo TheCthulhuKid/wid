@@ -22,6 +22,9 @@ What changed in each release of wid, newest first. The format follows
   four lists and the incitement table, and up to six Dangers with descriptions and notes. It is
   saved with the GM's game. **A** opens it in the terminal; in the browser it is a section below
   the scene.
+- In the GM mode, **Import scenario** and **Export scenario** on the Scenario tab read and write
+  a scenario sheet in Markdown, named in **Scenario file**. A file of several scenarios asks
+  which one, and an export writes wid's hits, threshold and loadout table for each Danger.
 - In the GM mode, **Start scene** on the Scene tab runs a scenario Danger, with its description
   and notes under the loadout table; **End scene** and **They're dead. They're all dead!** write
   the scene and its **Scene notes** to the history, and **Roll on** rolls on a scenario list or

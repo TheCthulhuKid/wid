@@ -139,3 +139,21 @@ def test_the_scene_tab_starts_a_scene_from_the_scenario():
             assert not app.query_one("#end-scene", Button).disabled
 
     asyncio.run(scenario())
+
+
+def test_importing_a_file_of_two_scenarios_asks_which(tmp_path):
+    path = tmp_path / "sheets.md"
+    path.write_text("# One\n\n### Bear\n*Heavy Brute*\n\n# Two\n\n### Wolf\n*Boss Swarm*\n")
+
+    async def scenario():
+        app = GmApp()
+        async with app.run_test(size=(120, 50)) as pilot:
+            await pilot.pause()
+            app.query_one("#scenario-path", Input).value = str(path)
+            await click(app, pilot, "#import-scenario")
+            await pilot.click("#scenario-1")
+            await pilot.pause()
+            assert text(app, "#feedback") == "Imported the scenario Two."
+            assert text(app, "#scenario-danger-summary-0").startswith("Wolf: Boss Swarm")
+
+    asyncio.run(scenario())

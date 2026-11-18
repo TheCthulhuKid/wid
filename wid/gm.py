@@ -10,7 +10,7 @@ from pathlib import Path
 from random import Random
 from typing import Any
 
-from wid.base_game import BaseGame
+from wid.base_game import BaseGame, reported
 from wid.dangers import (
     Activation,
     Complexity,
@@ -46,7 +46,8 @@ from wid.scenario import (
     TypedSlot,
 )
 from wid.scenario_sheet import chosen_sheet, write_sheet
-from wid.sessions import GmSave, parse_save
+from wid.sessions import GmSave, parse_save, session_file_path
+from wid.storage import write_text
 
 
 class GmState(FrozenModel):
@@ -359,9 +360,23 @@ class GmGame(BaseGame):
             self.scenario = scenario
         return self.notice(f"Imported the scenario {one_line(sheet.title)}.")
 
+    def import_scenario_file(self, text: str, choice: int | None = None) -> str:
+        with reported("import scenario"):
+            path = session_file_path(text, label="scenario file")
+            return self.import_scenario(path.read_text(encoding="utf-8"), choice)
+
     def scenario_text(self) -> str:
         """The scenario as a sheet, for an export."""
+        if self.scenario == Scenario():
+            raise ValueError("The scenario is empty: write or import one first.")
         return write_sheet(self.scenario, self.genre)
+
+    def export_scenario(self, text: str, *, overwrite: bool = False) -> str:
+        sheet = self.scenario_text()
+        with reported("export scenario"):
+            path = session_file_path(text, label="scenario file")
+            write_text(path, sheet, overwrite=overwrite)
+        return f"Exported the scenario to {path}."
 
     def type_scene_notes(self, notes: str) -> None:
         """Typed text is the GM's: nothing is logged, and it stays across an undo."""

@@ -757,6 +757,11 @@ class ScenarioGroup(Vertical):
     """The GM's scenario sheet: its text, lists, incitement and Dangers, then its notes."""
 
     def compose(self) -> ComposeResult:
+        yield Label("Scenario file (Markdown)")
+        yield Input(placeholder="/path/to/scenario.md", id="scenario-path")
+        with Horizontal(classes="button-row"):
+            yield Button("Import scenario", id="import-scenario")
+            yield Button("Export scenario", id="export-scenario")
         for field, label in (("title", "Title"), ("author", "Author"), ("themes", "Themes")):
             with Vertical(classes="field"):
                 yield Label(label)

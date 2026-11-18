@@ -25,6 +25,7 @@ from wid.dangers import BARRICADE_MAX, DANGERS_MAX, DangerClass, Difficulty, Sta
 from wid.formatting import (
     GM_KIT_QUESTION,
     NO_ACTIVATION_HINT,
+    SCENARIO_CHOICE_QUESTION,
     activation_line,
     barricade_text,
     class_reference_rows,
@@ -33,6 +34,7 @@ from wid.formatting import (
     difficulty_reference_rows,
     loadout_heading,
     loadout_rows,
+    replace_question,
     revelations_line,
     scenario_danger_text,
     scene_summary,
@@ -50,8 +52,9 @@ from wid.scenario import (
     Slot,
     TypedSlot,
 )
+from wid.scenario_sheet import ChooseScenario
 from wid.ui.base import BaseApp, ButtonTables, PaletteCommand
-from wid.ui.dialogs import CANCEL, Answer
+from wid.ui.dialogs import CANCEL, Answer, ConfirmSessionAction, Question
 from wid.ui.sessions import SessionActions
 from wid.ui.widgets import (
     STRONGEST,
@@ -352,6 +355,42 @@ class GmApp(SessionActions, BaseApp):
         )
         return danger_class, difficulty, standing if self.profile.has_standing else None
 
+    def import_scenario(self, choice: int | None = None) -> None:
+        """Import from the Scenario file; a file of several asks which first."""
+        path = self.query_one("#scenario-path", Input).value
+        try:
+            self.act(lambda: self.game.import_scenario_file(path, choice))
+        except ChooseScenario as asked:
+            answers = [
+                Answer(f"scenario-{index}", title) for index, title in enumerate(asked.titles)
+            ]
+            self.push_screen(
+                Question(SCENARIO_CHOICE_QUESTION, [*answers, Answer(CANCEL, "Cancel")]),
+                self.finish_import,
+            )
+
+    def finish_import(self, answer: str) -> None:
+        if answer == CANCEL:
+            self.feedback("Import cancelled; the scenario is unchanged.")
+            return
+        self.import_scenario(int(answer.removeprefix("scenario-")))
+
+    def export_scenario(self, overwrite: bool = False) -> None:
+        path = self.query_one("#scenario-path", Input).value
+        try:
+            self.act(lambda: self.game.export_scenario(path, overwrite=overwrite))
+        except FileExistsError as error:
+            self.push_screen(
+                ConfirmSessionAction(replace_question("file", error.filename)),
+                self.finish_export_scenario,
+            )
+
+    def finish_export_scenario(self, confirmed: bool) -> None:
+        if confirmed:
+            self.export_scenario(overwrite=True)
+        else:
+            self.feedback("Export cancelled; existing file unchanged.")
+
     def start_scene(self) -> None:
         index = self.query_one("#scenario-scene", Select).value
         self.act(lambda: self.game.start_scene(index))
@@ -445,6 +484,8 @@ APP_BUTTONS: dict[str, Callable[[GmApp], None]] = {
     "add-danger": GmApp.add_danger,
     "add-scenario-danger": GmApp.add_scenario_danger,
     "start-scene": GmApp.start_scene,
+    "import-scenario": GmApp.import_scenario,
+    "export-scenario": GmApp.export_scenario,
     "roll-on": GmApp.roll_on,
     "commit-hits": GmApp.commit_hits,
     "raise-threshold": GmApp.raise_threshold,

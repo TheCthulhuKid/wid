@@ -207,6 +207,7 @@ GM_KIT_QUESTION = (
     "the new kit lacks is dropped). Start new clears them. Unsaved changes will be lost."
 )
 QUIT_QUESTION = "Quit? Unsaved changes will be lost."
+SCENARIO_CHOICE_QUESTION = "This file holds several scenarios. Which one do you want?"
 RECOVERY_QUESTION = (
     "wid closed last time with unsaved changes, and kept a copy. Restore that game? If not, the "
     "copy stays until this game has something to lose."

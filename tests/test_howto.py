@@ -70,6 +70,9 @@ SCREEN_LABELS = [
     "Scenario",
     "Add scenario Danger",
     "Clear scenario",
+    "Scenario file",
+    "Import scenario",
+    "Export scenario",
     "Scenario Danger",
     "Start scene",
     "End scene",
@@ -150,3 +153,10 @@ def test_every_shortcut_in_the_how_to_is_a_real_binding():
 def test_the_how_to_is_about_using_the_program_not_the_rules():
     for rule_text in ("5 or 6", "fumble: a value", "equal to or lower than"):
         assert rule_text not in HOWTO
+
+
+def test_the_scenario_file_example_imports():
+    from wid.gm import GmGame
+
+    example = re.search(r"```markdown\n(.*?)```", HOWTO, re.DOTALL).group(1)
+    assert GmGame().import_scenario(example) == "Imported the scenario The Night Ferry."

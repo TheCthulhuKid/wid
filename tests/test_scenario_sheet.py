@@ -91,3 +91,15 @@ def test_the_gm_game_imports_the_chosen_scenario():
     assert [danger.id for danger in game.scenario.dangers] == [1]
     game.undo()
     assert game.scenario.dangers[0].name == "Old"
+
+
+def test_a_scenario_exports_to_a_file_and_imports_back(tmp_path):
+    game = GmGame()
+    game.import_scenario(SHEET, 0)
+    path = tmp_path / "ferry.md"
+    assert game.export_scenario(str(path)) == f"Exported the scenario to {path}."
+    with pytest.raises(FileExistsError):
+        game.export_scenario(str(path))
+    fresh = GmGame()
+    fresh.import_scenario_file(str(path))
+    assert fresh.scenario == game.scenario
