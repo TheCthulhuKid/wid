@@ -1,5 +1,6 @@
 """The GM's Danger rules: classes, difficulties, loadouts, a scene's threshold and activation."""
 
+from enum import StrEnum
 from random import Random
 from typing import Annotated, Self
 
@@ -158,6 +159,7 @@ def recovery_amount(genre: Genre, difficulty: Difficulty) -> int:
 # Dice 1 to 3 of every loadout.
 DEFAULT_ABILITIES = (Ability.HARASS, Ability.SCARE, Ability.KILL)
 Count = Annotated[int, Field(strict=True, ge=0)]
+type DangerId = Count
 
 
 class Replaceable(FrozenModel):
@@ -168,7 +170,7 @@ class Replaceable(FrozenModel):
 
 class Danger(Replaceable):
     # Set by the scene it joins, so Undo can tell Dangers apart after one is removed.
-    id: Count = 0
+    id: DangerId = 0
     name: str = ""
     danger_class: DangerClass
     difficulty: Difficulty
@@ -236,15 +238,20 @@ REVELATIONS_DEFAULT = 3
 REVELATIONS_MAX = 6
 
 
+class SceneEnd(StrEnum):
+    ENDED = "ended"
+    LOST = "lost"
+
+
 class Scene(Replaceable):
     """A confrontation: the PCs against every Danger in it, sharing one threshold."""
 
     pc_count: Annotated[int, Field(strict=True, ge=PC_MIN, le=PC_MAX)] = 4
     dangers: tuple[Danger, ...] = Field(default=(), max_length=DANGERS_MAX)
     # Never reused, even after the Danger that had it is removed.
-    next_id: Count = 0
+    next_id: DangerId = 0
     # The id of the Danger whose loadout the scene rolls on; None for the strongest.
-    acting: Count | None = None
+    acting: DangerId | None = None
     progress: Count = 0
     # Added to the Dangers' thresholds, as Ball Season's manipulate does.
     raised: Count = 0
@@ -254,6 +261,8 @@ class Scene(Replaceable):
     # Oldheart: the spots advanced towards revelations, and how many there are to find.
     revelation_progress: Count = 0
     revelations: Annotated[int, Field(strict=True, ge=1, le=REVELATIONS_MAX)] = REVELATIONS_DEFAULT
+    notes: str = ""
+    scenario_danger_id: DangerId | None = None
 
     @model_validator(mode="after")
     def _within_bounds(self) -> Self:
@@ -329,6 +338,18 @@ class Scene(Replaceable):
             raise ValueError(f"A scene holds up to {DANGERS_MAX} Dangers.")
         added = danger.replace(id=self.next_id)
         return self.replace(dangers=(*self.dangers, added), next_id=self.next_id + 1)
+
+    def cleared(self) -> Self:
+        """An empty scene. The PC count and the revelations to find stay, and so does the id
+        counter, so Undo never takes a new Danger for an old one."""
+        return type(self)(
+            pc_count=self.pc_count, revelations=self.revelations, next_id=self.next_id
+        )
+
+    def starting(self, danger: Danger, genre: Genre, scenario_danger_id: int) -> Self:
+        """A fresh scene with ``danger`` alone, started from the scenario Danger of that id."""
+        scene = self.cleared().with_danger(danger, genre)
+        return scene.replace(scenario_danger_id=scenario_danger_id)
 
     def move_barricade(self, step: int, genre: Genre) -> Self:
         require_tracker(genre, "has_barricade", "barricade")

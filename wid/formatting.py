@@ -12,6 +12,7 @@ from wid.dangers import (
     Danger,
     Difficulty,
     Scene,
+    SceneEnd,
     classes_for,
     defending_attribute,
 )
@@ -35,7 +36,7 @@ from wid.rolls import (
     TechState,
     standing_label,
 )
-from wid.scenario import Scenario, ScenarioList
+from wid.scenario import RollOn, Scenario, ScenarioList, Slot
 
 BONUS_LABELS = {
     BonusKind.EXPERTISE: "Expertise",
@@ -497,6 +498,23 @@ def scenario_line(scenario: Scenario) -> str:
         titles = (danger_title(danger, index) for index, danger in enumerate(scenario.dangers))
         text += f" — {', '.join(titles)}"
     return text
+
+
+def scene_record(scene: Scene, end: SceneEnd) -> str:
+    """History entry for a scene that ended, such as ``Scene ended: The Lantern Man (Heavy
+    Brute), progress 8 of 8.``, with the scene's notes below."""
+    titles = ", ".join(danger_title(danger, index) for index, danger in enumerate(scene.dangers))
+    text = f"Scene {end}: {titles}, progress {scene.progress} of {scene.threshold}."
+    if end == SceneEnd.LOST:
+        text += " They're dead. They're all dead!"
+    notes = scene.notes.strip()
+    return f"{text}\n{notes}" if notes else text
+
+
+def roll_on_line(kind: RollOn, die: int, entry: str) -> str:
+    """History line for a roll on the scenario, such as ``Waypoints (4): The old bus depot.``"""
+    title = "Incitement" if kind == Slot.INCITEMENT else SCENARIO_LIST_LABELS[kind]
+    return f"{title} ({die}): {one_line(entry.strip()) or 'nothing is written there'}."
 
 
 def loadout_heading(scene: Scene) -> str:

@@ -179,10 +179,10 @@ generator are not saved, so **Undo** has nothing to take back right after a load
   filesystems without hard links the name is reserved first.
 
 **GM session files** have `kind: "gm"` and their own `version: 2` (`GmSave` in
-`wid/sessions.py`). They hold the session name, the kit, the scene (`Scene` in
+`wid/sessions.py`). They hold the session name, the kit, the scene and its notes (`Scene` in
 `wid/dangers.py`), the scenario (`Scenario` in `wid/scenario.py`), the notes and the history. A
-scene or scenario that holds something its kit lacks is refused. The last activation is only in
-the history. The scene and the scenario each number their Dangers with a counter that is never
+scene or scenario that holds something its kit lacks is refused. The last activation and the
+scenes already ended are only in the history. The scene and the scenario each number their Dangers with a counter that is never
 reused, so Undo can tell Dangers apart after one is removed. A player's file has no `kind`, and each mode refuses the other's
 file and names the flag to start wid with. A change to the GM format bumps `GmSave.version` and
 adds a step to `GM_UPGRADES`.

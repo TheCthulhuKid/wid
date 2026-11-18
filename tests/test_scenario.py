@@ -2,7 +2,7 @@ import pytest
 
 from wid.dangers import DangerClass, Difficulty
 from wid.profiles import Genre
-from wid.scenario import Scenario, ScenarioDanger, ScenarioList
+from wid.scenario import Scenario, ScenarioDanger, ScenarioList, Slot
 
 LANTERN = ScenarioDanger(
     name="The Lantern Man", danger_class=DangerClass.BRUTE, difficulty=Difficulty.HEAVY
@@ -19,10 +19,10 @@ def test_a_scenario_holds_the_sheet_and_numbers_its_dangers():
         .with_danger(CHOIR, Genre.CORE)
         .with_typed(
             {
-                ("text", "title"): "Night Ferry",
+                (Slot.TEXT, "title"): "Night Ferry",
                 (ScenarioList.WAYPOINTS.value, 3): "The old bus depot",
-                ("incitement", 2): "A new Danger arrives",
-                ("danger", 1, "description"): "Wings",
+                (Slot.INCITEMENT, 2): "A new Danger arrives",
+                (Slot.DANGER, 1, "description"): "Wings",
             }
         )
     )

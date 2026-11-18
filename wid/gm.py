@@ -18,6 +18,7 @@ from wid.dangers import (
     DangerClass,
     Difficulty,
     Scene,
+    SceneEnd,
     Standing,
     activate,
 )
@@ -28,15 +29,19 @@ from wid.formatting import (
     danger_kind,
     danger_summary,
     revelations_line,
+    roll_on_line,
     scenario_line,
+    scene_record,
     scene_summary,
     task_strain_line,
 )
 from wid.profiles import PROFILES, Genre, WiDProfile
 from wid.rolls import FrozenModel, roll_d6
 from wid.scenario import (
+    RollOn,
     Scenario,
     ScenarioDanger,
+    Slot,
     TypedSlot,
 )
 from wid.sessions import GmSave, parse_save
@@ -71,16 +76,17 @@ class GmGame(BaseGame):
         return PROFILES[self.genre]
 
     def typed_names(self, state: GmState) -> dict[TypedSlot, str]:
-        """The scene's Danger names by ("scene", id), and the scenario's typed text."""
-        names = {("scene", danger.id): danger.name for danger in state.scene.dangers}
-        return {**names, **state.scenario.typed()}
+        """The scene's Danger names and notes, and the scenario's typed text."""
+        names = {(Slot.SCENE_DANGER, danger.id): danger.name for danger in state.scene.dangers}
+        return {**names, (Slot.SCENE_NOTES,): state.scene.notes, **state.scenario.typed()}
 
     def restore(self, state: GmState, names: dict[TypedSlot, str], action: str) -> None:
         dangers = tuple(
-            danger.replace(name=names.get(("scene", danger.id), danger.name))
+            danger.replace(name=names.get((Slot.SCENE_DANGER, danger.id), danger.name))
             for danger in state.scene.dangers
         )
-        self.scene = state.scene.replace(dangers=dangers)
+        notes = names.get((Slot.SCENE_NOTES,), state.scene.notes)
+        self.scene = state.scene.replace(dangers=dangers, notes=notes)
         self.scenario = state.scenario.with_typed(names)
         self.notice(f"{action}.")
 
@@ -99,10 +105,9 @@ class GmGame(BaseGame):
         }
 
     def wrote_anything(self) -> bool:
-        """Whether the GM typed anything: the session name, notes, a Danger's name or the
-        scenario."""
-        scene_names = any(danger.name for danger in self.scene.dangers)
-        return super().wrote_anything() or scene_names or any(self.scenario.typed().values())
+        """Whether the GM typed anything: the session name, notes, the scene or the scenario."""
+        typed = self.typed_names(self.state).values()
+        return super().wrote_anything() or any(typed)
 
     def saved_session(self, name: str) -> GmSave:
         return GmSave(
@@ -336,6 +341,44 @@ class GmGame(BaseGame):
         with self.undoable("scenario cleared"):
             self.scenario = Scenario()
         return self.notice("Scenario cleared.")
+
+    def type_scene_notes(self, notes: str) -> None:
+        """Typed text is the GM's: nothing is logged, and it stays across an undo."""
+        self.scene = self.scene.replace(notes=notes)
+
+    def start_scene(self, index: int) -> str:
+        """Start a scene with the scenario Danger at ``index``; the last one must end first."""
+        if self.scene.dangers:
+            raise ValueError("End this scene first.")
+        danger = self.scenario.danger_at(index)
+        with self.undoable("scene start"):
+            self.scene = self.scene.starting(danger.in_scene(), self.genre, danger.id)
+        return self.notice(f"Scene started: {danger.label(index)}.")
+
+    def end_scene(self) -> str:
+        if not self.scene.overcome:
+            raise ValueError("Overcome the scene before ending it.")
+        return self.close_scene(SceneEnd.ENDED)
+
+    def lose_scene(self) -> str:
+        self.require_dangers()
+        if self.scene.overcome:
+            raise ValueError("The scene is overcome: end it instead.")
+        return self.close_scene(SceneEnd.LOST)
+
+    def close_scene(self, end: SceneEnd) -> str:
+        """Record the scene and its notes in the history and empty it; the feedback leaves the
+        notes out."""
+        record = scene_record(self.scene, end)
+        with self.undoable(f"{end} scene"):
+            self.scene = self.scene.cleared()
+        self.last_activation = None
+        self.notice(record)
+        return record.splitlines()[0]
+
+    def roll_on(self, kind: RollOn) -> str:
+        die = roll_d6(self.rng)
+        return self.notice(roll_on_line(kind, die, self.scenario.entry(kind, die)))
 
     def require_dangers(self) -> None:
         if not self.scene.dangers:

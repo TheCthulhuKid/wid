@@ -46,6 +46,7 @@ from wid.scenario import (
     SCENARIO_TEXTS,
     Scenario,
     ScenarioList,
+    Slot,
     TypedSlot,
 )
 from wid.ui.base import BaseApp, ButtonTables, PaletteCommand
@@ -147,16 +148,16 @@ class GmApp(SessionActions, BaseApp):
     def scenario_fields(self) -> Iterator[tuple[TypedSlot, Input | TextArea]]:
         """Each box the GM types the scenario into, with its slot in ``Scenario.typed``."""
         for field in SCENARIO_TEXTS:
-            yield ("text", field), self.query_one(f"#scenario-{field}")
+            yield (Slot.TEXT, field), self.query_one(f"#scenario-{field}")
         for kind in ScenarioList:
             for index in range(ENTRIES):
                 yield (kind.value, index), self.query_one(f"#{kind.value}-{index}", Input)
         for row in range(INCITEMENTS):
-            yield ("incitement", row), self.query_one(f"#incitement-{row}", Input)
+            yield (Slot.INCITEMENT, row), self.query_one(f"#incitement-{row}", Input)
         for index, danger in enumerate(self.game.scenario.dangers):
             for field in DANGER_TEXTS:
                 yield (
-                    ("danger", danger.id, field),
+                    (Slot.DANGER, danger.id, field),
                     self.query_one(f"#scenario-danger-{field}-{index}"),
                 )
 

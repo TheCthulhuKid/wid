@@ -7,6 +7,7 @@ from wid.dangers import DangerClass, Difficulty
 from wid.gm import GmGame
 from wid.profiles import Genre
 from wid.rolls import Standing
+from wid.scenario import ScenarioList, Slot
 from wid.sessions import GmSave
 
 
@@ -81,7 +82,7 @@ def test_the_scenario_saves_loads_and_undoes_with_the_scene(tmp_path):
         "Added Colossus to the scenario."
     )
     game.add_scenario_danger("", DangerClass.BRUTE, Difficulty.HEAVY)
-    game.type_into_scenario({("text", "title"): "Night Ferry"})
+    game.type_into_scenario({(Slot.TEXT, "title"): "Night Ferry"})
     # Typed text is the GM's: undoing the Danger added before it keeps it.
     assert game.undo() == "Undid the last scenario Danger added."
     assert (game.scenario.title, len(game.scenario.dangers)) == ("Night Ferry", 1)
@@ -108,6 +109,48 @@ def test_a_scenario_danger_change_names_its_standing():
         game.change_scenario_danger(0, DangerClass.BRUTE, Difficulty.HEAVY, Standing.SCANDALOUS)
         == "Changed Danger 1 to Heavy Brute, Scandalous."
     )
+
+
+def scenario_game() -> GmGame:
+    game = GmGame(rng=ScriptedRandom([4, 5, 2]))
+    game.add_scenario_danger("The Lantern Man", DangerClass.BRUTE, Difficulty.HEAVY)
+    game.add_scenario_danger("Moth Choir", DangerClass.SWARM, Difficulty.BOSS)
+    return game
+
+
+def test_a_scene_started_from_the_scenario_ends_once_overcome():
+    game = scenario_game()
+    assert game.start_scene(0) == "Scene started: The Lantern Man."
+    with pytest.raises(ValueError, match="Overcome the scene"):
+        game.end_scene()
+    game.commit_hits(game.scene.threshold)
+    game.type_scene_notes("Fled to the bus depot.")
+    assert game.end_scene() == "Scene ended: The Lantern Man (Heavy Brute), progress 8 of 8."
+    assert game.history[-1].notice.endswith("8 of 8.\nFled to the bus depot.")
+
+    game.start_scene(1)
+    assert (game.scene.progress, game.scene.notes, game.scene.scenario_danger_id) == (0, "", 1)
+
+
+def test_a_lost_scene_is_recorded_and_undone():
+    game = scenario_game()
+    game.start_scene(1)
+    with pytest.raises(ValueError, match="End this scene first"):
+        game.start_scene(0)
+    game.type_scene_notes("Hums.")
+    assert game.lose_scene().endswith("progress 0 of 12. They're dead. They're all dead!")
+    assert game.undo() == "Undid the last lost scene."
+    assert (game.scene.dangers[0].name, game.scene.notes) == ("Moth Choir", "Hums.")
+
+
+def test_rolling_on_the_scenario_logs_its_entry():
+    game = scenario_game()
+    game.type_into_scenario(
+        {("waypoints", 3): "The old bus depot", (Slot.INCITEMENT, 2): "A new Danger arrives"}
+    )
+    assert game.roll_on(ScenarioList.WAYPOINTS) == "Waypoints (4): The old bus depot."
+    assert game.roll_on(Slot.INCITEMENT) == "Incitement (5): A new Danger arrives."
+    assert game.roll_on(ScenarioList.NPCS) == "NPCs (2): nothing is written there."
 
 
 def test_an_older_gm_save_upgrades_and_a_newer_one_is_refused():

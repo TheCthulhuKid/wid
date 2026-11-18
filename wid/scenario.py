@@ -6,9 +6,9 @@ from typing import Annotated, Literal, Self, get_args
 from pydantic import Field, model_validator
 
 from wid.dangers import (
-    Count,
     Danger,
     DangerClass,
+    DangerId,
     Difficulty,
     Replaceable,
     dangers_in_kit,
@@ -30,9 +30,18 @@ type ScenarioText = Literal["title", "author", "pitch", "cast", "themes", "notes
 type DangerText = Literal["name", "description", "notes"]
 SCENARIO_TEXTS: tuple[ScenarioText, ...] = get_args(ScenarioText.__value__)
 DANGER_TEXTS: tuple[DangerText, ...] = get_args(DangerText.__value__)
-# A slot the GM types into: ("text", field), (list, entry), ("incitement", row) or
-# ("danger", id, field).
 type TypedSlot = tuple[str | int, ...]
+
+
+class Slot(StrEnum):
+    """What a ``TypedSlot`` starts with: (TEXT, field), (INCITEMENT, row), (DANGER, id, field),
+    (SCENE_DANGER, id) or (SCENE_NOTES,); a list's slot starts with the list instead."""
+
+    TEXT = "text"
+    INCITEMENT = "incitement"
+    DANGER = "danger"
+    SCENE_DANGER = "scene"
+    SCENE_NOTES = "scene-notes"
 
 
 class ScenarioList(StrEnum):
@@ -44,9 +53,16 @@ class ScenarioList(StrEnum):
     OBSTACLES = "obstacles"
 
 
+type RollOn = ScenarioList | Literal[Slot.INCITEMENT]
+
+
 class ScenarioDanger(Danger):
     description: str = ""
     notes: str = ""
+
+    def in_scene(self) -> Danger:
+        """The Danger as a scene holds it, without the sheet's text."""
+        return Danger.model_validate(self.model_dump(include=set(Danger.model_fields)))
 
 
 class Scenario(Replaceable):
@@ -64,7 +80,7 @@ class Scenario(Replaceable):
     # The incitement table's rows, for 1–2, 3–4 and 5–6.
     incitement: Incitement = ("",) * INCITEMENTS
     dangers: tuple[ScenarioDanger, ...] = Field(default=(), max_length=SCENARIO_DANGERS_MAX)
-    next_id: Count = 0
+    next_id: DangerId = 0
     notes: str = ""
 
     @model_validator(mode="after")
@@ -102,6 +118,12 @@ class Scenario(Replaceable):
         require_fits(danger, genre)
         return self.replace(dangers=(*self.dangers[:index], danger, *self.dangers[index + 1 :]))
 
+    def entry(self, kind: RollOn, die: int) -> str:
+        """What ``die`` lands on in a list, or in the incitement table's rows of two."""
+        if kind == Slot.INCITEMENT:
+            return self.incitement[(die - 1) // 2]
+        return getattr(self, kind)[die - 1]
+
     def without(self, index: int) -> Self:
         self.danger_at(index)
         return self.replace(dangers=self.dangers[:index] + self.dangers[index + 1 :])
@@ -109,15 +131,15 @@ class Scenario(Replaceable):
     def typed(self) -> dict[TypedSlot, str]:
         """Everything the GM types into the sheet, by slot, so an undo can keep it."""
         return {
-            **{("text", field): getattr(self, field) for field in SCENARIO_TEXTS},
+            **{(Slot.TEXT, field): getattr(self, field) for field in SCENARIO_TEXTS},
             **{
                 (kind.value, index): entry
                 for kind in ScenarioList
                 for index, entry in enumerate(getattr(self, kind))
             },
-            **{("incitement", row): text for row, text in enumerate(self.incitement)},
+            **{(Slot.INCITEMENT, row): text for row, text in enumerate(self.incitement)},
             **{
-                ("danger", danger.id, field): getattr(danger, field)
+                (Slot.DANGER, danger.id, field): getattr(danger, field)
                 for danger in self.dangers
                 for field in DANGER_TEXTS
             },
@@ -126,7 +148,7 @@ class Scenario(Replaceable):
     def with_typed(self, typed: dict[TypedSlot, str]) -> Self:
         """The scenario with ``typed`` written into its slots; slots it lacks are ignored."""
         texts = {
-            field: typed.get(("text", field), getattr(self, field)) for field in SCENARIO_TEXTS
+            field: typed.get((Slot.TEXT, field), getattr(self, field)) for field in SCENARIO_TEXTS
         }
         lists = {
             kind.value: tuple(
@@ -136,12 +158,12 @@ class Scenario(Replaceable):
             for kind in ScenarioList
         }
         incitement = tuple(
-            typed.get(("incitement", row), text) for row, text in enumerate(self.incitement)
+            typed.get((Slot.INCITEMENT, row), text) for row, text in enumerate(self.incitement)
         )
         dangers = tuple(
             danger.replace(
                 **{
-                    field: typed.get(("danger", danger.id, field), getattr(danger, field))
+                    field: typed.get((Slot.DANGER, danger.id, field), getattr(danger, field))
                     for field in DANGER_TEXTS
                 }
             )
