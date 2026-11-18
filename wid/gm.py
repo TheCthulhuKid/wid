@@ -10,7 +10,7 @@ from pathlib import Path
 from random import Random
 from typing import Any
 
-from wid.base_game import BaseGame
+from wid.base_game import BaseGame, player_message
 from wid.dangers import (
     Activation,
     Complexity,
@@ -28,6 +28,7 @@ from wid.formatting import (
     barricade_text,
     danger_kind,
     danger_summary,
+    one_line,
     revelations_line,
     roll_on_line,
     scenario_line,
@@ -44,6 +45,7 @@ from wid.scenario import (
     Slot,
     TypedSlot,
 )
+from wid.scenario_sheet import ChooseScenario, read_sheets, write_sheet
 from wid.sessions import GmSave, parse_save
 
 
@@ -347,6 +349,32 @@ class GmGame(BaseGame):
         with self.undoable("scenario cleared"):
             self.scenario = Scenario()
         return self.notice("Scenario cleared.")
+
+    def import_scenario(self, text: str, choice: int | None = None) -> str:
+        """Replace the scenario with one read from a sheet; with several, ``choice`` says which,
+        and without it ``ChooseScenario`` names them. Its Dangers are numbered on from the
+        current scenario's, so a scene never takes a new Danger for the one it started from."""
+        sheets = read_sheets(text)
+        if not sheets:
+            raise ValueError("This file has no scenario: each starts with a line such as # Title.")
+        if choice is None and len(sheets) > 1:
+            raise ChooseScenario(tuple(sheet.title for sheet in sheets))
+        if not 0 <= (choice or 0) < len(sheets):
+            raise ValueError("No such scenario in this file.")
+        sheet = sheets[choice or 0]
+        scenario = sheet.replace(dangers=(), next_id=self.scenario.next_id)
+        for danger in sheet.dangers:
+            try:
+                scenario = scenario.with_danger(danger, self.genre)
+            except ValueError as error:
+                raise ValueError(f"{sheet.title}, {danger.name}: {player_message(error)}") from None
+        with self.undoable("scenario import"):
+            self.scenario = scenario
+        return self.notice(f"Imported the scenario {one_line(sheet.title)}.")
+
+    def scenario_text(self) -> str:
+        """The scenario as a sheet, for an export."""
+        return write_sheet(self.scenario, self.genre)
 
     def type_scene_notes(self, notes: str) -> None:
         """Typed text is the GM's: nothing is logged, and it stays across an undo."""

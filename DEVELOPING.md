@@ -103,6 +103,7 @@ wid/
 ├── rolls.py            # Validated rules, scoring, and resource transitions
 ├── dangers.py          # The GM's Dangers: loadouts, a scene's threshold and activation
 ├── scenario.py         # A scenario sheet: its fields, lists, incitement and Dangers
+├── scenario_sheet.py   # A scenario sheet in Markdown, read and written for import and export
 ├── formatting.py       # Plain-text renderings: dice, pools, statuses, history lines
 ├── base_game.py        # What every mode shares: history, save, load, export, undo, recovery
 ├── game.py             # The player's game: the character sheet and its actions
